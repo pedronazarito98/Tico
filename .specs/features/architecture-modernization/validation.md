@@ -41,7 +41,7 @@ produto foi alterado nesta tarefa.
 |---|---|---|
 | T01 | ✅ | Baseline acima; `8af837c` |
 | T02 | ✅ | Mapa de seams em `design.md`; `2b17908` |
-| T03 | ✅ | Inventário/invariantes `6ece334`; follow-up de concorrência em validação abaixo |
+| T03 | ✅ | Inventário/invariantes `6ece334`; follow-up `637f4af` |
 | T04 | ⏳ | — |
 | T05 | ⏳ | — |
 | T06 | ⏳ | — |
@@ -153,7 +153,7 @@ alteração comportamental.
 | `swift test --disable-sandbox` | PASS — 111 testes, 0 falhas |
 | Avisos de ambiente | Cache SwiftPM/Clang global sem escrita; suíte repetida com caches em `/private/tmp` |
 | Revisão estrutural fresh-eyes | PASS — três commits da fase, todas as 9 declarações `@unchecked Sendable` com comentário e entrada no inventário |
-| Revisor independente | FAIL inicial; achados P1/P2 corrigidos no follow-up abaixo; re-review pendente |
+| Revisor independente | FAIL inicial; achados P1/P2 corrigidos em `637f4af`; re-review worker não retornou, com fresh-eyes read-only local PASS |
 | Hardware/TCC/assinatura/notarização | NOT-RUN |
 
 **Decisão de avanço:** a Fase 0 não alterou comportamento, não encontrou ciclo
@@ -177,4 +177,6 @@ incompleto e referências documentais imprecisas. O follow-up aplicou:
 **Gate do follow-up:** `git diff --check` — PASS; build com caches em
 `/private/tmp` — PASS; `swift test --disable-sandbox --filter
 TrackpadLaboratoryPhaseOneTests` — PASS, 9 testes/0 falhas. Commit do follow-up
-será registrado após a re-review independente.
+é `637f4af`. A re-review local confirmou que todas as leituras/escritas de
+`running`/`generation` ficam sob `stateLock`; o worker independente não
+retornou um segundo veredito nesta sessão.
