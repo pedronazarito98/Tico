@@ -48,9 +48,9 @@ produto foi alterado nesta tarefa.
 | T07 | ✅ | `28d96d4`; `RuleEditingSessionTests` — 3 testes, 0 falhas; build do produto PASS |
 | T08 | ✅ | `89e3adc`; `RuleEditingSessionTests` — 3 testes, 0 falhas; build do produto PASS |
 | T09 | ✅ | `69c02e9`, `7f0abec`, `5cbd0a5`; suíte completa — 114 testes, 0 falhas; revisão independente PASS |
-| T10 | ⏳ | — |
-| T11 | ⏳ | — |
-| T12 | ⏳ | — |
+| T10 | ✅ | `44fdcf6`; `ShortcutStoreTests` — 13 testes, 0 falhas; build do produto PASS |
+| T11 | ✅ | `381f7ab`; `ShortcutStoreTests` — 15 testes, 0 falhas; `SecurityRegressionTests` — 8 testes, 0 falhas |
+| T12 | ✅ | `10fffea`, `3062882`, `6f90a48`; suíte da fase — 117 testes, 0 falhas; build do produto PASS |
 | T13 | ⏳ | — |
 | T14 | ⏳ | — |
 | T15 | ⏳ | — |
@@ -244,3 +244,69 @@ documentação estão listados na tabela T03. A revisão independente final
 confirmou que todas as leituras/escritas de `running`/`generation` ficam sob
 `stateLock`, que o callback em voo está documentado e que o inventário tem
 referências `file:line` completas.
+
+## Fase 2 — persistência e store (T10–T12)
+
+**Resultado de código:** concluído. A persistência foi separada em duas
+fronteiras internas, mantendo `ShortcutStore` como fachada observável para o
+estado e as invariantes.
+
+### Ownership e compatibilidade
+
+- T10 moveu `ShortcutDocument`, `DecodedShortcutDocument`, versionamento,
+  encode/decode, migração de array legado e validação de documento para
+  `ShortcutDocumentCodec.swift`. A versão pública de compatibilidade continua
+  em `ShortcutStore.currentDocumentVersion`, apontando para o codec.
+- T11 introduziu `ShortcutRepository` e `FileShortcutRepository`. A
+  implementação concentra `FileManager`, leitura limitada pela
+  `DocumentSecurityPolicy`, criação de diretórios, escrita `.atomic`,
+  importação/exportação e backups `vN.backup.json`.
+- T12 manteve os arrays publicados, CRUD, conflitos, sincronização de
+  templates, merge e rollback no store. O store não usa mais
+  `JSONEncoder`, `JSONDecoder`, `FileHandle` ou `Data(contentsOf:)`; a
+  inicialização por `repository:` torna a fronteira substituível sem
+  alterar o inicializador legado por `fileURL:`.
+
+### Gates executados
+
+| Gate | Resultado |
+|---|---|
+| `git diff --check` | PASS |
+| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift test --disable-sandbox --filter ShortcutStoreTests` | PASS — 15 testes, 0 falhas |
+| `swift test --disable-sandbox --filter SecurityRegressionTests` | PASS — 8 testes, 0 falhas |
+| `swift test --disable-sandbox` | PASS — 117 testes, 0 falhas |
+
+Durante a primeira execução de T11, um erro de implementação no nome do
+backup foi detectado pelo teste de migração; a correção foi aplicada antes do
+commit e os gates foram repetidos. Os avisos de cache SwiftPM global e os
+cinco `AGENTS.md` tratados como arquivos não processados continuam sendo
+limitações do ambiente, sem falha de compilação.
+
+### Segurança e rollback
+
+Round-trip de CRUD, documento vazio, versão legada 0, migrações de versões 1/2,
+backup versionado, importação replace/merge, rejeição de documentos malformados
+e limite de tamanho foram exercitados pela suíte existente. Falhas de escrita
+continuam restaurando a coleção anterior; leitura/importação falha antes de
+alterar o estado publicado.
+
+**Decisão de avanço:** build, testes direcionados e suíte completa estão
+verdes. A revisão independente final retornou PASS no
+`019fe7e7-1001-7e61-ae87-256777379a6b`; nenhuma evidência de IO foi
+confundida com UAT de hardware.
+
+### Follow-ups da revisão independente
+
+1. `3062882` corrigiu a publicação antecipada de templates: a coleção
+   sincronizada agora é calculada em valor e só substitui o estado publicado
+   após `repository.write` retornar sucesso. O teste
+   `testFailedWriteDoesNotPublishEmbeddedTemplate` cobre a regressão.
+2. `6f90a48` corrigiu a publicação antecipada em `load()`: seed, leitura e
+   migração capturam um snapshot de todas as coleções e restauram o estado em
+   qualquer falha de leitura, backup ou escrita. O teste
+   `testFailedSeedDoesNotPublishExamples` cobre o caminho de falha.
+3. O contrato do repositório passou a documentar a obrigação de escrita
+   atômica para implementações, e a criação do documento foi movida para o
+   codec. O revisor classificou o acoplamento restante ao tipo de documento
+   como P2 não bloqueante e não encontrou P1.

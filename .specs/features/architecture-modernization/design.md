@@ -213,3 +213,26 @@ composição e tradução de eventos; `RuleTriggerEditorView`,
 `AppController`. A validação pura de URL foi compartilhada em
 `Sources/AirShortcut/Support/RuleURLValidator.swift`. A assinatura pública de
 `RuleEditorView` e os closures de `RulesView` permanecem compatíveis.
+
+## Atualização pós-T12 — persistência
+
+Após T10–T12, `ShortcutStore` continua sendo a fachada observável compatível
+para estado, CRUD, conflitos, importação/exportação e invariantes de coleção,
+mas não contém mais `JSONEncoder`, `JSONDecoder`, leitura de bytes ou
+escrita atômica.
+
+- `ShortcutDocumentCodec.swift` é dono do documento Codable, da versão 6,
+  da decodificação legada (array de versão 0), dos defaults de versões antigas
+  e da validação de limites antes de publicar o resultado.
+- `ShortcutRepository.swift` define a porta injetável; `FileShortcutRepository`
+  concentra `FileManager`, leitura limitada pela `DocumentSecurityPolicy`,
+  encode/decode por codec, criação de diretório, escrita `.atomic` e backup
+  versionado.
+- `ShortcutStore(repository:seedExamples:now:)` preserva a injeção de relógio
+  e path por meio do repositório; o inicializador legado com `fileURL` continua
+  disponível e cria a implementação de arquivo padrão.
+
+O repositório retorna o payload original junto do documento decodificado para
+que a migração gere backup antes da sobrescrita. Falhas de gravação continuam
+restaurando as coleções anteriores no store; falhas de leitura/importação
+ocorrem antes da mutação publicada.
