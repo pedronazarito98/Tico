@@ -150,11 +150,13 @@ dependências que não aparecem no código.
 
 - **Produtor/composition root:** `Sources/AirShortcut/App/AirShortcutApp.swift:17-24`
   cria uma única instância de longa duração com `@StateObject`.
-- **Consumidores de UI:** `ContentView.swift:4-5,168-223`,
+- **Consumidores:** `ContentView.swift:4-5,168-223`,
   `RulesView.swift:4,107-190`, `ProfilesView.swift:4`,
-  `GestureLibraryView.swift:4` e `MenuBarContentView.swift:5-6`.
+  `GestureLibraryView.swift:4`, `MenuBarContentView.swift:5-6` e
+  `Support/AppController.swift:33,67,86,164,448-450,578-581,625-627`.
   Testes de persistência/compatibilidade instanciam o store com `fileURL`
-  temporário.
+  temporário, incluindo `ShortcutStoreTests.swift:18-282` e a leitura da
+  versão em `ShortcutStoreTests.swift:168`.
 - **Efeitos:** leitura, migração e carga inicial em
   `ShortcutStore.swift:78-117`; CRUD e rollback em `:119-345`; importação e
   exportação em `:347-413`; escrita atômica em `:450-464`. A implementação

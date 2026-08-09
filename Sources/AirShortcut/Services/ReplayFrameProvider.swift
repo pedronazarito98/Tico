@@ -29,7 +29,9 @@ struct TrackpadReplayDocument: Codable, Equatable, Sendable {
 
 /// Scheduled playback callbacks run on `queue`; `stateLock` protects lifecycle
 /// state shared by that queue and the owner calling `start`/`stop`.
-/// `generation` invalidates callbacks from a previous playback.
+/// `generation` invalidates callbacks from a previous playback. A callback that
+/// has already passed the state check may be in flight when `stop()` returns;
+/// stopping prevents subsequent scheduled frames but cannot retract that value.
 final class ReplayFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
     let capabilities = TrackpadProviderCapabilities.replay
 
