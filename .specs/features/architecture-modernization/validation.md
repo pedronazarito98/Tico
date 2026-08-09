@@ -41,7 +41,7 @@ produto foi alterado nesta tarefa.
 |---|---|---|
 | T01 | ✅ | Baseline acima; `8af837c` |
 | T02 | ✅ | Mapa de seams em `design.md`; `2b17908` |
-| T03 | ✅ | Inventário/invariantes `6ece334`; follow-up `637f4af` |
+| T03 | ✅ | Inventário/invariantes `6ece334`; follow-ups de código/documentação `637f4af`, `1b19757`, `5c697b7`, `4d667c4`, `6bd6609` |
 | T04 | ⏳ | — |
 | T05 | ⏳ | — |
 | T06 | ⏳ | — |
@@ -152,10 +152,10 @@ alteração comportamental.
 | Gate | Resultado |
 |---|---|
 | `git diff --check` | PASS |
-| `swift test --disable-sandbox` | PASS — 111 testes, 0 falhas |
+| `swift test --disable-sandbox` | PASS — 111 testes, 0 falhas, executado após os follow-ups com caches explícitos em `/private/tmp` |
 | Avisos de ambiente | Cache SwiftPM/Clang global sem escrita; suíte repetida com caches em `/private/tmp` |
-| Revisão estrutural fresh-eyes | PASS — três commits da fase, todas as 9 declarações `@unchecked Sendable` com comentário e entrada no inventário |
-| Revisor independente | FAIL inicial; achados P1/P2 corrigidos em `637f4af`; re-review worker não retornou, com fresh-eyes read-only local PASS |
+| Revisão estrutural fresh-eyes | PASS — follow-ups da fase, todas as 9 declarações `@unchecked Sendable` com comentário e entrada no inventário |
+| Revisor independente | PASS final no HEAD `6bd6609` (`019fe78f-1003-78f0-b33c-e53dc869327f`); falhas iniciais e lacunas documentais corrigidas nos commits listados acima |
 | Hardware/TCC/assinatura/notarização | NOT-RUN |
 
 **Decisão de avanço:** a Fase 0 não alterou comportamento, não encontrou ciclo
@@ -172,13 +172,18 @@ incompleto e referências documentais imprecisas. O follow-up aplicou:
   callbacks antigos continuam invalidados por generation.
 - `AppController.swift:183-187`: o sink de `NSWorkspace` agenda a atualização
   no `MainActor` em vez de chamar diretamente o método isolado.
+- `ReplayFrameProvider.swift:30-34`: contrato explicita que um callback já
+  validado pode estar em voo após `stop()`; frames posteriores continuam
+  invalidados por `generation`.
 - `validation.md:95-131` e `design.md:106-114`: inventário inclui
   `ApplicationLauncher`, diferencia `Task` de `MainActor.assumeIsolated`,
   corrige o caminho do controller e lista consumidores com `file:line`.
 
 **Gate do follow-up:** `git diff --check` — PASS; build com caches em
 `/private/tmp` — PASS; `swift test --disable-sandbox --filter
-TrackpadLaboratoryPhaseOneTests` — PASS, 9 testes/0 falhas. Commit do follow-up
-é `637f4af`. A re-review local confirmou que todas as leituras/escritas de
-`running`/`generation` ficam sob `stateLock`; o worker independente não
-retornou um segundo veredito nesta sessão.
+TrackpadLaboratoryPhaseOneTests` — PASS, 9 testes/0 falhas; o gate completo
+posterior também passou com 111 testes/0 falhas. Commits de código e
+documentação estão listados na tabela T03. A revisão independente final
+confirmou que todas as leituras/escritas de `running`/`generation` ficam sob
+`stateLock`, que o callback em voo está documentado e que o inventário tem
+referências `file:line` completas.
