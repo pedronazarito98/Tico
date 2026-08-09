@@ -467,27 +467,30 @@ final class ShortcutStore: ObservableObject {
     }
 
     private func writeDocument(to destinationURL: URL) throws {
-        synchronizeEmbeddedTemplates()
+        let synchronizedTemplates = synchronizedTemplates()
         let document = ShortcutDocument(
             version: Self.currentDocumentVersion,
             rules: rules,
             profiles: profiles,
             reusableWorkflows: reusableWorkflows,
-            customGestureTemplates: customGestureTemplates,
+            customGestureTemplates: synchronizedTemplates,
             presets: presets
         )
         try repository.write(document, to: destinationURL)
+        customGestureTemplates = synchronizedTemplates
     }
 
-    private func synchronizeEmbeddedTemplates() {
+    private func synchronizedTemplates() -> [CustomGestureTemplate] {
+        var templates = customGestureTemplates
         for rule in rules {
             guard case let .customTrackpad(template) = rule.trigger else { continue }
-            if let index = customGestureTemplates.firstIndex(where: { $0.id == template.id }) {
-                customGestureTemplates[index] = template
+            if let index = templates.firstIndex(where: { $0.id == template.id }) {
+                templates[index] = template
             } else {
-                customGestureTemplates.append(template)
+                templates.append(template)
             }
         }
+        return templates
     }
 
     private static func merged<T: Identifiable>(

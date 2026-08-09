@@ -54,6 +54,29 @@ final class ShortcutStoreTests: XCTestCase {
         XCTAssertEqual(reloadedStore.rules, [rule])
     }
 
+    func testFailedWriteDoesNotPublishEmbeddedTemplate() throws {
+        let repository = FailingShortcutRepository(fileURL: makeFileURL())
+        let store = ShortcutStore(repository: repository, seedExamples: false)
+        let samplePath = [
+            TrackpadPoint(x: 0, y: 0),
+            TrackpadPoint(x: 1, y: 1)
+        ]
+        let template = CustomGestureTemplate(
+            name: "Falha",
+            fingerCount: 3...3,
+            samplePaths: [samplePath, samplePath, samplePath]
+        )
+        let rule = ShortcutRule(
+            name: "Regra falha",
+            trigger: .customTrackpad(template: template),
+            action: .notification(title: "Teste", body: "")
+        )
+
+        XCTAssertThrowsError(try store.add(rule))
+        XCTAssertTrue(store.rules.isEmpty)
+        XCTAssertTrue(store.customGestureTemplates.isEmpty)
+    }
+
     func testCRUDPersistsAcrossStoreInstances() throws {
         let fileURL = makeFileURL()
         let updateDate = Date(timeIntervalSince1970: 1_800_000_000)
@@ -344,4 +367,26 @@ final class ShortcutStoreTests: XCTestCase {
         temporaryDirectories.append(directory)
         return directory
     }
+}
+
+private final class FailingShortcutRepository: ShortcutRepository {
+    let fileURL: URL
+
+    init(fileURL: URL) {
+        self.fileURL = fileURL
+    }
+
+    func readCurrentDocument() throws -> ShortcutRepositoryReadResult? {
+        nil
+    }
+
+    func readDocument(from sourceURL: URL) throws -> DecodedShortcutDocument {
+        throw ShortcutStoreError.invalidDocument
+    }
+
+    func write(_ document: ShortcutDocument, to destinationURL: URL) throws {
+        throw ShortcutStoreError.invalidDocument
+    }
+
+    func backupCurrentDocument(_ data: Data, version: Int) throws {}
 }
