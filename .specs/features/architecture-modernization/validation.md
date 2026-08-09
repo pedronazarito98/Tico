@@ -102,7 +102,7 @@ owners. As invariantes também foram registradas nos comentários dos tipos
 | `Services/MacOSShortcutRunner.swift:114` | `NSLock` protege continuation, conclusão one-shot e timeout contra término/cancelamento simultâneos. | ✅ lock auditado; processo continua efeito de plataforma isolado | T14/T16 |
 | `Services/ShellScriptRunner.swift:152` | Buffers de stdout/stderr e truncamento são protegidos por `NSLock` entre readability handlers e termination handler. | ✅ lock auditado; não registra payload fora do limite | T14/T16 |
 | `Services/ShellScriptRunner.swift:192` | `NSLock` protege continuation, conclusão one-shot e timeout do processo. | ✅ lock auditado; cancelamento não pode resumir continuation duas vezes | T14/T16 |
-| `Services/TrackpadGestureService.swift:469` | A referência weak pode zerar somente pelo ciclo de vida do serviço; o callback lê a referência e agenda processamento no `MainActor`, sem mutar estado diretamente. | ✅ bridge estreita; lifecycle e estado pertencem ao `@MainActor` da linha 22 | T13/T15 |
+| `WeakTrackpadGestureServiceBox` em `Services/TrackpadGestureService.swift:466-473` | A referência weak pode zerar somente pelo ciclo de vida do serviço; o callback lê a referência e agenda processamento no `MainActor`, sem mutar estado diretamente. | ✅ bridge estreita; lifecycle e estado pertencem ao `@MainActor` da linha 22 | T13/T15 |
 | `Services/ApplicationLauncher.swift:27-56` | Completion de `NSWorkspace.openApplication` resume a continuation uma vez e devolve somente erro tipado ao chamador assíncrono. | ✅ callback de plataforma isolado pela porta `ApplicationLaunching`; não toca UI diretamente | T14/T16 |
 
 ### Outras fronteiras sem `@unchecked Sendable`
