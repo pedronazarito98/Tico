@@ -27,7 +27,7 @@ enum ShortcutStoreError: LocalizedError, Equatable {
 }
 
 final class ShortcutStore: ObservableObject {
-    static let currentDocumentVersion = 6
+    static let currentDocumentVersion = ShortcutDocumentCodec.currentVersion
 
     @Published private(set) var rules: [ShortcutRule] = []
     @Published private(set) var profiles: [ShortcutProfile] = []
@@ -89,7 +89,7 @@ final class ShortcutStore: ObservableObject {
 
         do {
             let data = try DocumentSecurityPolicy.readBoundedData(from: fileURL)
-            let decoded = try Self.decodeDocument(from: data)
+            let decoded = try ShortcutDocumentCodec.decode(data)
             rules = decoded.rules
             profiles = decoded.profiles
             reusableWorkflows = decoded.reusableWorkflows
@@ -359,8 +359,8 @@ final class ShortcutStore: ObservableObject {
         strategy: ShortcutImportStrategy = .replace
     ) throws {
         do {
-            var imported = try Self.decodeDocument(
-                from: DocumentSecurityPolicy.readBoundedData(from: sourceURL)
+            var imported = try ShortcutDocumentCodec.decode(
+                DocumentSecurityPolicy.readBoundedData(from: sourceURL)
             )
             for index in imported.rules.indices {
                 imported.rules[index].isEnabled = false
@@ -460,7 +460,7 @@ final class ShortcutStore: ObservableObject {
             customGestureTemplates: customGestureTemplates,
             presets: presets
         )
-        try Self.makeEncoder().encode(document).write(to: destinationURL, options: .atomic)
+        try ShortcutDocumentCodec.encode(document).write(to: destinationURL, options: .atomic)
     }
 
     private func synchronizeEmbeddedTemplates() {
@@ -472,57 +472,6 @@ final class ShortcutStore: ObservableObject {
                 customGestureTemplates.append(template)
             }
         }
-    }
-
-    private static func decodeDocument(
-        from data: Data
-    ) throws -> DecodedShortcutDocument {
-        guard data.count <= DocumentSecurityPolicy.maximumDocumentBytes else {
-            throw ShortcutStoreError.invalidDocument
-        }
-        let decoder = makeDecoder()
-
-        if let header = try? decoder.decode(ShortcutDocumentHeader.self, from: data) {
-            guard header.version <= currentDocumentVersion else {
-                throw ShortcutStoreError.unsupportedVersion(header.version)
-            }
-            do {
-                let document = try decoder.decode(ShortcutDocument.self, from: data)
-                let decoded = DecodedShortcutDocument(
-                    version: document.version,
-                    rules: document.rules,
-                    profiles: document.profiles,
-                    reusableWorkflows: document.reusableWorkflows,
-                    customGestureTemplates: document.customGestureTemplates,
-                    presets: document.presets
-                )
-                try DocumentSecurityPolicy.validate(
-                    rules: decoded.rules,
-                    profiles: decoded.profiles,
-                    reusableWorkflows: decoded.reusableWorkflows,
-                    customTemplates: decoded.customGestureTemplates,
-                    presets: decoded.presets
-                )
-                return decoded
-            } catch {
-                throw ShortcutStoreError.invalidDocument
-            }
-        }
-
-        // Version 0 stored the rules as a top-level array. Accepting it provides
-        // a small, deterministic migration path for early development builds.
-        if let legacyRules = try? decoder.decode([ShortcutRule].self, from: data) {
-            try DocumentSecurityPolicy.validate(
-                rules: legacyRules,
-                profiles: [],
-                reusableWorkflows: [],
-                customTemplates: [],
-                presets: []
-            )
-            return DecodedShortcutDocument(version: 0, rules: legacyRules)
-        }
-
-        throw ShortcutStoreError.invalidDocument
     }
 
     private static func merged<T: Identifiable>(
@@ -548,79 +497,4 @@ final class ShortcutStore: ObservableObject {
         try data.write(to: backupURL, options: .atomic)
     }
 
-    private static func makeEncoder() -> JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .millisecondsSince1970
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return encoder
-    }
-
-    private static func makeDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .millisecondsSince1970
-        return decoder
-    }
-}
-
-private struct ShortcutDocument: Codable {
-    let version: Int
-    let rules: [ShortcutRule]
-    let profiles: [ShortcutProfile]
-    let reusableWorkflows: [ActionWorkflow]
-    let customGestureTemplates: [CustomGestureTemplate]
-    let presets: [GesturePreset]
-
-    private enum CodingKeys: String, CodingKey {
-        case version
-        case rules
-        case profiles
-        case reusableWorkflows
-        case customGestureTemplates
-        case presets
-    }
-
-    init(
-        version: Int,
-        rules: [ShortcutRule],
-        profiles: [ShortcutProfile],
-        reusableWorkflows: [ActionWorkflow],
-        customGestureTemplates: [CustomGestureTemplate],
-        presets: [GesturePreset]
-    ) {
-        self.version = version
-        self.rules = rules
-        self.profiles = profiles
-        self.reusableWorkflows = reusableWorkflows
-        self.customGestureTemplates = customGestureTemplates
-        self.presets = presets
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        version = try container.decode(Int.self, forKey: .version)
-        rules = try container.decode([ShortcutRule].self, forKey: .rules)
-        profiles = try container.decodeIfPresent([ShortcutProfile].self, forKey: .profiles) ?? []
-        reusableWorkflows = try container.decodeIfPresent(
-            [ActionWorkflow].self,
-            forKey: .reusableWorkflows
-        ) ?? []
-        customGestureTemplates = try container.decodeIfPresent(
-            [CustomGestureTemplate].self,
-            forKey: .customGestureTemplates
-        ) ?? []
-        presets = try container.decodeIfPresent([GesturePreset].self, forKey: .presets) ?? []
-    }
-}
-
-private struct ShortcutDocumentHeader: Decodable {
-    let version: Int
-}
-
-private struct DecodedShortcutDocument {
-    var version: Int
-    var rules: [ShortcutRule]
-    var profiles: [ShortcutProfile] = []
-    var reusableWorkflows: [ActionWorkflow] = []
-    var customGestureTemplates: [CustomGestureTemplate] = []
-    var presets: [GesturePreset] = []
 }
