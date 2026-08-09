@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct RuleEditorView: View {
-    let rule: ShortcutRule
     let latestRecordedEvent: InputEventDescriptor?
     let recordingIsActive: Bool
     let trackpadCaptureMode: TrackpadCaptureMode
@@ -50,7 +49,6 @@ struct RuleEditorView: View {
         onReplaceConflicts: @escaping (ShortcutRule) throws -> Void,
         onDelete: @escaping () -> Void
     ) {
-        self.rule = rule
         self.latestRecordedEvent = latestRecordedEvent
         self.recordingIsActive = recordingIsActive
         self.trackpadCaptureMode = trackpadCaptureMode
