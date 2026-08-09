@@ -9,7 +9,6 @@ import Foundation
 @MainActor
 final class RuleEditingSession: ObservableObject {
     @Published var draft: ShortcutRule
-    @Published var urlText: String
     @Published var recordingMode: TriggerRecordingMode?
     @Published var advancedTrackpadOptionsAreExpanded = false
     @Published var saveError: String?
@@ -20,11 +19,6 @@ final class RuleEditingSession: ObservableObject {
     init(rule: ShortcutRule) {
         draft = rule
         originalRule = rule
-        if case let .openURL(url) = rule.action {
-            urlText = url.absoluteString
-        } else {
-            urlText = "https://"
-        }
     }
 
     var hasUnsavedChanges: Bool {
@@ -36,11 +30,8 @@ final class RuleEditingSession: ObservableObject {
     }
 
     var urlIsValid: Bool {
-        guard case .openURL = draft.action else { return true }
-        guard let url = URL(string: urlText), let scheme = url.scheme else {
-            return false
-        }
-        return scheme == "https" || scheme == "http"
+        guard case let .openURL(url) = draft.action else { return true }
+        return RuleURLValidator.isValidWebURL(url)
     }
 
     var canSave: Bool {
@@ -65,14 +56,12 @@ final class RuleEditingSession: ObservableObject {
         originalRule = value
         pendingConflictSave = nil
         saveError = nil
-        synchronizeURLText()
     }
 
     func revert() {
         draft = originalRule
         pendingConflictSave = nil
         saveError = nil
-        synchronizeURLText()
     }
 
     func stageConflictSave(_ value: ShortcutRule) {
@@ -115,11 +104,4 @@ final class RuleEditingSession: ObservableObject {
         recordingMode = nil
     }
 
-    private func synchronizeURLText() {
-        if case let .openURL(url) = draft.action {
-            urlText = url.absoluteString
-        } else {
-            urlText = "https://"
-        }
-    }
 }

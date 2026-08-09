@@ -49,7 +49,9 @@ final class RuleEditingSessionTests: XCTestCase {
         let session = RuleEditingSession(rule: rule)
 
         XCTAssertTrue(session.urlIsValid)
-        session.urlText = "file:///tmp/local"
+        session.draft.action = .openURL(
+            url: try XCTUnwrap(URL(string: "file:///tmp/local"))
+        )
 
         XCTAssertFalse(session.urlIsValid)
         XCTAssertFalse(session.canSave)

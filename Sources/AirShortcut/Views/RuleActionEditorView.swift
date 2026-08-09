@@ -267,9 +267,7 @@ struct RuleActionEditorView: View {
     }
 
     private var urlIsValid: Bool {
-        guard case .openURL = action else { return true }
-        guard let url = URL(string: urlText), let scheme = url.scheme else { return false }
-        return scheme == "https" || scheme == "http"
+        RuleURLValidator.isValidWebURL(urlText)
     }
 }
 
