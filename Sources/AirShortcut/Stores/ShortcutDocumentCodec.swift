@@ -3,6 +3,24 @@ import Foundation
 struct ShortcutDocumentCodec {
     static let currentVersion = 6
 
+    static func makeDocument(
+        version: Int,
+        rules: [ShortcutRule],
+        profiles: [ShortcutProfile],
+        reusableWorkflows: [ActionWorkflow],
+        customGestureTemplates: [CustomGestureTemplate],
+        presets: [GesturePreset]
+    ) -> ShortcutDocument {
+        ShortcutDocument(
+            version: version,
+            rules: rules,
+            profiles: profiles,
+            reusableWorkflows: reusableWorkflows,
+            customGestureTemplates: customGestureTemplates,
+            presets: presets
+        )
+    }
+
     static func encode(_ document: ShortcutDocument) throws -> Data {
         try makeEncoder().encode(document)
     }

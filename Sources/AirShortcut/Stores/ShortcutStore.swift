@@ -97,18 +97,25 @@ final class ShortcutStore: ObservableObject {
     }
 
     func load() throws {
-        guard let loaded = try repository.readCurrentDocument() else {
-            if seedExamples {
-                rules = Self.exampleRules(createdAt: now())
-                try writeDocument(to: fileURL)
-            } else {
-                rules = []
-            }
-            lastError = nil
-            return
-        }
-
+        let previousState = (
+            rules,
+            profiles,
+            reusableWorkflows,
+            customGestureTemplates,
+            presets
+        )
         do {
+            guard let loaded = try repository.readCurrentDocument() else {
+                if seedExamples {
+                    rules = Self.exampleRules(createdAt: now())
+                    try writeDocument(to: fileURL)
+                } else {
+                    rules = []
+                }
+                lastError = nil
+                return
+            }
+
             let data = loaded.data
             let decoded = loaded.document
             rules = decoded.rules
@@ -122,6 +129,13 @@ final class ShortcutStore: ObservableObject {
             }
             lastError = nil
         } catch {
+            (
+                rules,
+                profiles,
+                reusableWorkflows,
+                customGestureTemplates,
+                presets
+            ) = previousState
             lastError = error.localizedDescription
             throw error
         }
@@ -468,7 +482,7 @@ final class ShortcutStore: ObservableObject {
 
     private func writeDocument(to destinationURL: URL) throws {
         let synchronizedTemplates = synchronizedTemplates()
-        let document = ShortcutDocument(
+        let document = ShortcutDocumentCodec.makeDocument(
             version: Self.currentDocumentVersion,
             rules: rules,
             profiles: profiles,

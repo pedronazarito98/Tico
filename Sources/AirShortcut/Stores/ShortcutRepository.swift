@@ -5,6 +5,11 @@ struct ShortcutRepositoryReadResult {
     let document: DecodedShortcutDocument
 }
 
+/// A persistence boundary for validated shortcut documents.
+///
+/// Implementations must make write atomic from the store's perspective:
+/// either the complete encoded document is available at the destination or
+/// the call throws without publishing a partial document.
 protocol ShortcutRepository {
     var fileURL: URL { get }
 

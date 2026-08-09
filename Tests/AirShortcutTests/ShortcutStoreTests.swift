@@ -77,6 +77,15 @@ final class ShortcutStoreTests: XCTestCase {
         XCTAssertTrue(store.customGestureTemplates.isEmpty)
     }
 
+    func testFailedSeedDoesNotPublishExamples() {
+        let repository = FailingShortcutRepository(fileURL: makeFileURL())
+        let store = ShortcutStore(repository: repository, seedExamples: true)
+
+        XCTAssertTrue(store.rules.isEmpty)
+        XCTAssertTrue(store.profiles.isEmpty)
+        XCTAssertNotNil(store.lastError)
+    }
+
     func testCRUDPersistsAcrossStoreInstances() throws {
         let fileURL = makeFileURL()
         let updateDate = Date(timeIntervalSince1970: 1_800_000_000)
