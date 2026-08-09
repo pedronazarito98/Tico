@@ -38,7 +38,7 @@ final class ShortcutStore: ObservableObject {
 
     let fileURL: URL
 
-    private let fileManager: FileManager
+    private let repository: any ShortcutRepository
     private let seedExamples: Bool
     private let now: () -> Date
     private let conflictAnalyzer = RuleConflictAnalyzer()
@@ -49,8 +49,29 @@ final class ShortcutStore: ObservableObject {
         seedExamples: Bool = true,
         now: @escaping () -> Date = Date.init
     ) {
-        self.fileManager = fileManager
-        self.fileURL = fileURL ?? Self.defaultFileURL(fileManager: fileManager)
+        let resolvedFileURL = fileURL ?? Self.defaultFileURL(fileManager: fileManager)
+        self.fileURL = resolvedFileURL
+        self.repository = FileShortcutRepository(
+            fileURL: resolvedFileURL,
+            fileManager: fileManager
+        )
+        self.seedExamples = seedExamples
+        self.now = now
+
+        do {
+            try load()
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    init(
+        repository: any ShortcutRepository,
+        seedExamples: Bool = true,
+        now: @escaping () -> Date = Date.init
+    ) {
+        self.fileURL = repository.fileURL
+        self.repository = repository
         self.seedExamples = seedExamples
         self.now = now
 
@@ -76,7 +97,7 @@ final class ShortcutStore: ObservableObject {
     }
 
     func load() throws {
-        guard fileManager.fileExists(atPath: fileURL.path) else {
+        guard let loaded = try repository.readCurrentDocument() else {
             if seedExamples {
                 rules = Self.exampleRules(createdAt: now())
                 try writeDocument(to: fileURL)
@@ -88,15 +109,15 @@ final class ShortcutStore: ObservableObject {
         }
 
         do {
-            let data = try DocumentSecurityPolicy.readBoundedData(from: fileURL)
-            let decoded = try ShortcutDocumentCodec.decode(data)
+            let data = loaded.data
+            let decoded = loaded.document
             rules = decoded.rules
             profiles = decoded.profiles
             reusableWorkflows = decoded.reusableWorkflows
             customGestureTemplates = decoded.customGestureTemplates
             presets = decoded.presets
             if decoded.version < Self.currentDocumentVersion {
-                try backupDocumentIfNeeded(data, version: decoded.version)
+                try repository.backupCurrentDocument(data, version: decoded.version)
                 try writeDocument(to: fileURL)
             }
             lastError = nil
@@ -359,9 +380,7 @@ final class ShortcutStore: ObservableObject {
         strategy: ShortcutImportStrategy = .replace
     ) throws {
         do {
-            var imported = try ShortcutDocumentCodec.decode(
-                DocumentSecurityPolicy.readBoundedData(from: sourceURL)
-            )
+            var imported = try repository.readDocument(from: sourceURL)
             for index in imported.rules.indices {
                 imported.rules[index].isEnabled = false
             }
@@ -449,9 +468,6 @@ final class ShortcutStore: ObservableObject {
 
     private func writeDocument(to destinationURL: URL) throws {
         synchronizeEmbeddedTemplates()
-        let directoryURL = destinationURL.deletingLastPathComponent()
-        try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
-
         let document = ShortcutDocument(
             version: Self.currentDocumentVersion,
             rules: rules,
@@ -460,7 +476,7 @@ final class ShortcutStore: ObservableObject {
             customGestureTemplates: customGestureTemplates,
             presets: presets
         )
-        try ShortcutDocumentCodec.encode(document).write(to: destinationURL, options: .atomic)
+        try repository.write(document, to: destinationURL)
     }
 
     private func synchronizeEmbeddedTemplates() {
@@ -487,14 +503,6 @@ final class ShortcutStore: ObservableObject {
             }
         }
         return result
-    }
-
-    private func backupDocumentIfNeeded(_ data: Data, version: Int) throws {
-        let backupURL = fileURL
-            .deletingPathExtension()
-            .appendingPathExtension("v\(version).backup.json")
-        guard !fileManager.fileExists(atPath: backupURL.path) else { return }
-        try data.write(to: backupURL, options: .atomic)
     }
 
 }
