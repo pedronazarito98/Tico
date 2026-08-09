@@ -274,6 +274,9 @@ private func airShortcutEventTapCallback(
     return service.receive(type: type, event: event)
 }
 
+/// `lock` protects the one-shot `resolved` transition and its error payload;
+/// callers wait on `semaphore` without holding that lock. Repeated resolution
+/// is intentionally idempotent because installation and timeout can race.
 private final class EventTapInstallation: @unchecked Sendable {
     private let semaphore = DispatchSemaphore(value: 0)
     private let lock = NSLock()

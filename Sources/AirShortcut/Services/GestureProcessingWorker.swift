@@ -1,5 +1,7 @@
 import Foundation
 
+/// All mutable engine configuration and processing state is accessed only from
+/// `queue`; public methods enqueue work and never expose the engine itself.
 final class GestureProcessingWorker: @unchecked Sendable {
     private let queue = DispatchQueue(
         label: "com.pedronazarito.AirShortcut.gesture-processing",

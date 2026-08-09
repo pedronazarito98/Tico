@@ -41,7 +41,7 @@ produto foi alterado nesta tarefa.
 |---|---|---|
 | T01 | ✅ | Baseline acima; commit pendente de integração |
 | T02 | ✅ | Mapa de seams em `design.md` e evidências abaixo; commit pendente |
-| T03 | ⏳ | — |
+| T03 | ✅ | Inventário de isolamento e invariantes abaixo; commit pendente |
 | T04 | ⏳ | — |
 | T05 | ⏳ | — |
 | T06 | ⏳ | — |
@@ -84,3 +84,49 @@ seams permanecem dentro do target `AirShortcut`; T20 continua condicional.
 
 **Gate T02:** `git diff --check` — PASS; `swift build --disable-sandbox
 --product AirShortcut` — PASS. Nenhum comportamento ou teste foi alterado.
+
+## T03 — auditoria de concorrência e callbacks
+
+O inventário foi feito por busca de `@unchecked Sendable`, filas,
+continuations, callbacks C/AppKit e `@MainActor`, seguido de leitura dos
+owners. As invariantes também foram registradas nos comentários dos tipos
+`@unchecked Sendable`; não houve ativação de Swift 6 estrito.
+
+| Fronteira | Invariante/owner | Classificação | Tarefa proprietária |
+|---|---|---|---|
+| `Services/MultitouchFrameProvider.swift:8` + bridge C `AirShortcutMultitouchBridge.c:76-117` | O bridge pode chamar fora da main; `TrackpadGestureService` é owner do ciclo `start/stop` e o contexto retido só é liberado depois da parada. | ⚠️ segura sob ownership atual; uso direto concorrente não é suportado e deve permanecer isolado | T13/T16; revisão final T22 |
+| `Services/ReplayFrameProvider.swift:34` | Callbacks são agendados na fila serial; `generation` invalida playback anterior; owner deve serializar start/stop. | ⚠️ segura sob ownership atual; acesso direto cross-thread permanece risco explícito | T15/T16; revisão final T22 |
+| `Services/GestureProcessingWorker.swift:5` | Engine, calibração e flag de fases só são acessados pela fila serial interna. | ✅ isolada por fila; callback entrega somente valor `Sendable` | T13/T15 |
+| `Services/GlobalEventTapService.swift:280` e callback C `:250-278` | `NSLock` protege resolução one-shot; instalação/stop usam run loop e semaphore; handlers são entregues na fila configurada. | ✅ lock/semáforo auditados; lifecycle continua owner do controller/coordenador | T13/T16 |
+| `Services/TrackpadSessionRecorder.swift:6` | Todos os campos mutáveis de gravação ficam sob `NSLock`; `stop` entrega snapshot por valor e anonimiza device ID. | ✅ lock auditado e fronteira segura para callbacks | T15 |
+| `Services/MacOSShortcutRunner.swift:114` | `NSLock` protege continuation, conclusão one-shot e timeout contra término/cancelamento simultâneos. | ✅ lock auditado; processo continua efeito de plataforma isolado | T14/T16 |
+| `Services/ShellScriptRunner.swift:152` | Buffers de stdout/stderr e truncamento são protegidos por `NSLock` entre readability handlers e termination handler. | ✅ lock auditado; não registra payload fora do limite | T14/T16 |
+| `Services/ShellScriptRunner.swift:192` | `NSLock` protege continuation, conclusão one-shot e timeout do processo. | ✅ lock auditado; cancelamento não pode resumir continuation duas vezes | T14/T16 |
+| `Services/TrackpadGestureService.swift:469` | A referência weak só faz ponte para `MainActor`; callback agenda o processamento no actor e não muta estado diretamente. | ✅ bridge estreita; lifecycle e estado pertencem ao `@MainActor` da linha 22 | T13/T15 |
+
+### Outras fronteiras sem `@unchecked Sendable`
+
+- `TrackpadGestureService` e `AppController` são `@MainActor`
+  (`TrackpadGestureService.swift:22` e `Support/AppController.swift:12`);
+  callbacks C/AppKit atravessam `Task { @MainActor in ... }` antes de tocar
+  estado publicado.
+- `GlobalEventTapService` usa `deliveryQueue` para não executar o handler no
+  callback do tap; `EventTapInstallation` cobre a corrida instalação/timeout.
+- Continuations de `MacOSShortcutRunner`, `ShellScriptRunner` e
+  `AppController.requestScriptApproval` são completadas por resolvers/owners
+  one-shot. A revisão de T14/T16 deve preservar essa propriedade.
+- O bridge C carrega `MultitouchSupport` dinamicamente e não publica memória de
+  toque depois do callback; o owner Swift deve manter a vida do contexto até
+  `stop`.
+
+**Resultado T03:** não há fronteira classificada como bloqueio imediato para a
+modernização incremental. As duas classes de provider dependem de ownership
+serializado e ficam explicitamente marcadas para revisão nas tarefas de captura
+e laboratório; isso não autoriza ativar strict concurrency global.
+
+**Gate T03:** `git diff --check` — PASS. A primeira tentativa de build foi
+`BLOCKED` pelo cache global do Clang (`Operation not permitted`); a repetição
+com `CLANG_MODULE_CACHE_PATH=/private/tmp/tico-clang-module-cache` e
+`SWIFT_MODULECACHE_PATH=/private/tmp/tico-swift-module-cache` passou com
+`swift build --disable-sandbox --product AirShortcut`. Não houve teste novo nem
+alteração comportamental.

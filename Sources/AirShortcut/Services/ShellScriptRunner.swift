@@ -147,6 +147,8 @@ final class ShellScriptRunner: ShellScriptRunning {
     }
 }
 
+/// Pipe readability callbacks and process termination can append concurrently;
+/// `lock` protects both the bounded bytes and the truncation marker.
 private final class BoundedOutputBuffer: @unchecked Sendable {
     private let lock = NSLock()
     private let limit: Int
@@ -184,6 +186,9 @@ private final class BoundedOutputBuffer: @unchecked Sendable {
     }
 }
 
+/// `lock` protects the continuation, one-shot completion, and timeout flag.
+/// Termination, timeout, and cancellation are allowed to race; only the first
+/// `finish` resumes the continuation.
 private final class ProcessResolution: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<ShellScriptExecutionResult, Error>?

@@ -108,6 +108,9 @@ final class MacOSShortcutRunner: MacOSShortcutRunning {
     }
 }
 
+/// `lock` guards the continuation, one-shot completion, and timeout flag.
+/// Process termination, timeout, and cancellation may race, but only the first
+/// `finish` resumes the continuation.
 private final class ShortcutProcessResolver: @unchecked Sendable {
     private let lock = NSLock()
     private var continuation: CheckedContinuation<String, Error>?
@@ -142,4 +145,3 @@ private final class ShortcutProcessResolver: @unchecked Sendable {
         continuation.resume(with: result)
     }
 }
-

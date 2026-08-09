@@ -463,6 +463,9 @@ final class TrackpadGestureService: ObservableObject {
     }
 }
 
+/// The box is immutable after initialization and is captured only to bridge a
+/// provider callback back into the main-actor service. The callback does not
+/// mutate the service directly; it schedules work on `MainActor` first.
 private final class WeakTrackpadGestureServiceBox: @unchecked Sendable {
     weak var value: TrackpadGestureService?
 

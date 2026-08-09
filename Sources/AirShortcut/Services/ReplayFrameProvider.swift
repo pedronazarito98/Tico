@@ -27,6 +27,10 @@ struct TrackpadReplayDocument: Codable, Equatable, Sendable {
     }
 }
 
+/// Scheduled playback callbacks run on `queue`; the owning
+/// `TrackpadGestureService` serializes lifecycle calls to `start` and `stop`.
+/// `generation` invalidates callbacks from a previous playback and must not be
+/// accessed directly by another owner.
 final class ReplayFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
     let capabilities = TrackpadProviderCapabilities.replay
     private(set) var isRunning = false
