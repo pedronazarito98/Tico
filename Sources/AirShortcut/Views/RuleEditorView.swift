@@ -119,7 +119,11 @@ struct RuleEditorView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            editorHeader
+            RuleEditorHeaderView(
+                name: $session.draft.name,
+                isEnabled: $session.draft.isEnabled,
+                hasUnsavedChanges: hasUnsavedChanges
+            )
             Divider()
 
             ScrollView {
@@ -279,24 +283,6 @@ struct RuleEditorView: View {
         } message: {
             Text(blockingConflicts.map(\.message).joined(separator: "\n"))
         }
-    }
-
-    private var editorHeader: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                TextField("Nome da regra", text: $session.draft.name)
-                    .textFieldStyle(.plain)
-                    .font(.title2.weight(.semibold))
-                Text(hasUnsavedChanges ? "Alterações não salvas" : "Regra atualizada")
-                    .font(.caption)
-                    .foregroundStyle(hasUnsavedChanges ? .orange : .secondary)
-            }
-            Spacer()
-            Toggle("Ativa", isOn: $session.draft.isEnabled)
-                .toggleStyle(.switch)
-        }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 16)
     }
 
     private var workflowUsesContinuousAction: Bool {
