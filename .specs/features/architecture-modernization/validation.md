@@ -40,7 +40,7 @@ produto foi alterado nesta tarefa.
 | Tarefa | Status | Evidência/commit |
 |---|---|---|
 | T01 | ✅ | Baseline acima; commit pendente de integração |
-| T02 | ⏳ | — |
+| T02 | ✅ | Mapa de seams em `design.md` e evidências abaixo; commit pendente |
 | T03 | ⏳ | — |
 | T04 | ⏳ | — |
 | T05 | ⏳ | — |
@@ -67,3 +67,20 @@ produto foi alterado nesta tarefa.
 As tabelas de gates de fase, rastreabilidade ARCH-01–ARCH-10, auditoria de
 concorrência, sensor de discriminação e UAT serão preenchidas após as
 respectivas fases, com comandos e resultados reais.
+
+## T02 — mapa de dependências e ownership
+
+**Arquivos alterados:** somente `design.md` e este relatório.
+
+| Seam | Produtor | Consumidores | Efeitos | Owner observado |
+|---|---|---|---|---|
+| `RuleEditorView` | `Views/RulesView.swift:35-58` | `Views/ContentView.swift:168-189` → `RulesView` | closures de save/conflito/preset e captura; nenhum IO direto | `@State` local em `RuleEditorView.swift:27-32`; sessão explícita ainda inexistente |
+| `ShortcutStore` | `App/AirShortcutApp.swift:17-24` | `ContentView`, `RulesView`, `ProfilesView`, `GestureLibraryView`, `MenuBarContentView` | leitura/migração, JSON, backup, escrita atômica, import/export | `ObservableObject` publica coleções e coordena invariantes, mas ainda contém IO |
+| `AppController` | `App/AirShortcutApp.swift:29-38` | `ContentView`, `MenuBarContentView`, teste de segurança | captura global/trackpad, laboratório, automação, catálogo e tarefas | `@MainActor` em `Support/AppController.swift:12`; fachada temporária compatível |
+
+**Resultado:** o design documenta o grafo observável e não encontrou ciclos ou
+consumidores ocultos que exijam mudar contratos antes de T04/T10/T13. Os três
+seams permanecem dentro do target `AirShortcut`; T20 continua condicional.
+
+**Gate T02:** `git diff --check` — PASS; `swift build --disable-sandbox
+--product AirShortcut` — PASS. Nenhum comportamento ou teste foi alterado.

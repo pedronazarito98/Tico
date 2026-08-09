@@ -120,3 +120,79 @@ Formatos persistidos, bundle, preferências e nomenclatura técnica não mudam. 
 - Não mover vários subsistemas no mesmo commit planejado.
 - Não criar abstração genérica antes de existirem pelo menos dois consumidores reais.
 - Commits são apenas um plano de execução e exigem autorização explícita do usuário.
+
+## Evidência do checkout — T02 (2026-08-09)
+
+O mapa abaixo foi derivado do checkout após o baseline `8af837c`; ele registra
+produtores, consumidores, efeitos e ownership observados, sem inferir
+dependências que não aparecem no código.
+
+### `RuleEditorView`
+
+- **Produtor/compositor:** `Sources/AirShortcut/Views/RulesView.swift:35-58`
+  cria a view quando há uma regra selecionada e fornece valores, bindings
+  indiretos e closures estreitas.
+- **Fonte dos valores:** `Sources/AirShortcut/Views/ContentView.swift:168-189`
+  projeta estado de `ShortcutStore` e `AppController`; a view não recebe os
+  objetos completos.
+- **Efeitos:** `onSave` e `onReplaceConflicts` retornam para
+  `RulesView` (`:175-180`), que delega ao store; gravação de gatilho usa
+  `onStartRecording`/`onStopRecording` (`:50-51`), fornecidos pelo controller.
+- **Ownership atual:** o rascunho e o estado efêmero vivem em `RuleEditorView`
+  (`RuleEditorView.swift:27-32`); não há `RuleEditingSession` no checkout atual.
+  T04 é a primeira tarefa autorizada a mover esse ownership para uma sessão
+  explícita.
+- **Fronteiras ausentes:** o arquivo não importa AppKit nem acessa arquivo; a
+  persistência chega somente por closures. A decomposição pode permanecer
+  dentro do target atual sem alterar o contrato de `RulesView`.
+
+### `ShortcutStore`
+
+- **Produtor/composition root:** `Sources/AirShortcut/App/AirShortcutApp.swift:17-24`
+  cria uma única instância de longa duração com `@StateObject`.
+- **Consumidores de UI:** `ContentView.swift:4-5,168-223`,
+  `RulesView.swift:4,107-190`, `ProfilesView.swift:4`,
+  `GestureLibraryView.swift:4` e `MenuBarContentView.swift:5-6`.
+  Testes de persistência/compatibilidade instanciam o store com `fileURL`
+  temporário.
+- **Efeitos:** leitura, migração e carga inicial em
+  `ShortcutStore.swift:78-117`; CRUD e rollback em `:119-345`; importação e
+  exportação em `:347-413`; escrita atômica em `:450-464`. A implementação
+  usa `DocumentSecurityPolicy`, `FileManager`, `RuleConflictAnalyzer` e
+  `JSONEncoder/Decoder` diretamente.
+- **Ownership atual:** o store publica coleções e invariantes (`:29-44`), mas
+  também possui codec, migração, backup, política de path e IO. T10/T11
+  extraem essas fronteiras mantendo a fachada e os inicializadores injetáveis.
+
+### `AppController`
+
+- **Produtor/composition root:** `AirShortcutApp.swift:29-38` constrói o
+  controller com store, settings, logs, permissões e stores de laboratório.
+- **Consumidores:** `ContentView.swift:4,35-41,107-243,287-333` e
+  `MenuBarContentView.swift:5` observam projeções e chamam métodos públicos;
+  `SecurityRegressionTests.swift:234-259` usa o inicializador injetável.
+- **Efeitos/serviços possuídos:** captura global, captura de trackpad,
+  workflows, contexto, catálogo de apps/Atalhos, permissões e laboratório
+  (`AppController.swift:42-65`). As publicações de laboratório são ligadas
+  pelos `Combine` sinks de `:109-186`.
+- **Ownership atual:** o controller é `@MainActor` (`:12`) e mantém estado de
+  tela, tarefas de sequência/workflow e resolução de aprovação. T13/T14/T15
+  devem extrair fluxos por capacidade; T16 preserva este owner como fachada e
+  composition root até todos os consumidores migrarem.
+
+### APIs que permanecem compatíveis durante a modernização
+
+1. `RuleEditorView` continua recebendo `ShortcutRule` e os valores/closures
+   atuais de `RulesView`; nenhuma assinatura externa é removida em T04–T09.
+2. `ShortcutStore` mantém `fileURL`, `defaultFileURL`, versionamento 6,
+   CRUD, conflitos, import/export, seed, migração e erros
+   `ShortcutStoreError`; formatos, path `Application Support/AirShortcut` e
+   chaves técnicas não mudam.
+3. `AppController` mantém o inicializador injetável, propriedades publicadas e
+   métodos chamados por `ContentView`/`MenuBarContentView`, incluindo
+   `startCapture`, `stopCapture`, `startTrackpadObservation`, gravação e
+   replay.
+
+O mapa não encontrou dependência que justifique alterar `Package.swift` nesta
+   etapa; a avaliação condicional de um target `AirShortcutCore` permanece em
+   T20.
