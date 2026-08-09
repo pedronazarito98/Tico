@@ -246,7 +246,16 @@ struct RuleEditorView: View {
             }
 
             Divider()
-            editorFooter
+            RuleEditorFooterView(
+                hasUnsavedChanges: hasUnsavedChanges,
+                canSave: canSave,
+                presets: presets,
+                onDelete: onDelete,
+                onRevert: revert,
+                onSaveAsPreset: saveAsPreset,
+                onApplyPreset: applyPreset,
+                onSave: save
+            )
         }
         .sheet(item: $session.recordingMode, onDismiss: onStopRecording) { mode in
             TriggerRecorderView(
@@ -292,36 +301,6 @@ struct RuleEditorView: View {
             }
             return false
         }
-    }
-
-    private var editorFooter: some View {
-        HStack {
-            Button("Excluir", role: .destructive, action: onDelete)
-            Spacer()
-            Button("Reverter", action: revert)
-                .disabled(!hasUnsavedChanges)
-            Menu {
-                Button("Salvar regra como preset") {
-                    saveAsPreset()
-                }
-                if !presets.isEmpty {
-                    Divider()
-                    ForEach(presets) { preset in
-                        Button("Aplicar “\(preset.name)”") {
-                            applyPreset(preset)
-                        }
-                    }
-                }
-            } label: {
-                Label("Preset", systemImage: "square.stack.3d.up")
-            }
-            Button("Salvar", action: save)
-                .buttonStyle(.borderedProminent)
-                .disabled(!canSave || !hasUnsavedChanges)
-                .keyboardShortcut("s", modifiers: [.command])
-        }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
     }
 
     private var urlIsValid: Bool {
