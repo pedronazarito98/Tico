@@ -198,3 +198,18 @@ dependências que não aparecem no código.
 O mapa não encontrou dependência que justifique alterar `Package.swift` nesta
    etapa; a avaliação condicional de um target `AirShortcutCore` permanece em
    T20.
+
+## Atualização pós-T09 — editor
+
+O snapshot acima preserva a evidência histórica do T02. Após T04–T09, o
+ownership do editor foi movido para
+`Sources/AirShortcut/Views/Components/Rules/RuleEditingSession.swift`,
+observável no `@StateObject` de `RuleEditorView`. A view principal agora é
+composição e tradução de eventos; `RuleTriggerEditorView`,
+`TrackpadTriggerEditorView`, `RuleEditorHeaderView` e
+`RuleEditorFooterView` recebem somente bindings, valores e ações estreitas.
+
+`RuleEditingSession` não conhece persistência, AppKit ou
+`AppController`. A validação pura de URL foi compartilhada em
+`Sources/AirShortcut/Support/RuleURLValidator.swift`. A assinatura pública de
+`RuleEditorView` e os closures de `RulesView` permanecem compatíveis.

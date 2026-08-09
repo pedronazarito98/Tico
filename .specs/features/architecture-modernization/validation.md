@@ -42,12 +42,12 @@ produto foi alterado nesta tarefa.
 | T01 | ✅ | Baseline acima; `8af837c` |
 | T02 | ✅ | Mapa de seams em `design.md`; `2b17908` |
 | T03 | ✅ | Inventário/invariantes `6ece334`; follow-ups de código/documentação `637f4af`, `1b19757`, `5c697b7`, `4d667c4`, `6bd6609` |
-| T04 | ⏳ | — |
-| T05 | ⏳ | — |
-| T06 | ⏳ | — |
-| T07 | ⏳ | — |
-| T08 | ⏳ | — |
-| T09 | ⏳ | — |
+| T04 | ✅ | `490ed78`; `RuleEditingSessionTests` — 3 testes, 0 falhas; build do produto PASS |
+| T05 | ✅ | `9e744fa`; `AdvancedPhasesTests` — 13 testes, 0 falhas; build do produto PASS |
+| T06 | ✅ | `b08c993`; `RuleEditingSessionTests` — 3 testes, 0 falhas; build do produto PASS |
+| T07 | ✅ | `28d96d4`; `RuleEditingSessionTests` — 3 testes, 0 falhas; build do produto PASS |
+| T08 | ✅ | `89e3adc`; `RuleEditingSessionTests` — 3 testes, 0 falhas; build do produto PASS |
+| T09 | ✅ | `69c02e9`, `7f0abec`, `5cbd0a5`; suíte completa — 114 testes, 0 falhas; revisão independente PASS |
 | T10 | ⏳ | — |
 | T11 | ⏳ | — |
 | T12 | ⏳ | — |
@@ -161,6 +161,63 @@ alteração comportamental.
 **Decisão de avanço:** a Fase 0 não alterou comportamento, não encontrou ciclo
 de dependência que bloqueie a decomposição e deixou os riscos de provider
 explicitamente atribuídos a T13/T15/T22. A Fase 1 pode começar.
+
+## Fase 1 — decomposição do editor (T04–T09)
+
+**Resultado de código:** concluído. A composição do editor agora mantém uma
+única fonte de verdade em `RuleEditingSession`, enquanto os subcomponentes
+recebem apenas bindings, valores e closures. A fachada pública de
+`RuleEditorView` e o contrato de `RulesView` foram preservados.
+
+### Ownership e fronteiras
+
+- `RuleEditingSession.swift` concentra o rascunho, baseline salvo, modo de
+  gravação, expansão de opções avançadas, validação de URL, presets, conflito,
+  erro e transições de salvar/reverter. Não acessa disco, AppKit ou controller.
+- `RuleTriggerEditorView.swift` compõe os tipos de gatilho e delega a
+  configuração de trackpad para `TrackpadTriggerEditorView.swift`.
+- `RuleEditorHeaderView.swift` e `RuleEditorFooterView.swift` mantêm o
+  chrome e as ações do editor sem conhecer persistência.
+- `RuleEditorView.swift` monta a tela, traduz eventos da sessão em closures
+  externas e mantém somente o `@StateObject` da sessão.
+- `RuleURLValidator.swift` é a fronteira pura compartilhada pela sessão e
+  pelo editor de ação; a regra permanece HTTP/HTTPS como antes.
+
+### Gates executados
+
+| Gate | Resultado |
+|---|---|
+| `git diff --check` | PASS |
+| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift test --disable-sandbox --filter RuleEditingSessionTests` | PASS — 3 testes, 0 falhas |
+| `swift test --disable-sandbox --filter AdvancedPhasesTests` | PASS — 13 testes, 0 falhas |
+| `swift test --disable-sandbox` | PASS — 114 testes, 0 falhas, após a correção final T09 |
+| Revisão independente estática | PASS — `019fe7c2-0c2e-7481-8f4a-dd9b3d5ab8a5` |
+
+As duas revisões intermediárias encontraram estado de URL duplicado/não
+conectado e um parâmetro residual; ambos foram removidos nos commits
+`7f0abec` e `5cbd0a5`. Não há `urlText` armazenado na sessão nem no
+editor de ação, e não há helpers de gatilho transitórios remanescentes em
+`RuleEditorView`.
+
+### UAT e limites
+
+A tentativa de UAT via Computer Use foi **NOT-RUN/BLOCKED**: o executável
+compilado foi iniciado e um bundle temporário em `/private/tmp/Tico-UAT.app`
+foi reconhecido como processo de menu bar, mas o canal nativo de automação
+encerrou antes de retornar estado AX/screenshot. Portanto não há evidência
+visual ou de interação contínua para declarar a UI aprovada.
+
+Ainda requer validação manual no macOS: abrir Preferências/Regras, editar nome
+e habilitação, alternar os cinco tipos de gatilho, expandir opções avançadas
+de trackpad, abrir workflow e notas, cancelar/reverter, salvar, testar
+conflito/preset, `⌘S`, foco/acessibilidade e light/dark mode. Trackpad físico,
+TCC, sleep/wake físico, assinatura Developer ID e notarização permanecem
+NOT-RUN.
+
+**Decisão de avanço:** os gates de código, build e suíte estão verdes; a
+limitação de UAT é registrada separadamente e não é convertida em PASS por
+inspeção estática.
 
 ## T03 — follow-up após revisão independente
 
