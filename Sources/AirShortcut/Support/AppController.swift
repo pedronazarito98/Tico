@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import OSLog
 
 struct PendingScriptApproval: Identifiable {
     let id = UUID()
@@ -39,17 +38,11 @@ final class AppController: ObservableObject {
     let metricsStore: MetricsStore
     let capabilityStore: TrackpadCapabilityStore
 
-    private let globalEventTap: GlobalEventTapService
-    private let logger = Logger(
-        subsystem: Bundle.main.bundleIdentifier ?? "com.pedronazarito.AirShortcut",
-        category: "GlobalCapture"
-    )
-    private let trackpadGestures: TrackpadGestureService
+    private let captureCoordinator: CaptureCoordinator
     private let matcher: TriggerMatcher
     private let workflowExecutor: WorkflowExecutor
     private let continuousWindowController: any ContinuousWindowActionControlling
     private let approvalStore: AutomationApprovalStore
-    private let hardwareDetector: TrackpadHardwareDetector
     private let contextSnapshotService: any ContextSnapshotProviding
     private let applicationCatalogService: ApplicationCatalogService
     private let macOSShortcutCatalog: any MacOSShortcutRunning
@@ -62,6 +55,10 @@ final class AppController: ObservableObject {
     private var approvalContinuation: CheckedContinuation<Bool, Never>?
     private var captureWasRunningBeforeRecording = false
     private var trackpadWasRunningBeforeRecording = false
+
+    private var trackpadGestures: TrackpadGestureService {
+        captureCoordinator.trackpadGestures
+    }
 
     init(
         shortcutStore: ShortcutStore,
@@ -91,35 +88,54 @@ final class AppController: ObservableObject {
         self.validationStore = validationStore
         self.metricsStore = metricsStore
         self.capabilityStore = capabilityStore
-        self.globalEventTap = globalEventTap
-        self.trackpadGestures = trackpadGestures ?? TrackpadGestureService(
+        let resolvedTrackpadGestures = trackpadGestures ?? TrackpadGestureService(
             calibrationSet: calibrationStore.calibrationSet,
             validationStore: validationStore
+        )
+        self.captureCoordinator = CaptureCoordinator(
+            globalEventTap: globalEventTap,
+            trackpadGestures: resolvedTrackpadGestures,
+            permissions: permissions,
+            hardwareDetector: hardwareDetector
         )
         self.matcher = matcher
         self.workflowExecutor = WorkflowExecutor(actionRunner: actionRunner)
         self.continuousWindowController = continuousWindowController
             ?? ContinuousWindowActionService()
         self.approvalStore = approvalStore ?? AutomationApprovalStore()
-        self.hardwareDetector = hardwareDetector
         self.contextSnapshotService = contextSnapshotService ?? ContextSnapshotService()
         self.applicationCatalogService = applicationCatalogService ?? ApplicationCatalogService()
         self.macOSShortcutCatalog = macOSShortcutCatalog
 
-        self.trackpadGestures.$captureMode
+        captureCoordinator.setEventHandler { [weak self] event in
+            self?.receive(event)
+        }
+        captureCoordinator.$isRunning
+            .removeDuplicates()
+            .sink { [weak self] isRunning in
+                self?.captureIsRunning = isRunning
+            }
+            .store(in: &cancellables)
+        captureCoordinator.$trackpadCaptureMode
             .removeDuplicates()
             .sink { [weak self] mode in
                 self?.trackpadCaptureMode = mode
             }
             .store(in: &cancellables)
-        refreshApplicationCatalog()
-        refreshMacOSShortcutCatalog()
-        self.trackpadGestures.$startupError
+        captureCoordinator.$trackpadStartupError
             .removeDuplicates()
             .sink { [weak self] error in
                 self?.trackpadStartupError = error
             }
             .store(in: &cancellables)
+        captureCoordinator.$detectedTrackpads
+            .removeDuplicates()
+            .sink { [weak self] devices in
+                self?.detectedTrackpads = devices
+            }
+            .store(in: &cancellables)
+        refreshApplicationCatalog()
+        refreshMacOSShortcutCatalog()
         self.trackpadGestures.$laboratorySnapshot
             .compactMap { $0 }
             .sink { [weak self] snapshot in
@@ -190,33 +206,17 @@ final class AppController: ObservableObject {
 
     @discardableResult
     func startTrackpadObservation() -> Bool {
-        permissions.refresh()
-        if !permissions.status.canCaptureGlobalInput {
-            if permissions.status.inputMonitoring == .notDetermined {
-                permissions.requestInputMonitoring()
-                permissions.refresh()
-            }
-        }
-        guard permissions.status.canCaptureGlobalInput else {
-            trackpadGestures.stop()
-            trackpadCaptureMode = .stopped
+        guard captureCoordinator.startTrackpadObservation() else {
             presentedError = permissions.status.inputMonitoring == .denied
                 ? "O Monitoramento de Entrada foi negado. Abra os Ajustes do Sistema, habilite o \(TicoBrand.displayName) e reabra o app."
                 : "Conceda Monitoramento de Entrada e reabra o \(TicoBrand.displayName) para observar contatos globais."
             return false
         }
-        refreshTrackpadHardware()
-        guard !trackpadGestures.isRunning else { return true }
-        trackpadGestures.start { [weak self] event in
-            self?.receive(event)
-        }
-        trackpadCaptureMode = trackpadGestures.captureMode
-        trackpadStartupError = trackpadGestures.startupError
-        return trackpadGestures.isRunning
+        return true
     }
 
     func refreshTrackpadHardware() {
-        detectedTrackpads = hardwareDetector.detect()
+        captureCoordinator.refreshTrackpadHardware()
     }
 
     func refreshApplicationCatalog() {
@@ -235,12 +235,11 @@ final class AppController: ObservableObject {
     }
 
     func stopTrackpadObservationIfIdle() {
-        guard !captureIsRunning,
+        guard !captureCoordinator.isRunning,
               !recordingIsActive,
               !laboratoryIsRecording,
               !laboratoryIsReplaying else { return }
-        trackpadGestures.stop()
-        trackpadCaptureMode = .stopped
+        captureCoordinator.stopTrackpadObservation()
         sequenceRuntime.reset()
         sequenceDeadlineTask?.cancel()
         sequenceDeadlineTask = nil
@@ -279,73 +278,16 @@ final class AppController: ObservableObject {
     }
 
     func startCapture() {
-        guard !globalEventTap.isRunning else {
-            if !captureIsRunning {
-                captureIsRunning = true
-            }
-            return
-        }
-
-        permissions.refresh()
-        if !permissions.status.canCaptureGlobalInput {
-            if permissions.status.inputMonitoring == .notDetermined {
-                permissions.requestInputMonitoring()
-            }
-            if !permissions.status.canCaptureGlobalInput {
-                presentedError = permissions.status.inputMonitoring == .denied
-                    ? "O Monitoramento de Entrada foi negado. Abra os Ajustes do Sistema, habilite o \(TicoBrand.displayName) e reabra o app."
-                    : "Conceda Monitoramento de Entrada e reabra o \(TicoBrand.displayName) para iniciar a captura global."
-                captureIsRunning = false
-                logger.error(
-                    "Capture start blocked by TCC: inputMonitoring=\(self.permissions.status.inputMonitoring.rawValue, privacy: .public), accessibility=\(self.permissions.status.accessibilityGranted, privacy: .public)"
-                )
-                if permissions.status.inputMonitoring == .denied {
-                    permissions.openInputMonitoringSettings()
-                }
-                return
-            }
-        }
-        guard startTrackpadObservation() else {
-            captureIsRunning = false
-            return
-        }
-
-        do {
-            try globalEventTap.start(
-                onEvent: { [weak self] event in
-                    Task { @MainActor in
-                        self?.receive(event)
-                    }
-                },
-                onStateChange: { [weak self] isRunning in
-                    Task { @MainActor in
-                        guard let self, self.captureIsRunning != isRunning else { return }
-                        self.captureIsRunning = isRunning
-                    }
-                }
-            )
-            if !captureIsRunning {
-                captureIsRunning = true
-            }
-            if presentedError != nil {
-                presentedError = nil
-            }
-            logger.info("Global capture started")
-        } catch {
-            trackpadGestures.stop()
-            trackpadCaptureMode = .stopped
-            captureIsRunning = false
-            presentedError = permissions.status.canCaptureGlobalInput
-                ? "O macOS reconhece a permissão, mas não criou o monitor global. Encerre e reabra o \(TicoBrand.displayName). Detalhe: \(error.localizedDescription)"
-                : error.localizedDescription
-            logger.error("Global capture failed: \(error.localizedDescription, privacy: .public)")
+        switch captureCoordinator.startCapture() {
+        case .started:
+            presentedError = nil
+        case let .blocked(message), let .failed(message):
+            presentedError = message
         }
     }
 
     func stopCapture() {
-        globalEventTap.stop()
-        trackpadGestures.stop()
-        trackpadCaptureMode = .stopped
+        captureCoordinator.stopCapture()
         sequenceRuntime.reset()
         sequenceDeadlineTask?.cancel()
         sequenceDeadlineTask = nil
@@ -354,19 +296,16 @@ final class AppController: ObservableObject {
             try? continuousWindowController.cancel(sessionID: sessionID)
         }
         activeContinuousSessions.removeAll()
-        if captureIsRunning {
-            captureIsRunning = false
-        }
     }
 
     func toggleCapture() {
-        captureIsRunning ? stopCapture() : startCapture()
+        captureCoordinator.isRunning ? stopCapture() : startCapture()
     }
 
     func beginRecording() {
         recordedEvent = nil
         recordingIsActive = true
-        captureWasRunningBeforeRecording = captureIsRunning
+        captureWasRunningBeforeRecording = captureCoordinator.isRunning
         trackpadWasRunningBeforeRecording = trackpadGestures.isRunning
         guard startTrackpadObservation() else {
             recordingIsActive = false
@@ -381,12 +320,10 @@ final class AppController: ObservableObject {
         guard recordingIsActive else { return }
         recordingIsActive = false
         if !captureWasRunningBeforeRecording {
-            globalEventTap.stop()
-            captureIsRunning = false
+            captureCoordinator.stopGlobalCapture()
         }
         if !trackpadWasRunningBeforeRecording {
-            trackpadGestures.stop()
-            trackpadCaptureMode = .stopped
+            captureCoordinator.stopTrackpadObservation()
         }
         captureWasRunningBeforeRecording = false
         trackpadWasRunningBeforeRecording = false
@@ -428,9 +365,9 @@ final class AppController: ObservableObject {
         if recordingIsActive {
             recordedEvent = event
         }
-        guard captureIsRunning || recordingIsActive else { return }
+        guard captureCoordinator.isRunning || recordingIsActive else { return }
         lastEvent = event
-        guard captureIsRunning else { return }
+        guard captureCoordinator.isRunning else { return }
         let context = contextSnapshotService.snapshot(
             modifiers: activeModifiers,
             at: event.timestamp
