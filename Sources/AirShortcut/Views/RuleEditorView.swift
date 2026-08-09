@@ -75,54 +75,12 @@ struct RuleEditorView: View {
         _session = StateObject(wrappedValue: RuleEditingSession(rule: rule))
     }
 
-    private var draft: ShortcutRule {
-        get { session.draft }
-        nonmutating set { session.draft = newValue }
-    }
-
-    private var urlText: String {
-        get { session.urlText }
-        nonmutating set { session.urlText = newValue }
-    }
-
-    private var recordingMode: TriggerRecordingMode? {
-        get { session.recordingMode }
-        nonmutating set { session.recordingMode = newValue }
-    }
-
-    private var advancedTrackpadOptionsAreExpanded: Bool {
-        get { session.advancedTrackpadOptionsAreExpanded }
-        nonmutating set { session.advancedTrackpadOptionsAreExpanded = newValue }
-    }
-
-    private var saveError: String? {
-        get { session.saveError }
-        nonmutating set {
-            if newValue == nil {
-                session.clearSaveError()
-            } else {
-                session.saveError = newValue
-            }
-        }
-    }
-
-    private var pendingConflictSave: ShortcutRule? {
-        get { session.pendingConflictSave }
-        nonmutating set {
-            if let newValue {
-                session.stageConflictSave(newValue)
-            } else {
-                session.clearPendingConflict()
-            }
-        }
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             RuleEditorHeaderView(
                 name: $session.draft.name,
                 isEnabled: $session.draft.isEnabled,
-                hasUnsavedChanges: hasUnsavedChanges
+                hasUnsavedChanges: session.hasUnsavedChanges
             )
             Divider()
 
@@ -142,7 +100,7 @@ struct RuleEditorView: View {
                                 currentContext: currentContext
                             )
                             Stepper(
-                                "Prioridade: \(draft.priority)",
+                                "Prioridade: \(session.draft.priority)",
                                 value: $session.draft.priority,
                                 in: -10...10
                             )
@@ -156,7 +114,7 @@ struct RuleEditorView: View {
                                 Label("Quando", systemImage: "cursorarrow.rays")
                                     .font(.headline)
                                 Spacer()
-                                Text(draft.trigger.displayName)
+                                Text(session.draft.trigger.displayName)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                     .lineLimit(1)
@@ -247,8 +205,8 @@ struct RuleEditorView: View {
 
             Divider()
             RuleEditorFooterView(
-                hasUnsavedChanges: hasUnsavedChanges,
-                canSave: canSave,
+                hasUnsavedChanges: session.hasUnsavedChanges,
+                canSave: session.canSave,
                 presets: presets,
                 onDelete: onDelete,
                 onRevert: revert,
@@ -260,7 +218,7 @@ struct RuleEditorView: View {
         .sheet(item: $session.recordingMode, onDismiss: onStopRecording) { mode in
             TriggerRecorderView(
                 mode: mode,
-                suggestedName: draft.name,
+                suggestedName: session.draft.name,
                 isRecording: recordingIsActive,
                 latestEvent: latestRecordedEvent,
                 captureMode: trackpadCaptureMode,
@@ -268,7 +226,7 @@ struct RuleEditorView: View {
                 snapshot: trackpadSnapshot,
                 onCancel: finishRecording,
                 onUseTrigger: { trigger in
-                    draft.trigger = trigger
+                    session.draft.trigger = trigger
                     finishRecording()
                 }
             )
@@ -276,7 +234,7 @@ struct RuleEditorView: View {
         .alert("Não foi possível salvar", isPresented: saveErrorIsPresented) {
             Button("OK", role: .cancel) { session.clearSaveError() }
         } message: {
-            Text(saveError ?? "Erro desconhecido")
+            Text(session.saveError ?? "Erro desconhecido")
         }
         .confirmationDialog(
             "Este gatilho já está em uso",
@@ -295,7 +253,7 @@ struct RuleEditorView: View {
     }
 
     private var workflowUsesContinuousAction: Bool {
-        draft.workflow.enabledSteps.contains { step in
+        session.draft.workflow.enabledSteps.contains { step in
             if case .continuousWindow = step.action {
                 return true
             }
@@ -303,38 +261,22 @@ struct RuleEditorView: View {
         }
     }
 
-    private var urlIsValid: Bool {
-        session.urlIsValid
-    }
-
-    private var canSave: Bool {
-        session.canSave
-    }
-
-    private var hasUnsavedChanges: Bool {
-        session.hasUnsavedChanges
-    }
-
-    private var draftForPersistence: ShortcutRule {
-        session.draftForPersistence
-    }
-
     private var saveErrorIsPresented: Binding<Bool> {
         Binding(
-            get: { saveError != nil },
-            set: { if !$0 { saveError = nil } }
+            get: { session.saveError != nil },
+            set: { if !$0 { session.clearSaveError() } }
         )
     }
 
     private var conflictSaveIsPresented: Binding<Bool> {
         Binding(
-            get: { pendingConflictSave != nil },
-            set: { if !$0 { pendingConflictSave = nil } }
+            get: { session.pendingConflictSave != nil },
+            set: { if !$0 { session.clearPendingConflict() } }
         )
     }
 
     private var draftConflicts: [RuleConflict] {
-        conflictsForRule(draftForPersistence)
+        conflictsForRule(session.draftForPersistence)
     }
 
     private var blockingConflicts: [RuleConflict] {
@@ -362,7 +304,7 @@ struct RuleEditorView: View {
     }
 
     private func save() {
-        let value = draftForPersistence
+        let value = session.draftForPersistence
         if !blockingConflicts.isEmpty {
             session.stageConflictSave(value)
             return
@@ -384,7 +326,7 @@ struct RuleEditorView: View {
     }
 
     private func replaceConflicts() {
-        guard let pendingConflictSave else { return }
+        guard let pendingConflictSave = session.pendingConflictSave else { return }
         persist(pendingConflictSave, replacingConflicts: true)
     }
 
