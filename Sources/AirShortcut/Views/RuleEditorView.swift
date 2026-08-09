@@ -24,12 +24,7 @@ struct RuleEditorView: View {
     let onReplaceConflicts: (ShortcutRule) throws -> Void
     let onDelete: () -> Void
 
-    @State private var draft: ShortcutRule
-    @State private var urlText: String
-    @State private var recordingMode: TriggerRecordingMode?
-    @State private var advancedTrackpadOptionsAreExpanded = false
-    @State private var saveError: String?
-    @State private var pendingConflictSave: ShortcutRule?
+    @StateObject private var session: RuleEditingSession
 
     init(
         rule: ShortcutRule,
@@ -77,11 +72,48 @@ struct RuleEditorView: View {
         self.onSave = onSave
         self.onReplaceConflicts = onReplaceConflicts
         self.onDelete = onDelete
-        _draft = State(initialValue: rule)
-        if case let .openURL(url) = rule.action {
-            _urlText = State(initialValue: url.absoluteString)
-        } else {
-            _urlText = State(initialValue: "https://")
+        _session = StateObject(wrappedValue: RuleEditingSession(rule: rule))
+    }
+
+    private var draft: ShortcutRule {
+        get { session.draft }
+        nonmutating set { session.draft = newValue }
+    }
+
+    private var urlText: String {
+        get { session.urlText }
+        nonmutating set { session.urlText = newValue }
+    }
+
+    private var recordingMode: TriggerRecordingMode? {
+        get { session.recordingMode }
+        nonmutating set { session.recordingMode = newValue }
+    }
+
+    private var advancedTrackpadOptionsAreExpanded: Bool {
+        get { session.advancedTrackpadOptionsAreExpanded }
+        nonmutating set { session.advancedTrackpadOptionsAreExpanded = newValue }
+    }
+
+    private var saveError: String? {
+        get { session.saveError }
+        nonmutating set {
+            if newValue == nil {
+                session.clearSaveError()
+            } else {
+                session.saveError = newValue
+            }
+        }
+    }
+
+    private var pendingConflictSave: ShortcutRule? {
+        get { session.pendingConflictSave }
+        nonmutating set {
+            if let newValue {
+                session.stageConflictSave(newValue)
+            } else {
+                session.clearPendingConflict()
+            }
         }
     }
 
@@ -98,16 +130,16 @@ struct RuleEditorView: View {
                                 .font(.headline)
                             Divider()
                             RuleContextEditorView(
-                                scope: $draft.scope,
-                                profileID: $draft.profileID,
-                                conditions: $draft.conditions,
+                                scope: $session.draft.scope,
+                                profileID: $session.draft.profileID,
+                                conditions: $session.draft.conditions,
                                 profiles: profiles,
                                 applications: applications,
                                 currentContext: currentContext
                             )
                             Stepper(
                                 "Prioridade: \(draft.priority)",
-                                value: $draft.priority,
+                                value: $session.draft.priority,
                                 in: -10...10
                             )
                         }
@@ -173,7 +205,7 @@ struct RuleEditorView: View {
                             Divider()
 
                             WorkflowEditorView(
-                                workflow: $draft.workflow,
+                                workflow: $session.draft.workflow,
                                 applications: applications,
                                 macOSShortcuts: macOSShortcuts,
                                 reusableWorkflows: reusableWorkflows,
@@ -198,7 +230,7 @@ struct RuleEditorView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Label("Detalhes", systemImage: "text.alignleft")
                                 .font(.headline)
-                            TextField("Notas opcionais", text: $draft.notes, axis: .vertical)
+                            TextField("Notas opcionais", text: $session.draft.notes, axis: .vertical)
                                 .lineLimit(2...5)
                         }
                         .padding(4)
@@ -212,7 +244,7 @@ struct RuleEditorView: View {
             Divider()
             editorFooter
         }
-        .sheet(item: $recordingMode, onDismiss: onStopRecording) { mode in
+        .sheet(item: $session.recordingMode, onDismiss: onStopRecording) { mode in
             TriggerRecorderView(
                 mode: mode,
                 suggestedName: draft.name,
@@ -229,7 +261,7 @@ struct RuleEditorView: View {
             )
         }
         .alert("Não foi possível salvar", isPresented: saveErrorIsPresented) {
-            Button("OK", role: .cancel) { saveError = nil }
+            Button("OK", role: .cancel) { session.clearSaveError() }
         } message: {
             Text(saveError ?? "Erro desconhecido")
         }
@@ -242,7 +274,7 @@ struct RuleEditorView: View {
                 replaceConflicts()
             }
             Button("Cancelar", role: .cancel) {
-                pendingConflictSave = nil
+                session.clearPendingConflict()
             }
         } message: {
             Text(blockingConflicts.map(\.message).joined(separator: "\n"))
@@ -252,7 +284,7 @@ struct RuleEditorView: View {
     private var editorHeader: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
-                TextField("Nome da regra", text: $draft.name)
+                TextField("Nome da regra", text: $session.draft.name)
                     .textFieldStyle(.plain)
                     .font(.title2.weight(.semibold))
                 Text(hasUnsavedChanges ? "Alterações não salvas" : "Regra atualizada")
@@ -260,7 +292,7 @@ struct RuleEditorView: View {
                     .foregroundStyle(hasUnsavedChanges ? .orange : .secondary)
             }
             Spacer()
-            Toggle("Ativa", isOn: $draft.isEnabled)
+            Toggle("Ativa", isOn: $session.draft.isEnabled)
                 .toggleStyle(.switch)
         }
         .padding(.horizontal, 22)
@@ -384,7 +416,7 @@ struct RuleEditorView: View {
             trackpadCapabilityNotice
             DisclosureGroup(
                 "Ajustes avançados",
-                isExpanded: $advancedTrackpadOptionsAreExpanded
+                isExpanded: $session.advancedTrackpadOptionsAreExpanded
             ) {
                 VStack(alignment: .leading, spacing: 12) {
                     Toggle("Exigir região final", isOn: trackpadEndRegionIsEnabled)
@@ -988,35 +1020,19 @@ struct RuleEditorView: View {
     }
 
     private var urlIsValid: Bool {
-        guard case .openURL = draft.action else { return true }
-        guard let url = URL(string: urlText), let scheme = url.scheme else { return false }
-        return scheme == "https" || scheme == "http"
+        session.urlIsValid
     }
 
     private var canSave: Bool {
-        let hasUsableTrigger: Bool
-        if case let .customTrackpad(template) = draft.trigger {
-            hasUsableTrigger = template.samplePaths.count >= CustomGestureTemplate.minimumSampleCount
-                && !template.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        } else {
-            if case let .sequence(sequence) = draft.trigger {
-                hasUsableTrigger = sequence.isValid
-            } else {
-                hasUsableTrigger = true
-            }
-        }
-        return !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && urlIsValid
-            && hasUsableTrigger
-            && draft.workflow.isValid
+        session.canSave
     }
 
     private var hasUnsavedChanges: Bool {
-        draftForPersistence != rule
+        session.hasUnsavedChanges
     }
 
     private var draftForPersistence: ShortcutRule {
-        draft
+        session.draftForPersistence
     }
 
     private var saveErrorIsPresented: Binding<Bool> {
@@ -1064,7 +1080,7 @@ struct RuleEditorView: View {
     private func save() {
         let value = draftForPersistence
         if !blockingConflicts.isEmpty {
-            pendingConflictSave = value
+            session.stageConflictSave(value)
             return
         }
         persist(value, replacingConflicts: false)
@@ -1077,11 +1093,9 @@ struct RuleEditorView: View {
             } else {
                 try onSave(value)
             }
-            draft = value
-            saveError = nil
-            pendingConflictSave = nil
+            session.markSaved(value)
         } catch {
-            saveError = error.localizedDescription
+            session.recordSaveError(error)
         }
     }
 
@@ -1091,42 +1105,28 @@ struct RuleEditorView: View {
     }
 
     private func revert() {
-        draft = rule
-        if case let .openURL(url) = rule.action {
-            urlText = url.absoluteString
-        } else {
-            urlText = "https://"
-        }
+        session.revert()
     }
 
     private func saveAsPreset() {
-        let preset = GesturePreset(
-            name: draft.name,
-            summary: draft.notes,
-            trigger: draft.trigger,
-            workflow: draft.workflow,
-            profileID: draft.profileID
-        )
         do {
-            try onSavePreset(preset)
+            try onSavePreset(session.makePreset())
         } catch {
-            saveError = error.localizedDescription
+            session.recordSaveError(error)
         }
     }
 
     private func applyPreset(_ preset: GesturePreset) {
-        draft.trigger = preset.trigger
-        draft.workflow = preset.workflow
-        draft.profileID = preset.profileID
+        session.applyPreset(preset)
     }
 
     private func startRecording(_ mode: TriggerRecordingMode) {
-        recordingMode = mode
+        session.beginRecording(mode)
         onStartRecording()
     }
 
     private func finishRecording() {
-        recordingMode = nil
+        session.finishRecording()
     }
 }
 
