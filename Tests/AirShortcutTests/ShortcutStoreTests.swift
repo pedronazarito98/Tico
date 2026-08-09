@@ -38,6 +38,22 @@ final class ShortcutStoreTests: XCTestCase {
         XCTAssertNil(reloadedStore.lastError)
     }
 
+    func testInjectedRepositoryOwnsTheStorePathAndPersistence() throws {
+        let fileURL = makeFileURL()
+        let repository = FileShortcutRepository(fileURL: fileURL)
+        let store = ShortcutStore(repository: repository, seedExamples: false)
+        let rule = makeRule()
+
+        XCTAssertEqual(store.fileURL, fileURL)
+        try store.add(rule)
+
+        let reloadedStore = ShortcutStore(
+            repository: FileShortcutRepository(fileURL: fileURL),
+            seedExamples: false
+        )
+        XCTAssertEqual(reloadedStore.rules, [rule])
+    }
+
     func testCRUDPersistsAcrossStoreInstances() throws {
         let fileURL = makeFileURL()
         let updateDate = Date(timeIntervalSince1970: 1_800_000_000)
