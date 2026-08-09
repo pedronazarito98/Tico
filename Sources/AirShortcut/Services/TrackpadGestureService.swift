@@ -467,6 +467,8 @@ final class TrackpadGestureService: ObservableObject {
 /// provider callback back into the main-actor service. The callback does not
 /// mutate the service directly; it schedules work on `MainActor` first.
 private final class WeakTrackpadGestureServiceBox: @unchecked Sendable {
+    // The weak reference changes only as the actor-owned service is deallocated;
+    // the callback reads it before scheduling work on MainActor.
     weak var value: TrackpadGestureService?
 
     init(_ value: TrackpadGestureService) {

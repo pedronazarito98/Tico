@@ -181,7 +181,9 @@ final class AppController: ObservableObject {
                 for: NSWorkspace.didTerminateApplicationNotification
             ))
             .sink { [weak self] _ in
-                self?.refreshApplicationCatalog()
+                Task { @MainActor [weak self] in
+                    self?.refreshApplicationCatalog()
+                }
             }
             .store(in: &cancellables)
     }

@@ -107,7 +107,7 @@ Formatos persistidos, bundle, preferências e nomenclatura técnica não mudam. 
 |---|---|---|
 | Estado duplicado no editor | `Sources/AirShortcut/Views/RuleEditorView.swift` concentra rascunho, gravação e conflito | Criar uma sessão única antes de extrair subviews |
 | Regressão de arquivo/migração | `Sources/AirShortcut/Stores/ShortcutStore.swift` combina coleção e IO | Extrair codec/repositório mantendo fachada e testes de store |
-| Ciclo entre coordenadores | `Sources/AirShortcut/App/AppController.swift` conhece stores e vários serviços | Definir entradas/saídas pequenas e composition root único |
+| Ciclo entre coordenadores | `Sources/AirShortcut/Support/AppController.swift` conhece stores e vários serviços | Definir entradas/saídas pequenas e composition root único |
 | Comando recebido mais de uma vez | `ContentView` e `Commands` usam notificações globais | Ponte temporária com ownership e remoção explícitos |
 | Corrida em callbacks | Serviços contêm fronteiras `@unchecked Sendable` | Inventário em T03 e isolamento documentado por tarefa |
 | Módulo prematuro | Um único target Swift facilita acessos `internal` implícitos | T20 é condicional e vem depois das extrações |

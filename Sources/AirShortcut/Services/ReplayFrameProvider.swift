@@ -27,18 +27,24 @@ struct TrackpadReplayDocument: Codable, Equatable, Sendable {
     }
 }
 
-/// Scheduled playback callbacks run on `queue`; the owning
-/// `TrackpadGestureService` serializes lifecycle calls to `start` and `stop`.
-/// `generation` invalidates callbacks from a previous playback and must not be
-/// accessed directly by another owner.
+/// Scheduled playback callbacks run on `queue`; `stateLock` protects lifecycle
+/// state shared by that queue and the owner calling `start`/`stop`.
+/// `generation` invalidates callbacks from a previous playback.
 final class ReplayFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
     let capabilities = TrackpadProviderCapabilities.replay
-    private(set) var isRunning = false
 
     let document: TrackpadReplayDocument
     private let queue: DispatchQueue
     private let playbackSpeed: Double
+    private let stateLock = NSLock()
+    private var running = false
     private var generation = UUID()
+
+    var isRunning: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return running
+    }
 
     init(
         document: TrackpadReplayDocument,
@@ -74,11 +80,17 @@ final class ReplayFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
     }
 
     func start(onFrame: @escaping @Sendable (RawTrackpadFrame) -> Void) throws {
-        guard !isRunning else { throw TrackpadFrameProviderError.alreadyRunning }
         try Self.validate(document)
-        isRunning = true
-        let currentGeneration = UUID()
+        let currentGeneration: UUID
+        stateLock.lock()
+        guard !running else {
+            stateLock.unlock()
+            throw TrackpadFrameProviderError.alreadyRunning
+        }
+        running = true
+        currentGeneration = UUID()
         generation = currentGeneration
+        stateLock.unlock()
         scheduleFrame(
             at: 0,
             previousDate: document.frames[0].receivedAt,
@@ -88,8 +100,10 @@ final class ReplayFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
     }
 
     func stop() {
-        isRunning = false
+        stateLock.lock()
+        running = false
         generation = UUID()
+        stateLock.unlock()
     }
 
     func replaySynchronously(onFrame: (RawTrackpadFrame) -> Void) {
@@ -117,7 +131,11 @@ final class ReplayFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
         onFrame: @escaping @Sendable (RawTrackpadFrame) -> Void
     ) {
         guard index < document.frames.count else {
-            isRunning = false
+            stateLock.lock()
+            if generation == currentGeneration {
+                running = false
+            }
+            stateLock.unlock()
             return
         }
         let frame = document.frames[index]
@@ -126,9 +144,11 @@ final class ReplayFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
             : frame.receivedAt.timeIntervalSince(previousDate) / playbackSpeed
         let delay = min(max(interval, 0), TrackpadReplayDocument.maximumDuration)
         queue.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self,
-                  self.isRunning,
-                  self.generation == currentGeneration else {
+            guard let self else { return }
+            self.stateLock.lock()
+            let shouldDeliver = self.running && self.generation == currentGeneration
+            self.stateLock.unlock()
+            guard shouldDeliver else {
                 return
             }
             onFrame(frame)
