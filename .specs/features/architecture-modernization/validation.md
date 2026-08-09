@@ -39,9 +39,9 @@ produto foi alterado nesta tarefa.
 
 | Tarefa | Status | Evidência/commit |
 |---|---|---|
-| T01 | ✅ | Baseline acima; commit pendente de integração |
-| T02 | ✅ | Mapa de seams em `design.md` e evidências abaixo; commit pendente |
-| T03 | ✅ | Inventário de isolamento e invariantes abaixo; commit pendente |
+| T01 | ✅ | Baseline acima; `8af837c` |
+| T02 | ✅ | Mapa de seams em `design.md`; `2b17908` |
+| T03 | ✅ | Inventário de isolamento e invariantes; `6ece334` |
 | T04 | ⏳ | — |
 | T05 | ⏳ | — |
 | T06 | ⏳ | — |
@@ -130,3 +130,18 @@ com `CLANG_MODULE_CACHE_PATH=/private/tmp/tico-clang-module-cache` e
 `SWIFT_MODULECACHE_PATH=/private/tmp/tico-swift-module-cache` passou com
 `swift build --disable-sandbox --product AirShortcut`. Não houve teste novo nem
 alteração comportamental.
+
+## Fechamento da Fase 0
+
+| Gate | Resultado |
+|---|---|
+| `git diff --check` | PASS |
+| `swift test --disable-sandbox` | PASS — 111 testes, 0 falhas |
+| Avisos de ambiente | Cache SwiftPM/Clang global sem escrita; suíte repetida com caches em `/private/tmp` |
+| Revisão estrutural fresh-eyes | PASS — três commits da fase, todas as 9 declarações `@unchecked Sendable` com comentário e entrada no inventário |
+| Revisor independente despachado | `NOT-RETURNED` nesta sessão; fallback read-only aplicado conforme `tlc-spec-driven`, sem evidência atribuída ao worker ausente |
+| Hardware/TCC/assinatura/notarização | NOT-RUN |
+
+**Decisão de avanço:** a Fase 0 não alterou comportamento, não encontrou ciclo
+de dependência que bloqueie a decomposição e deixou os riscos de provider
+explicitamente atribuídos a T13/T15/T22. A Fase 1 pode começar.
