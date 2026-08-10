@@ -60,7 +60,7 @@ produto foi alterado nesta tarefa.
 | T19 | ✅ | `be8c9ed`, `52fb062`; suíte da fase — 125 testes, 0 falhas |
 | T20 | ✅ | análise do grafo + `swift package dump-package`; decisão documentada: não extrair |
 | T21 | ✅ | documentação sincronizada em `outputs/arquitetura.md`, `CONTRIBUTING.md` e `AGENTS.md` aplicáveis |
-| T22 | ⏳ | — |
+| T22 | ⏳ | gates finais executados; handoff e revisão final ainda em fechamento |
 
 ## Gates e limites
 
@@ -425,3 +425,54 @@ A documentação foi alinhada ao checkout efetivo:
 
 **Gate T21:** `git diff --check` — PASS. Nenhuma documentação afirma UAT,
 hardware, TCC, assinatura ou notarização como concluídos.
+
+## T22 — fechamento e limites finais (em andamento)
+
+### Gates finais executados
+
+| Evidência | Resultado |
+|---|---|
+| `git diff --check` | PASS antes do fechamento documental |
+| `swift build --disable-sandbox --product AirShortcut` | PASS — produto AirShortcut; caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift test --disable-sandbox` | PASS — 125 testes, 0 falhas |
+| `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc `dist/Tico.zip` verificado |
+| `swift package dump-package` | PASS — `AirShortcutMultitouchBridge`, `AirShortcut` e `AirShortcutTests` |
+| Arquivos não rastreados após o gate | nenhum |
+
+O `ci_verify.sh` classificou explicitamente trackpad físico e notarização como
+não exercitados. Os avisos repetidos do SwiftPM sobre os cinco `AGENTS.md`
+especializados são limitações de descoberta de arquivos do target, não falhas
+de compilação ou teste.
+
+### Matriz ARCH-01–ARCH-10
+
+| Requisito | Resultado | Evidência principal |
+|---|---|---|
+| ARCH-01 | PASS | Fachadas compatíveis, `TicoCompatibilityTests` — 4/0, suite 125/0, formatos/chaves preservados |
+| ARCH-02 | PASS | `AGENTS.md` raiz e regras especializadas aplicáveis, sincronizados em T21 |
+| ARCH-03 | PASS | `RuleEditingSession`, subviews do editor e `RuleEditingSessionTests` — 3/0 |
+| ARCH-04 | PASS | codec/repository/store; `ShortcutStoreTests` — 15/0 e `SecurityRegressionTests` — 8/0 |
+| ARCH-05 | PASS | três coordenadores `@MainActor`, fachada `AppController`, suites de coordenação/laboratório |
+| ARCH-06 | PASS | `AppCommandRouter`, `ApplicationLifecycleService`, testes 2/0 e 1/0; UAT nativo NOT-RUN |
+| ARCH-07 | PASS | T20 “não extrair”, análise de imports/grafo e `dump-package`; `Package.swift` sem dependência nova |
+| ARCH-08 | PASS | inventário T03, gerações/continuations, testes de captura/automação/replay e revisão de fase |
+| ARCH-09 | PASS | gates rápidos, gates de fase, gate canônico e limites separados neste relatório |
+| ARCH-10 | PASS | `outputs/arquitetura.md`, `CONTRIBUTING.md`, `AGENTS.md`, spec/context/design sincronizados |
+
+### UAT e gates separados
+
+| Superfície | Resultado |
+|---|---|
+| Editor nativo contínuo | BLOCKED — canal de automação nativa encerrou antes de AX/screenshot; sem PASS visual por inspeção |
+| Captura/automação/laboratório em interação contínua | NOT-RUN |
+| Menus, atalhos, reabertura e encerramento do shell | NOT-RUN |
+| Trackpad físico | NOT-RUN |
+| TCC real / Monitoramento de Entrada | NOT-RUN |
+| Sleep/wake físico | NOT-RUN — simulação determinística automatizada PASS, não é prova física |
+| Assinatura Developer ID | NOT-RUN — pacote final automatizado é ad hoc |
+| Notarização | NOT-RUN |
+
+Uma revisão independente final encontrou inicialmente apenas documentação
+stale em `STATE.md` e T22; esses artefatos estão sendo corrigidos agora. O
+status T22 só será promovido para concluído após nova revisão read-only do HEAD
+final.

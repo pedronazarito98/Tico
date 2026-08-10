@@ -83,13 +83,22 @@
 - **Date**: 2026-08-09
 - **Status**: active
 
+### AD-010
+
+- **Decision**: A avaliação T20 mantém o target SwiftPM único e não extrai `AirShortcutCore` nesta modernização.
+- **Reason**: Os modelos puros ainda integram uma malha interna ampla com stores, serviços, coordenadores e views; separar agora exigiria expor APIs ou mover dependências de plataforma sem consumidores independentes suficientes.
+- **Trade-off**: A fronteira física de módulo fica para uma iniciativa futura somente se houver desacoplamento demonstrável.
+- **Scope**: `Package.swift`, modelos, persistência e lógica compartilhada.
+- **Date**: 2026-08-10
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: `.specs/features/architecture-modernization/`
-- **Phase / Task**: Specify → Discuss → Design → Tasks concluídos; aguardando revisão antes de Execute.
-- **Completed**: Spec, contexto, design, tarefas e regras em camadas para agentes.
-- **In-progress**: Nenhum código de produto alterado; os artefatos definem uma modernização incremental.
-- **Next step**: Revisar a proposta e autorizar explicitamente o Execute. Como há mais de oito tarefas, oferecer estratégia com worktrees/subagentes antes de iniciar.
-- **Blockers**: Nenhum para revisão; execução depende de autorização e baseline verde. Hardware continua sendo gate separado.
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/architecture-modernization/`, `AGENTS.md` e regras especializadas.
+- **Phase / Task**: Execute — T01–T21 concluídas; T22 em fechamento após gates canônicos.
+- **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell e avaliação de módulo.
+- **In-progress**: Revisão read-only final do HEAD e promoção do handoff T22 após correção documental.
+- **Next step**: Confirmar a revisão final e manter os gates manuais separados: editor/shell/captura contínuos, trackpad físico, TCC, sleep/wake físico, Developer ID e notarização.
+- **Blockers**: Nenhum bloqueio de código ou build; UAT nativo do editor está BLOCKED pelo canal de automação e os gates físicos/distribuição estão NOT-RUN.
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/architecture-modernization/`, `AGENTS.md` e regras especializadas durante este fechamento documental.
 - **Branch**: `feature/melhorando-estrutura`

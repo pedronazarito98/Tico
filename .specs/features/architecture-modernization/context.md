@@ -19,10 +19,23 @@ Paralelo mental adotado:
 ## Estado observado
 
 - `Package.swift` reúne o app em um target executável e um target C auxiliar.
-- `RuleEditorView.swift`, `AppController.swift` e `ShortcutStore.swift` concentram responsabilidades e são os principais seams da modernização.
-- `ContentView` e `Commands` usam notificações para comandos internos do app.
+- `RuleEditorView.swift`, `AppController.swift` e `ShortcutStore.swift` eram os principais seams da modernização; as responsabilidades foram separadas nas fases T04–T16 e as fachadas compatíveis permanecem.
+- `ContentView` e `Commands` usam `AppCommandRouter`; as notificações legadas continuam somente como ponte de compatibilidade.
 - O projeto já possui protocolos e injeção em serviços, stores e replay; esses padrões devem ser reutilizados.
 - A suíte existente cobre domínio, persistência, segurança e compatibilidade, mas não substitui validação física do trackpad.
+
+## Estado após T01–T21
+
+- O editor possui `RuleEditingSession` e subviews com bindings/ações estreitas.
+- Codec e repository isolam a persistência enquanto `ShortcutStore` mantém o
+  estado observável, CRUD e rollback.
+- `CaptureCoordinator`, `AutomationCoordinator` e `LaboratoryCoordinator`
+  possuem os fluxos de aplicação; `AppController` permanece como fachada e
+  composition root.
+- O shell usa comandos tipados e `ApplicationLifecycleService`; as views não
+  importam nem referenciam AppKit.
+- A avaliação T20 concluiu que `AirShortcutCore` não deve ser extraído nesta
+  fase; `Package.swift` permanece sem target Swift adicional.
 
 ## Restrições confirmadas
 
@@ -33,14 +46,19 @@ Paralelo mental adotado:
 - Não ler ou registrar credenciais, sessões, logs brutos, bancos SQLite, históricos ou dados de autenticação.
 - Não executar ações externas ou irreversíveis sem autorização.
 
-## Decisões em aberto durante a execução
+## Decisões resolvidas durante a execução
 
-1. O target `AirShortcutCore` só será criado se a análise de dependências da T20 comprovar uma fronteira limpa.
-2. A forma final de `RuleEditingSession` será escolhida a partir das invariantes atuais; não se presume reducer, TCA ou framework externo.
-3. O roteador tipado de comandos pode manter uma ponte temporária para notificações existentes até que todos os consumidores sejam migrados.
-4. A auditoria de concorrência poderá recomendar, mas não ativar automaticamente, Swift 6 estrito.
+1. T20 registrou “não extrair” `AirShortcutCore`: a malha de tipos/internal APIs
+   e as dependências de plataforma não formam uma fronteira pura sem custo
+   desproporcional.
+2. `RuleEditingSession` foi implementada como estado explícito baseado nas
+   invariantes existentes, sem reducer, TCA ou framework externo.
+3. `AppCommandRouter` mantém a ponte temporária para notificações existentes,
+   com consumo único e owner explícito.
+4. A auditoria de concorrência corrigiu as races proprietárias de T13–T15,
+   sem ativar Swift 6 estrito global.
 
-## Gate de entrada para Execute
+## Gate de entrada para Execute (histórico)
 
 Antes de implementar, o agente deverá:
 
@@ -49,3 +67,7 @@ Antes de implementar, o agente deverá:
 3. rodar e registrar o baseline automatizado;
 4. pedir autorização antes de commits, push, PR ou publicação;
 5. oferecer execução com subagentes/worktrees isolados, pois a iniciativa possui mais de oito tarefas, sem criá-los automaticamente.
+
+O gate de entrada foi cumprido antes de T01. A autorização posterior do usuário
+para commits locais está registrada na sessão; nenhum push remoto, PR, release
+ou publicação foi realizado.
