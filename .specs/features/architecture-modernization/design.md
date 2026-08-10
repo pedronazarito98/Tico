@@ -260,3 +260,19 @@ Todos os três coordenadores são isolados na main actor porque possuem estado
 observável e fazem a ponte com ações de UI. Os efeitos de plataforma continuam
 atrás dos serviços/protocolos existentes; não foi introduzido container global,
 singleton de aplicação ou migração ampla para Observation.
+
+## Atualização pós-T20 — avaliação de `AirShortcutCore`
+
+O target `AirShortcutCore` não foi extraído. A evidência do pacote atual é um
+executável Swift `AirShortcut`, um target C local para o bridge de multitouch e
+um target de testes que depende do executável. Embora os arquivos em `Models`
+usem somente `Foundation`, eles participam de uma malha interna compartilhada
+por codec, stores, engines, serviços, coordenadores e views.
+
+Criar o módulo agora exigiria expor uma quantidade ampla de tipos atualmente
+`internal`, mover consumidores que dependem de AppKit/ApplicationServices/
+CoreGraphics/IOKit/SwiftUI ou criar adaptadores duplicados. Isso não atende ao
+critério de fronteira pura sem dependência de plataforma e aumentaria o risco
+da modernização incremental. A decisão é manter o target único e reavaliar a
+extração somente quando houver um conjunto de consumidores independentes e uma
+fronteira de visibilidade demonstrável.

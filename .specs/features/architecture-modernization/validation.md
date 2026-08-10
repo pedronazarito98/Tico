@@ -55,10 +55,10 @@ produto foi alterado nesta tarefa.
 | T14 | ✅ | `6f4131f`, `d64e975`; `AutomationAndProfilesTests` — 12 testes, 0 falhas |
 | T15 | ✅ | `6f4131f`, `d64e975`; `TrackpadLaboratoryPhaseOneTests` — 9 testes, 0 falhas |
 | T16 | ✅ | `6f4131f`, `d64e975`; suíte da fase — 122 testes, 0 falhas; revisão independente PASS |
-| T17 | ⏳ | — |
-| T18 | ⏳ | — |
-| T19 | ⏳ | — |
-| T20 | ⏳ | — |
+| T17 | ✅ | `be8c9ed`; `AppCommandRouterTests` — 2 testes, 0 falhas |
+| T18 | ✅ | `52fb062`; `ApplicationLifecycleServiceTests` — 1 teste, 0 falhas |
+| T19 | ✅ | `be8c9ed`, `52fb062`; suíte da fase — 125 testes, 0 falhas |
+| T20 | ✅ | análise do grafo + `swift package dump-package`; decisão documentada: não extrair |
 | T21 | ⏳ | — |
 | T22 | ⏳ | — |
 
@@ -363,3 +363,47 @@ execução de regras no replay, mas não substituem interação física.
 
 Trackpad físico, TCC em máquina real, sleep/wake físico, assinatura Developer
 ID e notarização permanecem **NOT-RUN**.
+
+## Fase 4 — shell macOS e avaliação de módulo (T17–T20)
+
+**Resultado de código:** concluído. Os comandos de menu/atalho agora passam
+por `AppCommandRouter`, com envelopes consumidos uma vez e uma ponte de
+compatibilidade que ainda traduz as notificações `AirShortcut.*`. O ciclo de
+vida AppKit está atrás de `ApplicationLifecycleControlling` e
+`ApplicationLifecycleService`; `MenuBarContentView` não importa nem referencia
+AppKit diretamente.
+
+### T20 — decisão de não extrair `AirShortcutCore`
+
+A análise do checkout não atende ao critério de uma extração segura nesta
+fase:
+
+- `Package.swift` possui um único target executável Swift (`AirShortcut`) e o
+  target C `AirShortcutMultitouchBridge`; o teste depende do executável.
+- `Models` usa apenas `Foundation`, mas os tipos são consumidos diretamente
+  por `Stores`, `Services`, coordenadores e views. Uma separação imediata
+  exigiria tornar uma malha ampla de tipos/internal APIs pública ou mover
+  também serviços que dependem de AppKit, ApplicationServices, CoreGraphics,
+  IOKit e do bridge C.
+- `ShortcutDocumentCodec` e alguns engines são puros, mas não formam um
+  conjunto de consumidores independentes suficiente para justificar um target
+  novo sem duplicação, migração de visibilidade ou acoplamento adicional.
+
+Resultado válido conforme a spec: **não extrair**. `Package.swift` permanece
+inalterado; não foi adicionada dependência nem framework arquitetural.
+
+### Gates executados
+
+| Gate | Resultado |
+|---|---|
+| `git diff --check` | PASS |
+| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift test --disable-sandbox --filter AppCommandRouterTests` | PASS — 2 testes, 0 falhas |
+| `swift test --disable-sandbox --filter ApplicationLifecycleServiceTests` | PASS — 1 teste, 0 falhas |
+| `swift test --disable-sandbox` | PASS — 125 testes, 0 falhas |
+| `swift package dump-package` | PASS — targets `AirShortcutMultitouchBridge`, `AirShortcut` e `AirShortcutTests` |
+| UAT menus/atalhos/janelas | NOT-RUN — sem prova de interação contínua do shell nativo |
+
+O teste de ciclo de vida usa um controlador injetado e não executa término ou
+abertura real de janela. A validação manual de menu, atalhos, reabertura da
+janela principal e encerramento continua separada dos gates automatizados.
