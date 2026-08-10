@@ -25,6 +25,12 @@ final class AutomationCoordinator: ObservableObject {
         let task: Task<Void, Never>
     }
 
+    private struct ApprovalRequest {
+        let ruleID: UUID
+        let executionID: UUID
+        let continuation: CheckedContinuation<Bool, Never>
+    }
+
     private let shortcutStore: ShortcutStore
     private let matcher: TriggerMatcher
     private let workflowExecutor: WorkflowExecutor
@@ -39,7 +45,7 @@ final class AutomationCoordinator: ObservableObject {
     private var sequenceDeadlineTask: Task<Void, Never>?
     private var workflowTasks: [UUID: RunningWorkflow] = [:]
     private var activeContinuousSessions: Set<UUID> = []
-    private var approvalContinuation: CheckedContinuation<Bool, Never>?
+    private var approvalRequest: ApprovalRequest?
     private var cancellables = Set<AnyCancellable>()
     private var errorHandler: ((String) -> Void)?
 
@@ -131,19 +137,26 @@ final class AutomationCoordinator: ObservableObject {
     }
 
     func cancelWorkflow(ruleID: UUID) {
+        if let request = approvalRequest,
+           request.ruleID == ruleID,
+           workflowTasks[ruleID]?.executionID == request.executionID {
+            resolveScriptApproval(approved: false)
+        }
         workflowTasks[ruleID]?.task.cancel()
         workflowTasks[ruleID] = nil
     }
 
     func resolveScriptApproval(approved: Bool) {
-        guard pendingScriptApproval != nil || approvalContinuation != nil else { return }
+        guard let request = approvalRequest else {
+            pendingScriptApproval = nil
+            return
+        }
         if approved, let command = pendingScriptApproval?.command {
             approvalStore.approve(command)
         }
         pendingScriptApproval = nil
-        let continuation = approvalContinuation
-        approvalContinuation = nil
-        continuation?.resume(returning: approved)
+        approvalRequest = nil
+        request.continuation.resume(returning: approved)
     }
 
     private func execute(
@@ -163,7 +176,9 @@ final class AutomationCoordinator: ObservableObject {
                         guard let self else { return false }
                         return await self.requestScriptApproval(
                             ruleName: rule.name,
-                            command: content
+                            command: content,
+                            ruleID: rule.id,
+                            executionID: executionID
                         )
                     }
                 )
@@ -329,16 +344,24 @@ final class AutomationCoordinator: ObservableObject {
         }
     }
 
-    private func requestScriptApproval(ruleName: String, command: String) async -> Bool {
+    private func requestScriptApproval(
+        ruleName: String,
+        command: String,
+        ruleID: UUID,
+        executionID: UUID
+    ) async -> Bool {
         if approvalStore.isApproved(command) {
             return true
         }
-        if let approvalContinuation {
-            approvalContinuation.resume(returning: false)
-            self.approvalContinuation = nil
+        if approvalRequest != nil {
+            resolveScriptApproval(approved: false)
         }
         return await withCheckedContinuation { continuation in
-            approvalContinuation = continuation
+            approvalRequest = ApprovalRequest(
+                ruleID: ruleID,
+                executionID: executionID,
+                continuation: continuation
+            )
             pendingScriptApproval = PendingScriptApproval(
                 ruleName: ruleName,
                 command: command

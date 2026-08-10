@@ -26,6 +26,11 @@ final class CaptureCoordinatorTests: XCTestCase {
 
         XCTAssertEqual(coordinator.startCapture(), .started)
         coordinator.stopCapture()
+        if case .started = coordinator.startCapture() {
+            XCTFail("A restart cannot report success while the previous tap is still stopping")
+        }
+        eventTap.emitState(false, forStartAt: 0)
+        await Task.yield()
         XCTAssertEqual(coordinator.startCapture(), .started)
 
         eventTap.emitState(false, forStartAt: 0)
@@ -52,6 +57,8 @@ final class CaptureCoordinatorTests: XCTestCase {
         await Task.yield()
         XCTAssertTrue(received.isEmpty)
 
+        eventTap.emitState(false, forStartAt: 0)
+        await Task.yield()
         XCTAssertEqual(coordinator.startCapture(), .started)
         eventTap.emitEvent(event, forStartAt: 0)
         eventTap.emitEvent(event, forStartAt: 1)
@@ -83,9 +90,14 @@ final class CaptureCoordinatorTests: XCTestCase {
 private final class FakeGlobalEventTap: GlobalEventTapping {
     private var eventHandlers: [(InputEventDescriptor) -> Void] = []
     private var stateHandlers: [(Bool) -> Void] = []
+    private let stopLeavesRunning: Bool
 
     private(set) var isRunning = false
     private(set) var startCount = 0
+
+    init(stopLeavesRunning: Bool = true) {
+        self.stopLeavesRunning = stopLeavesRunning
+    }
 
     func start(
         onEvent: @escaping (InputEventDescriptor) -> Void,
@@ -99,11 +111,14 @@ private final class FakeGlobalEventTap: GlobalEventTapping {
     }
 
     func stop() {
-        isRunning = false
+        if !stopLeavesRunning {
+            isRunning = false
+        }
     }
 
     func emitState(_ state: Bool, forStartAt index: Int) {
         guard stateHandlers.indices.contains(index) else { return }
+        isRunning = state
         stateHandlers[index](state)
     }
 

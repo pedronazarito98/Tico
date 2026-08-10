@@ -54,6 +54,72 @@ final class AutomationAndProfilesTests: XCTestCase {
         coordinator.stop()
     }
 
+    @MainActor
+    func testCancellingWorkflowResolvesPendingScriptApprovalWithoutExecutingIt() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AirShortcut-automation-cancel-(UUID().uuidString)", isDirectory: true)
+        let suiteName = "AutomationAndProfilesTests-(UUID().uuidString)"
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+            UserDefaults.standard.removePersistentDomain(forName: suiteName)
+        }
+
+        let shortcutStore = ShortcutStore(
+            fileURL: directory.appendingPathComponent("rules.json"),
+            seedExamples: false
+        )
+        let eventLogStore = EventLogStore(
+            fileURL: directory.appendingPathComponent("events.json")
+        )
+        let metricsStore = MetricsStore(
+            fileURL: directory.appendingPathComponent("metrics.json")
+        )
+        let scriptRunner = ShellScriptSpy()
+        let rule = ShortcutRule(
+            name: "Script cancelável",
+            trigger: .keyboard(keyCode: 12, modifiers: [.command]),
+            action: .shellScript(command: "echo não deve executar")
+        )
+        try shortcutStore.add(rule)
+
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let coordinator = AutomationCoordinator(
+            shortcutStore: shortcutStore,
+            eventLogStore: eventLogStore,
+            metricsStore: metricsStore,
+            actionRunner: ActionRunner(shellScriptRunner: scriptRunner),
+            approvalStore: AutomationApprovalStore(
+                defaults: defaults,
+                storageKey: "approved"
+            ),
+            contextSnapshotService: FixedContextSnapshotService(),
+            setContinuousPhasesEnabled: { _ in }
+        )
+
+        coordinator.handle(
+            event: .keyboard(
+                keyCode: 12,
+                modifiers: [.command],
+                timestamp: Date(timeIntervalSince1970: 101)
+            ),
+            modifiers: [.command]
+        )
+
+        for _ in 0..<100 where coordinator.pendingScriptApproval == nil {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertEqual(coordinator.pendingScriptApproval?.ruleName, rule.name)
+
+        coordinator.cancelWorkflow(ruleID: rule.id)
+
+        for _ in 0..<100 where coordinator.pendingScriptApproval != nil {
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        XCTAssertNil(coordinator.pendingScriptApproval)
+        XCTAssertTrue(scriptRunner.commands.isEmpty)
+        coordinator.stop()
+    }
+
     func testWorkflowStopsOrContinuesAccordingToFailurePolicy() async {
         let launcher = SelectiveURLLauncher()
         let actionRunner = ActionRunner(urlLauncher: launcher)
@@ -485,5 +551,25 @@ private final class NotificationSpy: NotificationDelivering {
 
     func deliver(title: String, body: String) async throws {
         titles.append(title)
+    }
+}
+
+private final class ShellScriptSpy: ShellScriptRunning {
+    var commands: [String] = []
+
+    func run(
+        command: String,
+        approved: Bool,
+        timeout: TimeInterval
+    ) async throws -> ShellScriptExecutionResult {
+        commands.append(command)
+        return ShellScriptExecutionResult(
+            terminationStatus: 0,
+            standardOutput: "",
+            standardError: "",
+            timedOut: false,
+            duration: 0,
+            outputWasTruncated: false
+        )
     }
 }

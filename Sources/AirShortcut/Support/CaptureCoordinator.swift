@@ -52,6 +52,8 @@ final class CaptureCoordinator: ObservableObject {
     private var eventHandler: ((InputEventDescriptor) -> Void)?
     private var cancellables = Set<AnyCancellable>()
     private var captureGeneration: UInt64 = 0
+    private var stoppingGeneration: UInt64?
+    private var isStopping = false
     private var trackpadObservationGeneration: UInt64 = 0
 
     init(
@@ -118,9 +120,13 @@ final class CaptureCoordinator: ObservableObject {
 
     @discardableResult
     func startCapture() -> CaptureStartOutcome {
-        guard !globalEventTap.isRunning else {
-            isRunning = true
+        if isRunning {
             return .started
+        }
+        if isStopping {
+            return .failed(
+                message: "A captura global ainda está sendo encerrada. Tente novamente em instantes."
+            )
         }
 
         captureGeneration &+= 1
@@ -162,8 +168,18 @@ final class CaptureCoordinator: ObservableObject {
                 },
                 onStateChange: { [weak self] isRunning in
                     Task { @MainActor [weak self] in
-                        guard let self, self.captureGeneration == generation else { return }
-                        self.isRunning = isRunning
+                        guard let self else { return }
+                        if self.captureGeneration == generation {
+                            self.isRunning = isRunning
+                            if !isRunning {
+                                self.isStopping = false
+                                self.stoppingGeneration = nil
+                            }
+                        } else if !isRunning,
+                                  self.stoppingGeneration == generation {
+                            self.isStopping = false
+                            self.stoppingGeneration = nil
+                        }
                     }
                 }
             )
@@ -183,9 +199,20 @@ final class CaptureCoordinator: ObservableObject {
     }
 
     func stopGlobalCapture() {
+        guard !isStopping else {
+            globalEventTap.stop()
+            return
+        }
+        let generation = captureGeneration
         captureGeneration &+= 1
+        stoppingGeneration = generation
+        isStopping = true
         globalEventTap.stop()
         isRunning = false
+        if !globalEventTap.isRunning {
+            isStopping = false
+            stoppingGeneration = nil
+        }
     }
 
     func stopTrackpadObservation() {
