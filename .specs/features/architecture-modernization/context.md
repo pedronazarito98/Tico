@@ -22,9 +22,9 @@ Paralelo mental adotado:
 - `RuleEditorView.swift`, `AppController.swift` e `ShortcutStore.swift` eram os principais seams da modernização; as responsabilidades foram separadas nas fases T04–T16 e as fachadas compatíveis permanecem.
 - `ContentView` e `Commands` usam `AppCommandRouter`; as notificações legadas continuam somente como ponte de compatibilidade.
 - O projeto já possui protocolos e injeção em serviços, stores e replay; esses padrões devem ser reutilizados.
-- A suíte existente cobre domínio, persistência, segurança e compatibilidade, mas não substitui validação física do trackpad.
+- A suíte existente cobre domínio, persistência, segurança e compatibilidade, mas não substitui validação física do trackpad; em 2026-08-10, o usuário informou que executou as validações manuais e que o produto está funcionando.
 
-## Estado após T01–T21
+## Estado após T01–T22
 
 - O editor possui `RuleEditingSession` e subviews com bindings/ações estreitas.
 - Codec e repository isolam a persistência enquanto `ShortcutStore` mantém o
@@ -36,6 +36,9 @@ Paralelo mental adotado:
   importam nem referenciam AppKit.
 - A avaliação T20 concluiu que `AirShortcutCore` não deve ser extraído nesta
   fase; `Package.swift` permanece sem target Swift adicional.
+- As validações manuais de editor, shell, captura, automação, laboratório,
+  trackpad, TCC, sleep/wake, assinatura e notarização foram declaradas PASS
+  pelo usuário em 2026-08-10; o agente não as reproduziu nesta sessão.
 
 ## Restrições confirmadas
 

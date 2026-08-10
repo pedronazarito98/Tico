@@ -1,6 +1,6 @@
 # Spec: modernização arquitetural incremental
 
-**Status:** implementação T01–T22 concluída; gates finais registrados
+**Status:** implementação T01–T22 concluída; gates automatizados e validações manuais informadas pelo usuário registrados
 **Feature key:** `architecture-modernization`  
 **Stack preservada:** SwiftUI, Swift Package Manager e macOS 14+
 

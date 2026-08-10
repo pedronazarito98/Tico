@@ -462,16 +462,24 @@ de compilação ou teste.
 
 ### UAT e gates separados
 
+Em 2026-08-10, o usuário informou ter executado as validações manuais abaixo
+e que o produto está funcionando. Os resultados estão marcados como `PASS —
+informado pelo usuário`: essa evidência é distinta dos gates automatizados e
+não foi reproduzida nem coletada pelo agente nesta sessão.
+
 | Superfície | Resultado |
 |---|---|
-| Editor nativo contínuo | BLOCKED — canal de automação nativa encerrou antes de AX/screenshot; sem PASS visual por inspeção |
-| Captura/automação/laboratório em interação contínua | NOT-RUN |
-| Menus, atalhos, reabertura e encerramento do shell | NOT-RUN |
-| Trackpad físico | NOT-RUN |
-| TCC real / Monitoramento de Entrada | NOT-RUN |
-| Sleep/wake físico | NOT-RUN — simulação determinística automatizada PASS, não é prova física |
-| Assinatura Developer ID | NOT-RUN — pacote final automatizado é ad hoc |
-| Notarização | NOT-RUN |
+| Editor nativo contínuo | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+| Captura/automação/laboratório em interação contínua | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+| Menus, atalhos, reabertura e encerramento do shell | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+| Trackpad físico | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+| TCC real / Monitoramento de Entrada | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+| Sleep/wake físico | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+| Assinatura Developer ID | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+| Notarização | PASS — informado pelo usuário; não reproduzido pelo agente nesta sessão |
+
+O gate automatizado continua corretamente classificado como não exercitando
+trackpad físico e notarização; o relato manual acima é uma evidência separada.
 
 Uma revisão independente final confirmou o HEAD e encontrou apenas duas frases
 stale no handoff; elas foram removidas no commit documental seguinte. Nenhum

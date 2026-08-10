@@ -95,10 +95,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/architecture-modernization/`
-- **Phase / Task**: Execute — T01–T22 concluídas.
+- **Phase / Task**: Handoff — T01–T22 concluídas; validações manuais registradas como PASS informado pelo usuário.
 - **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell, avaliação de módulo, gates finais e handoff.
 - **In-progress**: Nenhum.
-- **Next step**: Manter os gates manuais separados: editor/shell/captura contínuos, trackpad físico, TCC, sleep/wake físico, Developer ID e notarização.
-- **Blockers**: Nenhum bloqueio de código ou build; UAT nativo do editor está BLOCKED pelo canal de automação e os gates físicos/distribuição estão NOT-RUN.
+- **Next step**: Nenhuma tarefa de implementação pendente; preservar a evidência manual e os artefatos de distribuição conforme necessário.
+- **Blockers**: Nenhum bloqueio reportado pelo usuário. Os PASS manuais são autorrelato e não foram reproduzidos nem coletados pelo agente nesta sessão; os gates automatizados continuam separados.
 - **Uncommitted files**: nenhum.
 - **Branch**: `feature/melhorando-estrutura`
