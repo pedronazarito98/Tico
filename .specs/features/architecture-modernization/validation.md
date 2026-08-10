@@ -60,7 +60,7 @@ produto foi alterado nesta tarefa.
 | T19 | ✅ | `be8c9ed`, `52fb062`; suíte da fase — 125 testes, 0 falhas |
 | T20 | ✅ | análise do grafo + `swift package dump-package`; decisão documentada: não extrair |
 | T21 | ✅ | documentação sincronizada em `outputs/arquitetura.md`, `CONTRIBUTING.md` e `AGENTS.md` aplicáveis |
-| T22 | ⏳ | gates finais executados; handoff e revisão final ainda em fechamento |
+| T22 | ✅ | gate canônico PASS, matriz ARCH-01–ARCH-10, UAT separado e handoff final |
 
 ## Gates e limites
 
@@ -426,7 +426,7 @@ A documentação foi alinhada ao checkout efetivo:
 **Gate T21:** `git diff --check` — PASS. Nenhuma documentação afirma UAT,
 hardware, TCC, assinatura ou notarização como concluídos.
 
-## T22 — fechamento e limites finais (em andamento)
+## T22 — fechamento e limites finais
 
 ### Gates finais executados
 
@@ -472,7 +472,6 @@ de compilação ou teste.
 | Assinatura Developer ID | NOT-RUN — pacote final automatizado é ad hoc |
 | Notarização | NOT-RUN |
 
-Uma revisão independente final encontrou inicialmente apenas documentação
-stale em `STATE.md` e T22; esses artefatos estão sendo corrigidos agora. O
-status T22 só será promovido para concluído após nova revisão read-only do HEAD
-final.
+Uma revisão independente final confirmou o HEAD e encontrou apenas duas frases
+stale no handoff; elas foram removidas no commit documental seguinte. Nenhum
+finding de código, dependência acidental ou regressão adicional foi reportado.

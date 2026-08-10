@@ -95,10 +95,10 @@
 ## Handoff
 
 - **Feature**: `.specs/features/architecture-modernization/`
-- **Phase / Task**: Execute — T01–T21 concluídas; T22 em fechamento após gates canônicos.
-- **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell e avaliação de módulo.
-- **In-progress**: Revisão read-only final do HEAD e promoção do handoff T22 após correção documental.
-- **Next step**: Confirmar a revisão final e manter os gates manuais separados: editor/shell/captura contínuos, trackpad físico, TCC, sleep/wake físico, Developer ID e notarização.
+- **Phase / Task**: Execute — T01–T22 concluídas.
+- **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell, avaliação de módulo, gates finais e handoff.
+- **In-progress**: Nenhum.
+- **Next step**: Manter os gates manuais separados: editor/shell/captura contínuos, trackpad físico, TCC, sleep/wake físico, Developer ID e notarização.
 - **Blockers**: Nenhum bloqueio de código ou build; UAT nativo do editor está BLOCKED pelo canal de automação e os gates físicos/distribuição estão NOT-RUN.
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/architecture-modernization/`, `AGENTS.md` e regras especializadas durante este fechamento documental.
+- **Uncommitted files**: nenhum.
 - **Branch**: `feature/melhorando-estrutura`
