@@ -65,8 +65,8 @@ produto foi alterado nesta tarefa.
 ## Gates e limites
 
 As tabelas de gates de fase, rastreabilidade ARCH-01–ARCH-10, auditoria de
-concorrência, sensor de discriminação e UAT serão preenchidas após as
-respectivas fases, com comandos e resultados reais.
+concorrência e UAT estão preenchidas com comandos, resultados reais e limites
+separados por risco.
 
 ## T02 — mapa de dependências e ownership
 
@@ -438,7 +438,7 @@ hardware, TCC, assinatura ou notarização como concluídos.
 | `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc `dist/Tico.zip` verificado |
 | `swift package dump-package` | PASS — `AirShortcutMultitouchBridge`, `AirShortcut` e `AirShortcutTests` |
 | Arquivos não rastreados após o gate | nenhum |
-| Revisão independente final | PASS — `019febaf-25da-7db1-b6d1-9863934a871f`, HEAD `173cba3` |
+| Revisão independente final | PASS — `019febaf-25da-7db1-b6d1-9863934a871f`; revisão read-only do HEAD final |
 
 O `ci_verify.sh` classificou explicitamente trackpad físico e notarização como
 não exercitados. Os avisos repetidos do SwiftPM sobre os cinco `AGENTS.md`
