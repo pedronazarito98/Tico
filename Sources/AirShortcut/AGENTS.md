@@ -9,7 +9,7 @@ Além das regras da raiz:
 - Domínio puro não importa SwiftUI/AppKit e não acessa arquivo, processo, evento global ou bridge C.
 - Efeitos de plataforma ficam atrás de protocolos pequenos quando existir necessidade real de substituição, isolamento ou teste.
 - Preserve APIs compatíveis durante migrações e remova fachadas somente depois que todos os consumidores forem migrados e validados.
-- Não use `Support` como pasta genérica. Coloque cada tipo junto do owner da responsabilidade.
+- Não use `Support` como pasta genérica. Fronteiras compartilhadas e tipos de coordenação podem permanecer ali quando o owner estiver explícito; coloque cada outro tipo junto do owner da responsabilidade.
 
 ## Estado SwiftUI
 

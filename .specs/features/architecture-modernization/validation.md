@@ -59,7 +59,7 @@ produto foi alterado nesta tarefa.
 | T18 | ✅ | `52fb062`; `ApplicationLifecycleServiceTests` — 1 teste, 0 falhas |
 | T19 | ✅ | `be8c9ed`, `52fb062`; suíte da fase — 125 testes, 0 falhas |
 | T20 | ✅ | análise do grafo + `swift package dump-package`; decisão documentada: não extrair |
-| T21 | ⏳ | — |
+| T21 | ✅ | documentação sincronizada em `outputs/arquitetura.md`, `CONTRIBUTING.md` e `AGENTS.md` aplicáveis |
 | T22 | ⏳ | — |
 
 ## Gates e limites
@@ -408,3 +408,20 @@ inalterado; não foi adicionada dependência nem framework arquitetural.
 O teste de ciclo de vida usa um controlador injetado e não executa término ou
 abertura real de janela. A validação manual de menu, atalhos, reabertura da
 janela principal e encerramento continua separada dos gates automatizados.
+
+## T21 — sincronização de arquitetura e regras
+
+A documentação foi alinhada ao checkout efetivo:
+
+- `outputs/arquitetura.md` descreve os owners do editor, persistência,
+  coordenadores e shell, além da decisão de manter um target SwiftPM único.
+- `CONTRIBUTING.md` registra branch-by-abstraction, fronteiras de codec/
+  repository, comandos tipados, isolamento AppKit e o critério para uma futura
+  avaliação de módulo.
+- `AGENTS.md` e `Sources/AirShortcut/AGENTS.md` deixam explícito que Views não
+  referenciam AppKit e que `Support` só abriga coordenação quando o owner está
+  claro. As regras especializadas de Views, Stores, Services e Tests continuam
+  compatíveis e não foram substituídas.
+
+**Gate T21:** `git diff --check` — PASS. Nenhuma documentação afirma UAT,
+hardware, TCC, assinatura ou notarização como concluídos.

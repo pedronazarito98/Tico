@@ -20,12 +20,13 @@ Estas regras valem para todo o repositório. Um `AGENTS.md` mais próximo do arq
 
 ## Arquitetura
 
-- `App`: composition root, cenas e coordenação do shell.
+- `App`: composition root, cenas e coordenação do shell; comandos entram pelo
+  roteador tipado e o ciclo de vida AppKit fica no adaptador estreito.
 - `Models`: tipos de domínio e lógica pura, sem IO ou UI.
 - `Services`: domínio, plataforma e efeitos atrás de interfaces estreitas.
 - `Stores`: estado observável e invariantes; persistência complexa deve ficar em codec/repositório.
-- `Views`: composição visual, estado efêmero e envio de ações; sem regra de negócio complexa no `body`.
-- `Support`: utilitários pequenos e sem estado; não é destino para responsabilidades sem owner.
+- `Views`: composição visual, estado efêmero e envio de ações; sem regra de negócio complexa no `body` e sem referências diretas a AppKit.
+- `Support`: fronteiras pequenas compartilhadas e tipos de coordenação com owner explícito; não é destino genérico para responsabilidades sem owner.
 - Crie abstrações em fronteiras de efeitos ou quando já existirem consumidores reais. Evite containers e protocolos genéricos “para o futuro”.
 
 ## Swift e concorrência
