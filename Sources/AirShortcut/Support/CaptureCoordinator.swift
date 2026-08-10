@@ -9,6 +9,21 @@ enum CaptureStartOutcome: Equatable {
     case failed(message: String)
 }
 
+@MainActor
+protocol GlobalEventTapping {
+    var isRunning: Bool { get }
+
+    func start(
+        onEvent: @escaping (InputEventDescriptor) -> Void,
+        onStateChange: ((Bool) -> Void)?
+    ) throws
+
+    func stop()
+}
+
+@MainActor
+extension GlobalEventTapService: GlobalEventTapping {}
+
 /// Owns the lifecycle of global input and trackpad observation.
 ///
 /// The coordinator is main-actor isolated. Platform callbacks enter through
@@ -23,26 +38,33 @@ final class CaptureCoordinator: ObservableObject {
 
     let trackpadGestures: TrackpadGestureService
 
-    private let globalEventTap: GlobalEventTapService
+    var isTrackpadObservationRunning: Bool {
+        trackpadGestures.isRunning
+    }
+
+    private let globalEventTap: any GlobalEventTapping
     private let permissions: PermissionCoordinator
-    private let hardwareDetector: TrackpadHardwareDetector
+    private let detectHardware: () -> [TrackpadHardwareInfo]
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.pedronazarito.AirShortcut",
         category: "GlobalCapture"
     )
     private var eventHandler: ((InputEventDescriptor) -> Void)?
     private var cancellables = Set<AnyCancellable>()
+    private var captureGeneration: UInt64 = 0
+    private var trackpadObservationGeneration: UInt64 = 0
 
     init(
-        globalEventTap: GlobalEventTapService,
+        globalEventTap: any GlobalEventTapping,
         trackpadGestures: TrackpadGestureService,
         permissions: PermissionCoordinator,
-        hardwareDetector: TrackpadHardwareDetector
+        hardwareDetector: TrackpadHardwareDetector,
+        detectHardware: (() -> [TrackpadHardwareInfo])? = nil
     ) {
         self.globalEventTap = globalEventTap
         self.trackpadGestures = trackpadGestures
         self.permissions = permissions
-        self.hardwareDetector = hardwareDetector
+        self.detectHardware = detectHardware ?? { hardwareDetector.detect() }
 
         trackpadGestures.$captureMode
             .removeDuplicates()
@@ -71,6 +93,7 @@ final class CaptureCoordinator: ObservableObject {
             permissions.refresh()
         }
         guard permissions.status.canCaptureGlobalInput else {
+            trackpadObservationGeneration &+= 1
             trackpadGestures.stop()
             syncTrackpadState()
             return false
@@ -78,15 +101,19 @@ final class CaptureCoordinator: ObservableObject {
 
         refreshTrackpadHardware()
         guard !trackpadGestures.isRunning else { return true }
+        trackpadObservationGeneration &+= 1
+        let generation = trackpadObservationGeneration
         trackpadGestures.start { [weak self] event in
-            self?.eventHandler?(event)
+            guard let self else { return }
+            guard self.trackpadObservationGeneration == generation else { return }
+            self.eventHandler?(event)
         }
         syncTrackpadState()
         return trackpadGestures.isRunning
     }
 
     func refreshTrackpadHardware() {
-        detectedTrackpads = hardwareDetector.detect()
+        detectedTrackpads = detectHardware()
     }
 
     @discardableResult
@@ -96,6 +123,8 @@ final class CaptureCoordinator: ObservableObject {
             return .started
         }
 
+        captureGeneration &+= 1
+        let generation = captureGeneration
         permissions.refresh()
         if !permissions.status.canCaptureGlobalInput {
             if permissions.status.inputMonitoring == .notDetermined {
@@ -127,12 +156,14 @@ final class CaptureCoordinator: ObservableObject {
             try globalEventTap.start(
                 onEvent: { [weak self] event in
                     Task { @MainActor [weak self] in
-                        self?.eventHandler?(event)
+                        guard let self, self.captureGeneration == generation else { return }
+                        self.eventHandler?(event)
                     }
                 },
                 onStateChange: { [weak self] isRunning in
                     Task { @MainActor [weak self] in
-                        self?.isRunning = isRunning
+                        guard let self, self.captureGeneration == generation else { return }
+                        self.isRunning = isRunning
                     }
                 }
             )
@@ -152,13 +183,19 @@ final class CaptureCoordinator: ObservableObject {
     }
 
     func stopGlobalCapture() {
+        captureGeneration &+= 1
         globalEventTap.stop()
         isRunning = false
     }
 
     func stopTrackpadObservation() {
+        trackpadObservationGeneration &+= 1
         trackpadGestures.stop()
         syncTrackpadState()
+    }
+
+    func setContinuousPhasesEnabled(_ isEnabled: Bool) {
+        trackpadGestures.setContinuousPhasesEnabled(isEnabled)
     }
 
     func stopCapture() {
