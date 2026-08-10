@@ -5,7 +5,9 @@ struct ContentView: View {
     @ObservedObject var shortcutStore: ShortcutStore
     @ObservedObject var eventLogStore: EventLogStore
     @ObservedObject var permissions: PermissionCoordinator
+    @ObservedObject var commandRouter: AppCommandRouter
 
+    @Environment(\.openWindow) private var openWindow
     @SceneStorage("mainSection") private var storedSection = AirShortcutSection.overview.rawValue
     @State private var selectedSection = AirShortcutSection.overview
     @State private var selectedRuleID: ShortcutRule.ID?
@@ -61,29 +63,9 @@ struct ContentView: View {
                 controller.startCapture()
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .airShortcutCreateRule)) { _ in
-            select(.rules)
-            createRule()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .airShortcutDeleteSelectedRule)) { _ in
-            deleteSelectedRule()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .airShortcutStartCapture)) { _ in
-            controller.startCapture()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .airShortcutStopCapture)) { _ in
-            controller.stopCapture()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .airShortcutSelectSection)) { notification in
-            guard let rawValue = notification.object as? String,
-                  let section = AirShortcutSection(rawValue: rawValue) else { return }
-            select(section)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .airShortcutImportRules)) { _ in
-            importRules()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .airShortcutExportRules)) { _ in
-            exportRules()
+        .onReceive(commandRouter.$pendingCommand.compactMap { $0 }) { envelope in
+            guard let command = commandRouter.consume(envelope) else { return }
+            handle(command)
         }
         .alert(TicoBrand.displayName, isPresented: presentedErrorBinding) {
             Button("OK", role: .cancel) { controller.presentedError = nil }
@@ -244,6 +226,28 @@ struct ContentView: View {
 
     private var currentSection: AirShortcutSection {
         selectedSection
+    }
+
+    private func handle(_ command: AppCommand) {
+        switch command {
+        case .openMainWindow:
+            openWindow(id: "main")
+        case .createRule:
+            select(.rules)
+            createRule()
+        case .deleteSelectedRule:
+            deleteSelectedRule()
+        case .startCapture:
+            controller.startCapture()
+        case .stopCapture:
+            controller.stopCapture()
+        case let .selectSection(section):
+            select(section)
+        case .importRules:
+            importRules()
+        case .exportRules:
+            exportRules()
+        }
     }
 
     private var inputMonitoringStatusText: String {
