@@ -3,6 +3,57 @@ import XCTest
 @testable import AirShortcut
 
 final class AutomationAndProfilesTests: XCTestCase {
+    @MainActor
+    func testAutomationCoordinatorExecutesMatchedRuleOnceAndPersistsFeedback() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AirShortcut-automation-coordinator-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let shortcutStore = ShortcutStore(
+            fileURL: directory.appendingPathComponent("rules.json"),
+            seedExamples: false
+        )
+        let eventLogStore = EventLogStore(
+            fileURL: directory.appendingPathComponent("events.json")
+        )
+        let metricsStore = MetricsStore(
+            fileURL: directory.appendingPathComponent("metrics.json")
+        )
+        let notification = NotificationSpy()
+        let rule = ShortcutRule(
+            name: "Coordenada",
+            trigger: .keyboard(keyCode: 12, modifiers: [.command]),
+            action: .notification(title: "Tico", body: "Executada")
+        )
+        try shortcutStore.add(rule)
+
+        let coordinator = AutomationCoordinator(
+            shortcutStore: shortcutStore,
+            eventLogStore: eventLogStore,
+            metricsStore: metricsStore,
+            actionRunner: ActionRunner(notificationService: notification),
+            contextSnapshotService: FixedContextSnapshotService(),
+            setContinuousPhasesEnabled: { _ in }
+        )
+        coordinator.handle(
+            event: .keyboard(
+                keyCode: 12,
+                modifiers: [.command],
+                timestamp: Date(timeIntervalSince1970: 100)
+            ),
+            modifiers: [.command]
+        )
+
+        for _ in 0..<50 where eventLogStore.entries.isEmpty {
+            await Task.yield()
+        }
+
+        XCTAssertEqual(notification.titles, ["Tico"])
+        XCTAssertEqual(eventLogStore.entries.count, 1)
+        XCTAssertEqual(metricsStore.events.count, 1)
+        coordinator.stop()
+    }
+
     func testWorkflowStopsOrContinuesAccordingToFailurePolicy() async {
         let launcher = SelectiveURLLauncher()
         let actionRunner = ActionRunner(urlLauncher: launcher)
@@ -419,5 +470,20 @@ private final class InputActionSpy: InputActionPerforming {
 
     func setClipboard(_ text: String) throws {
         clipboardValues.append(text)
+    }
+}
+
+@MainActor
+private final class FixedContextSnapshotService: ContextSnapshotProviding {
+    func snapshot(modifiers: Set<InputModifier>, at date: Date) -> ContextSnapshot {
+        ContextSnapshot(modifiers: modifiers, capturedAt: date)
+    }
+}
+
+private final class NotificationSpy: NotificationDelivering {
+    var titles: [String] = []
+
+    func deliver(title: String, body: String) async throws {
+        titles.append(title)
     }
 }
