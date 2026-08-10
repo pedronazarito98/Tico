@@ -51,10 +51,10 @@ produto foi alterado nesta tarefa.
 | T10 | ✅ | `44fdcf6`; `ShortcutStoreTests` — 13 testes, 0 falhas; build do produto PASS |
 | T11 | ✅ | `381f7ab`; `ShortcutStoreTests` — 15 testes, 0 falhas; `SecurityRegressionTests` — 8 testes, 0 falhas |
 | T12 | ✅ | `10fffea`, `3062882`, `6f90a48`; suíte da fase — 117 testes, 0 falhas; build do produto PASS |
-| T13 | ⏳ | — |
-| T14 | ⏳ | — |
-| T15 | ⏳ | — |
-| T16 | ⏳ | — |
+| T13 | ✅ | `7f97b31`, `6499b20`, `d64e975`; `CaptureCoordinatorTests` — 3 testes, 0 falhas |
+| T14 | ✅ | `6f4131f`, `d64e975`; `AutomationAndProfilesTests` — 12 testes, 0 falhas |
+| T15 | ✅ | `6f4131f`, `d64e975`; `TrackpadLaboratoryPhaseOneTests` — 9 testes, 0 falhas |
+| T16 | ✅ | `6f4131f`, `d64e975`; suíte da fase — 122 testes, 0 falhas; revisão independente PASS |
 | T17 | ⏳ | — |
 | T18 | ⏳ | — |
 | T19 | ⏳ | — |
@@ -310,3 +310,56 @@ confundida com UAT de hardware.
    atômica para implementações, e a criação do documento foi movida para o
    codec. O revisor classificou o acoplamento restante ao tipo de documento
    como P2 não bloqueante e não encontrou P1.
+
+## Fase 3 — coordenação de aplicação (T13–T16)
+
+**Resultado de código:** concluído. O `AppController` mantém a fachada e o
+composition root, enquanto a captura, a automação e o laboratório têm owners
+isolados e `@MainActor`. Projeções publicadas continuam compatíveis com as
+views existentes.
+
+### Ownership e invariantes
+
+- `CaptureCoordinator` possui o tap global, o ciclo do `TrackpadGestureService`
+  e as gerações de captura/observação. `isStopping` bloqueia restart enquanto
+  um tap anterior ainda reporta encerramento; callbacks de eventos e estado
+  são descartados quando pertencem a uma geração antiga.
+- `AutomationCoordinator` possui sequência, tarefas de workflow, sessões
+  contínuas e a aprovação de scripts. Cada aprovação guarda `ruleID` e
+  `executionID`; cancelar o workflow resolve a `CheckedContinuation` com
+  recusa e não deixa a UI presa em `pendingScriptApproval`.
+- `LaboratoryCoordinator` possui gravação, replay, snapshot e calibração como
+  projeções do serviço de trackpad. `TrackpadGestureService` invalida replay
+  anterior por geração antes e depois do processamento assíncrono; replay
+  continua publicando laboratório e nunca chama a pipeline de ações reais.
+- `AppController` apenas compõe dependências, encaminha eventos semânticos,
+  conserva o catálogo de aplicações e expõe a API compatível usada por
+  `ContentView` e `MenuBarContentView`.
+
+### Gates executados
+
+| Gate | Resultado |
+|---|---|
+| `git diff --check` | PASS |
+| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift test --disable-sandbox --filter CaptureCoordinatorTests` | PASS — 3 testes, 0 falhas |
+| `swift test --disable-sandbox --filter AutomationAndProfilesTests` | PASS — 12 testes, 0 falhas |
+| `swift test --disable-sandbox --filter TrackpadLaboratoryPhaseOneTests` | PASS — 9 testes, 0 falhas |
+| `swift test --disable-sandbox` | PASS — 122 testes, 0 falhas |
+| Revisão independente pós-correção | PASS — `019fe9da-70c8-7550-bc1c-afa371cdc76c` |
+
+A revisão intermediária encontrou três falhas P1: restart reportado como
+sucesso durante stop atrasado, aprovação pendente sem resolução ao cancelar e
+publicação tardia de replay. `6499b20` e `d64e975` corrigiram os três pontos;
+os testes direcionados e a suíte completa foram repetidos após a correção.
+
+### UAT e limites
+
+UAT contínuo de captura, automação e laboratório permanece **NOT-RUN**; a
+tentativa anterior de UAT nativo do editor foi **BLOCKED** porque o processo
+de menu bar perdeu o canal de automação antes de retornar estado AX/screenshot.
+Os testes de laboratório usam provider determinístico e comprovam ausência de
+execução de regras no replay, mas não substituem interação física.
+
+Trackpad físico, TCC em máquina real, sleep/wake físico, assinatura Developer
+ID e notarização permanecem **NOT-RUN**.

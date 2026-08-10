@@ -236,3 +236,27 @@ O repositório retorna o payload original junto do documento decodificado para
 que a migração gere backup antes da sobrescrita. Falhas de gravação continuam
 restaurando as coleções anteriores no store; falhas de leitura/importação
 ocorrem antes da mutação publicada.
+
+## Atualização pós-T16 — coordenação da aplicação
+
+Após T13–T16, a coordenação foi separada por capacidade sem remover a fachada
+compatível de `AppController`:
+
+- `CaptureCoordinator` é o owner `@MainActor` do tap global e da observação de
+  trackpad. Gerações independentes invalidam callbacks de eventos, estado e
+  observação; um stop atrasado fica explícito em `isStopping` e impede um
+  segundo start até o tap anterior se assentar.
+- `AutomationCoordinator` é o owner `@MainActor` de sequência, workflows,
+  sessões contínuas e aprovação de scripts. Uma aprovação é vinculada ao
+  workflow por `ruleID`/`executionID`, permitindo cancelamento idempotente sem
+  deixar uma `CheckedContinuation` pendente.
+- `LaboratoryCoordinator` concentra gravação/replay e publica apenas as
+  projeções necessárias. O replay do serviço usa generation para descartar
+  resultado tardio depois de cancelamento e não atravessa o handler de regras.
+- `AppController` constrói esses coordenadores, encaminha eventos semânticos e
+  conserva projeções e métodos legados até que os consumidores sejam migrados.
+
+Todos os três coordenadores são isolados na main actor porque possuem estado
+observável e fazem a ponte com ações de UI. Os efeitos de plataforma continuam
+atrás dos serviços/protocolos existentes; não foi introduzido container global,
+singleton de aplicação ou migração ampla para Observation.
