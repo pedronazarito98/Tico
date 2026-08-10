@@ -423,8 +423,9 @@ A documentação foi alinhada ao checkout efetivo:
   claro. As regras especializadas de Views, Stores, Services e Tests continuam
   compatíveis e não foram substituídas.
 
-**Gate T21:** `git diff --check` — PASS. Nenhuma documentação afirma UAT,
-hardware, TCC, assinatura ou notarização como concluídos.
+**Gate T21:** `git diff --check` — PASS. A documentação separa gates
+automatizados de UAT, hardware, TCC, assinatura e notarização; o relato manual
+posterior do usuário foi registrado separadamente em T22.
 
 ## T22 — fechamento e limites finais
 
@@ -454,7 +455,7 @@ de compilação ou teste.
 | ARCH-03 | PASS | `RuleEditingSession`, subviews do editor e `RuleEditingSessionTests` — 3/0 |
 | ARCH-04 | PASS | codec/repository/store; `ShortcutStoreTests` — 15/0 e `SecurityRegressionTests` — 8/0 |
 | ARCH-05 | PASS | três coordenadores `@MainActor`, fachada `AppController`, suites de coordenação/laboratório |
-| ARCH-06 | PASS | `AppCommandRouter`, `ApplicationLifecycleService`, testes 2/0 e 1/0; UAT nativo NOT-RUN |
+| ARCH-06 | PASS | `AppCommandRouter`, `ApplicationLifecycleService`, testes 2/0 e 1/0; UAT nativo PASS informado pelo usuário |
 | ARCH-07 | PASS | T20 “não extrair”, análise de imports/grafo e `dump-package`; `Package.swift` sem dependência nova |
 | ARCH-08 | PASS | inventário T03, gerações/continuations, testes de captura/automação/replay e revisão de fase |
 | ARCH-09 | PASS | gates rápidos, gates de fase, gate canônico e limites separados neste relatório |
@@ -480,6 +481,17 @@ não foi reproduzida nem coletada pelo agente nesta sessão.
 
 O gate automatizado continua corretamente classificado como não exercitando
 trackpad físico e notarização; o relato manual acima é uma evidência separada.
+
+### Preparação de release após T22
+
+| Evidência | Resultado |
+|---|---|
+| `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/build_and_run.sh --release-package` | PASS — `dist/Tico.app` e `dist/Tico.zip` gerados; build release local-only por ausência de identidade Developer ID configurada |
+| `./script/release_preflight.sh dist/Tico.zip` | PASS estrutural — identidade pública/técnica preservada, assinatura profunda estrita PASS e Hardened Runtime habilitado |
+| Notarização, stapling e execução em máquina limpa | NOT-RUN pelo agente; o preflight não reivindica esses gates |
+| Push remoto | PASS — `origin/feature/melhorando-estrutura` sincronizado com o handoff |
+| Pull request | PASS — draft [#3](https://github.com/pedronazarito98/Tico/pull/3) contra `main` |
+| Release pública | NOT-PUBLISHED — nenhuma tag/versionamento de release foi inventado; o artefato ad hoc permanece para desenvolvimento/QA |
 
 Uma revisão independente final confirmou o HEAD e encontrou apenas duas frases
 stale no handoff; elas foram removidas no commit documental seguinte. Nenhum

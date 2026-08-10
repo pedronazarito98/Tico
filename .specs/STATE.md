@@ -102,3 +102,6 @@
 - **Blockers**: Nenhum bloqueio reportado pelo usuário. Os PASS manuais são autorrelato e não foram reproduzidos nem coletados pelo agente nesta sessão; os gates automatizados continuam separados.
 - **Uncommitted files**: nenhum.
 - **Branch**: `feature/melhorando-estrutura`
+- **Remote**: `origin/feature/melhorando-estrutura` publicado e sincronizado com este handoff.
+- **Pull request**: draft [#3](https://github.com/pedronazarito98/Tico/pull/3) contra `main`.
+- **Release candidate**: `dist/Tico.zip` preparado localmente; preflight estrutural PASS, assinatura ad hoc e sem release pública.

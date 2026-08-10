@@ -72,5 +72,7 @@ Antes de implementar, o agente deverá:
 5. oferecer execução com subagentes/worktrees isolados, pois a iniciativa possui mais de oito tarefas, sem criá-los automaticamente.
 
 O gate de entrada foi cumprido antes de T01. A autorização posterior do usuário
-para commits locais está registrada na sessão; nenhum push remoto, PR, release
-ou publicação foi realizado.
+para commits, push e publicação está registrada na sessão. O commit final foi
+publicado em `origin/feature/melhorando-estrutura` e o PR draft
+`https://github.com/pedronazarito98/Tico/pull/3` foi aberto. Nenhuma release
+binária pública foi publicada; a preparação local permanece ad hoc.
