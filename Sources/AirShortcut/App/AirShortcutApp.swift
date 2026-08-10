@@ -13,6 +13,7 @@ struct AirShortcutApp: App {
     @StateObject private var validationStore: TrackpadValidationStore
     @StateObject private var controller: AppController
     @StateObject private var commandRouter: AppCommandRouter
+    private let lifecycle: any ApplicationLifecycleControlling
 
     init() {
         let shortcutStore: ShortcutStore = ShortcutStore()
@@ -22,6 +23,7 @@ struct AirShortcutApp: App {
         let calibrationStore: TrackpadCalibrationStore = TrackpadCalibrationStore()
         let validationStore: TrackpadValidationStore = TrackpadValidationStore()
         let commandRouter: AppCommandRouter = AppCommandRouter()
+        let lifecycle: any ApplicationLifecycleControlling = ApplicationLifecycleService()
         _shortcutStore = StateObject(wrappedValue: shortcutStore)
         _settings = StateObject(wrappedValue: settings)
         _eventLogStore = StateObject(wrappedValue: eventLogStore)
@@ -39,6 +41,7 @@ struct AirShortcutApp: App {
             )
         )
         _commandRouter = StateObject(wrappedValue: commandRouter)
+        self.lifecycle = lifecycle
     }
 
     var body: some Scene {
@@ -63,7 +66,11 @@ struct AirShortcutApp: App {
         }
 
         MenuBarExtra(isInserted: menuBarExtraIsInserted) {
-            MenuBarContentView(controller: controller, shortcutStore: shortcutStore)
+            MenuBarContentView(
+                controller: controller,
+                shortcutStore: shortcutStore,
+                lifecycle: lifecycle
+            )
         } label: {
             ZStack(alignment: .bottomTrailing) {
                 Image(nsImage: TicoBrand.Assets.menuBarImage)
