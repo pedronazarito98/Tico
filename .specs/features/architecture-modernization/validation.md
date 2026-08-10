@@ -402,6 +402,7 @@ inalterado; não foi adicionada dependência nem framework arquitetural.
 | `swift test --disable-sandbox --filter ApplicationLifecycleServiceTests` | PASS — 1 teste, 0 falhas |
 | `swift test --disable-sandbox` | PASS — 125 testes, 0 falhas |
 | `swift package dump-package` | PASS — targets `AirShortcutMultitouchBridge`, `AirShortcut` e `AirShortcutTests` |
+| Revisão independente da Fase 4 | PASS — `019febaf-25da-7db1-b6d1-9863934a871f`, HEAD `d2395e4` |
 | UAT menus/atalhos/janelas | NOT-RUN — sem prova de interação contínua do shell nativo |
 
 O teste de ciclo de vida usa um controlador injetado e não executa término ou
