@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct AirShortcutCommands: Commands {
     let commandRouter: AppCommandRouter
 
