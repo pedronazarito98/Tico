@@ -1,6 +1,10 @@
 import AirShortcutMultitouchBridge
 import Foundation
 
+/// The C bridge may invoke `receive` off the main actor. The owning
+/// `TrackpadGestureService` serializes provider lifecycle calls and keeps the
+/// provider alive until `stop` has released the retained callback context.
+/// No caller may invoke `start` and `stop` concurrently with each other.
 final class MultitouchFrameProvider: TrackpadFrameProvider, @unchecked Sendable {
     let capabilities = TrackpadProviderCapabilities.privateMultitouch
     private(set) var isRunning = false

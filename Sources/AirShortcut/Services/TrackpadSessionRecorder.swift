@@ -1,5 +1,8 @@
 import Foundation
 
+/// Every mutable recording field is read or written under `lock`. The recorder
+/// is therefore safe for frame callbacks and main-actor controls to share; the
+/// returned replay document is a value snapshot and cannot mutate the recorder.
 final class TrackpadSessionRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var name = "Sessão do Trackpad"

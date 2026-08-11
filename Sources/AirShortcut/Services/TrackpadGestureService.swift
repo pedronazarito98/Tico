@@ -59,6 +59,7 @@ final class TrackpadGestureService: ObservableObject {
     private var didReceiveRawFrame = false
     private var lastLaboratoryPublishAt = Date.distantPast
     private var replayTask: Task<Void, Never>?
+    private var replayGeneration: UInt64 = 0
     private var cancellables = Set<AnyCancellable>()
     private var tapCountComposer = TapCountComposer()
 
@@ -173,14 +174,16 @@ final class TrackpadGestureService: ObservableObject {
             startupError = TrackpadFrameProviderError.invalidReplay.localizedDescription
             return
         }
+        replayGeneration &+= 1
+        let generation = replayGeneration
         isReplaying = true
         replayProgress = 0
         replayWorker.updateCalibration(calibrationSet)
-        replayTask = Task { [weak self] in
+        replayTask = Task { @MainActor [weak self] in
             guard let self else { return }
             var previousDate = document.frames[0].receivedAt
             for (index, frame) in document.frames.enumerated() {
-                guard !Task.isCancelled else { break }
+                guard !Task.isCancelled, isCurrentReplay(generation) else { return }
                 if index > 0 {
                     let interval = max(
                         0,
@@ -188,23 +191,30 @@ final class TrackpadGestureService: ObservableObject {
                     )
                     try? await Task.sleep(for: .seconds(interval))
                 }
-                guard !Task.isCancelled else { break }
+                guard !Task.isCancelled, isCurrentReplay(generation) else { return }
                 let output = await replayWorker.process(frame)
+                guard !Task.isCancelled, isCurrentReplay(generation) else { return }
                 publishReplayOutput(output)
                 replayProgress = Double(index + 1) / Double(document.frames.count)
                 previousDate = frame.receivedAt
             }
+            guard isCurrentReplay(generation) else { return }
             isReplaying = false
             replayTask = nil
         }
     }
 
     func cancelReplay() {
+        replayGeneration &+= 1
         replayTask?.cancel()
         replayTask = nil
         replayWorker.reset()
         isReplaying = false
         replayProgress = 0
+    }
+
+    private func isCurrentReplay(_ generation: UInt64) -> Bool {
+        replayGeneration == generation
     }
 
     func activateSystemFallbackForValidation() {
@@ -463,7 +473,13 @@ final class TrackpadGestureService: ObservableObject {
     }
 }
 
+/// The box stores only a weak reference and is captured to bridge a provider
+/// callback back into the main-actor service. The weak storage may be cleared
+/// by object lifetime; the callback does not mutate the service directly and
+/// schedules work on `MainActor` first.
 private final class WeakTrackpadGestureServiceBox: @unchecked Sendable {
+    // The weak reference changes only as the actor-owned service is deallocated;
+    // the callback reads it before scheduling work on MainActor.
     weak var value: TrackpadGestureService?
 
     init(_ value: TrackpadGestureService) {

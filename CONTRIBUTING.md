@@ -16,6 +16,18 @@ da [licença MIT](LICENSE).
 4. Não enfraqueça nem remova uma asserção somente para fazer a suíte passar.
 5. Explique o que mudou, o impacto e como verificar.
 
+Para mudanças arquiteturais, preserve a modernização incremental: crie a
+fronteira, adapte a fachada compatível, migre consumidores e só remova código
+quando ele estiver comprovadamente morto. Views devem receber valores,
+bindings e ações estreitas; persistência deve permanecer atrás de codec e
+repository; coordenadores devem declarar ownership e isolamento. Comandos de
+menu usam `AppCommandRouter`, e operações que exigem AppKit ficam nos
+adaptadores de ciclo de vida ou serviços de plataforma.
+
+O target SwiftPM continua sendo `AirShortcut` com o bridge C
+`AirShortcutMultitouchBridge`. Não extraia `AirShortcutCore` nem adicione
+dependências sem uma análise de grafo e um gate próprios.
+
 O gate automatizado cobre compilação, testes, regressões de segurança,
 replay e empacotamento ad hoc. Ele não comprova hardware físico,
 compatibilidade com todas as versões do macOS, Developer ID ou notarização.

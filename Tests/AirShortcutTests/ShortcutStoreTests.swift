@@ -38,6 +38,54 @@ final class ShortcutStoreTests: XCTestCase {
         XCTAssertNil(reloadedStore.lastError)
     }
 
+    func testInjectedRepositoryOwnsTheStorePathAndPersistence() throws {
+        let fileURL = makeFileURL()
+        let repository = FileShortcutRepository(fileURL: fileURL)
+        let store = ShortcutStore(repository: repository, seedExamples: false)
+        let rule = makeRule()
+
+        XCTAssertEqual(store.fileURL, fileURL)
+        try store.add(rule)
+
+        let reloadedStore = ShortcutStore(
+            repository: FileShortcutRepository(fileURL: fileURL),
+            seedExamples: false
+        )
+        XCTAssertEqual(reloadedStore.rules, [rule])
+    }
+
+    func testFailedWriteDoesNotPublishEmbeddedTemplate() throws {
+        let repository = FailingShortcutRepository(fileURL: makeFileURL())
+        let store = ShortcutStore(repository: repository, seedExamples: false)
+        let samplePath = [
+            TrackpadPoint(x: 0, y: 0),
+            TrackpadPoint(x: 1, y: 1)
+        ]
+        let template = CustomGestureTemplate(
+            name: "Falha",
+            fingerCount: 3...3,
+            samplePaths: [samplePath, samplePath, samplePath]
+        )
+        let rule = ShortcutRule(
+            name: "Regra falha",
+            trigger: .customTrackpad(template: template),
+            action: .notification(title: "Teste", body: "")
+        )
+
+        XCTAssertThrowsError(try store.add(rule))
+        XCTAssertTrue(store.rules.isEmpty)
+        XCTAssertTrue(store.customGestureTemplates.isEmpty)
+    }
+
+    func testFailedSeedDoesNotPublishExamples() {
+        let repository = FailingShortcutRepository(fileURL: makeFileURL())
+        let store = ShortcutStore(repository: repository, seedExamples: true)
+
+        XCTAssertTrue(store.rules.isEmpty)
+        XCTAssertTrue(store.profiles.isEmpty)
+        XCTAssertNotNil(store.lastError)
+    }
+
     func testCRUDPersistsAcrossStoreInstances() throws {
         let fileURL = makeFileURL()
         let updateDate = Date(timeIntervalSince1970: 1_800_000_000)
@@ -328,4 +376,26 @@ final class ShortcutStoreTests: XCTestCase {
         temporaryDirectories.append(directory)
         return directory
     }
+}
+
+private final class FailingShortcutRepository: ShortcutRepository {
+    let fileURL: URL
+
+    init(fileURL: URL) {
+        self.fileURL = fileURL
+    }
+
+    func readCurrentDocument() throws -> ShortcutRepositoryReadResult? {
+        nil
+    }
+
+    func readDocument(from sourceURL: URL) throws -> DecodedShortcutDocument {
+        throw ShortcutStoreError.invalidDocument
+    }
+
+    func write(_ document: ShortcutDocument, to destinationURL: URL) throws {
+        throw ShortcutStoreError.invalidDocument
+    }
+
+    func backupCurrentDocument(_ data: Data, version: Int) throws {}
 }

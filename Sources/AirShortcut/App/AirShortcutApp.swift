@@ -12,6 +12,8 @@ struct AirShortcutApp: App {
     @StateObject private var calibrationStore: TrackpadCalibrationStore
     @StateObject private var validationStore: TrackpadValidationStore
     @StateObject private var controller: AppController
+    @StateObject private var commandRouter: AppCommandRouter
+    private let lifecycle: any ApplicationLifecycleControlling
 
     init() {
         let shortcutStore: ShortcutStore = ShortcutStore()
@@ -20,6 +22,8 @@ struct AirShortcutApp: App {
         let permissions: PermissionCoordinator = PermissionCoordinator()
         let calibrationStore: TrackpadCalibrationStore = TrackpadCalibrationStore()
         let validationStore: TrackpadValidationStore = TrackpadValidationStore()
+        let commandRouter: AppCommandRouter = AppCommandRouter()
+        let lifecycle: any ApplicationLifecycleControlling = ApplicationLifecycleService()
         _shortcutStore = StateObject(wrappedValue: shortcutStore)
         _settings = StateObject(wrappedValue: settings)
         _eventLogStore = StateObject(wrappedValue: eventLogStore)
@@ -36,6 +40,8 @@ struct AirShortcutApp: App {
                 validationStore: validationStore
             )
         )
+        _commandRouter = StateObject(wrappedValue: commandRouter)
+        self.lifecycle = lifecycle
     }
 
     var body: some Scene {
@@ -44,13 +50,14 @@ struct AirShortcutApp: App {
                 controller: controller,
                 shortcutStore: shortcutStore,
                 eventLogStore: eventLogStore,
-                permissions: permissions
+                permissions: permissions,
+                commandRouter: commandRouter
             )
             .tint(TicoBrand.Palette.primary)
         }
         .defaultSize(width: 1_080, height: 700)
         .commands {
-            AirShortcutCommands()
+            AirShortcutCommands(commandRouter: commandRouter)
         }
 
         Settings {
@@ -59,7 +66,11 @@ struct AirShortcutApp: App {
         }
 
         MenuBarExtra(isInserted: menuBarExtraIsInserted) {
-            MenuBarContentView(controller: controller, shortcutStore: shortcutStore)
+            MenuBarContentView(
+                controller: controller,
+                shortcutStore: shortcutStore,
+                lifecycle: lifecycle
+            )
         } label: {
             ZStack(alignment: .bottomTrailing) {
                 Image(nsImage: TicoBrand.Assets.menuBarImage)

@@ -1,15 +1,16 @@
-import AppKit
 import SwiftUI
 
 struct MenuBarContentView: View {
     @ObservedObject var controller: AppController
     @ObservedObject var shortcutStore: ShortcutStore
+    let lifecycle: any ApplicationLifecycleControlling
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Button("Abrir \(TicoBrand.displayName)") {
-            NSApp.activate(ignoringOtherApps: true)
-            openWindow(id: "main")
+            lifecycle.activateAndOpenMainWindow {
+                openWindow(id: "main")
+            }
         }
 
         Divider()
@@ -46,7 +47,7 @@ struct MenuBarContentView: View {
         }
 
         Button("Encerrar \(TicoBrand.displayName)") {
-            NSApplication.shared.terminate(nil)
+            lifecycle.terminate()
         }
     }
 

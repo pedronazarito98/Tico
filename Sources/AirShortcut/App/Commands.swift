@@ -1,107 +1,86 @@
 import SwiftUI
 
+@MainActor
 struct AirShortcutCommands: Commands {
+    let commandRouter: AppCommandRouter
+
     var body: some Commands {
         CommandGroup(after: .newItem) {
             Button("Nova regra") {
-                NotificationCenter.default.post(name: .airShortcutCreateRule, object: nil)
+                commandRouter.send(.createRule)
             }
             .keyboardShortcut("n", modifiers: [.command])
         }
 
         CommandGroup(after: .importExport) {
             Button("Importar regras…") {
-                NotificationCenter.default.post(name: .airShortcutImportRules, object: nil)
+                commandRouter.send(.importRules)
             }
             .keyboardShortcut("o", modifiers: [.command, .shift])
 
             Button("Exportar regras…") {
-                NotificationCenter.default.post(name: .airShortcutExportRules, object: nil)
+                commandRouter.send(.exportRules)
             }
             .keyboardShortcut("e", modifiers: [.command, .shift])
         }
 
         CommandMenu("Atalhos") {
             Button("Iniciar captura") {
-                NotificationCenter.default.post(name: .airShortcutStartCapture, object: nil)
+                commandRouter.send(.startCapture)
             }
             .keyboardShortcut("r", modifiers: [.command, .option])
 
             Button("Parar captura") {
-                NotificationCenter.default.post(name: .airShortcutStopCapture, object: nil)
+                commandRouter.send(.stopCapture)
             }
             .keyboardShortcut(".", modifiers: [.command, .option])
 
             Divider()
 
             Button("Excluir regra selecionada") {
-                NotificationCenter.default.post(name: .airShortcutDeleteSelectedRule, object: nil)
+                commandRouter.send(.deleteSelectedRule)
             }
             .keyboardShortcut(.delete, modifiers: [.command])
 
             Divider()
 
             Button("Visão geral") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.overview.rawValue
-                )
+                commandRouter.send(.selectSection(.overview))
             }
             .keyboardShortcut("1", modifiers: [.command])
 
             Button("Permissões") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.permissions.rawValue
-                )
+                commandRouter.send(.selectSection(.permissions))
             }
             .keyboardShortcut("2", modifiers: [.command])
 
             Button("Regras") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.rules.rawValue
-                )
+                commandRouter.send(.selectSection(.rules))
             }
             .keyboardShortcut("3", modifiers: [.command])
 
             Button("Perfis") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.profiles.rawValue
-                )
+                commandRouter.send(.selectSection(.profiles))
             }
             .keyboardShortcut("4", modifiers: [.command])
 
             Button("Biblioteca") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.library.rawValue
-                )
+                commandRouter.send(.selectSection(.library))
             }
             .keyboardShortcut("5", modifiers: [.command])
 
             Button("Laboratório") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.laboratory.rawValue
-                )
+                commandRouter.send(.selectSection(.laboratory))
             }
             .keyboardShortcut("6", modifiers: [.command])
 
             Button("Métricas") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.metrics.rawValue
-                )
+                commandRouter.send(.selectSection(.metrics))
             }
             .keyboardShortcut("7", modifiers: [.command])
 
             Button("Log") {
-                NotificationCenter.default.post(
-                    name: .airShortcutSelectSection,
-                    object: AirShortcutSection.log.rawValue
-                )
+                commandRouter.send(.selectSection(.log))
             }
             .keyboardShortcut("8", modifiers: [.command])
         }
