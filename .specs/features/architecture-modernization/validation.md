@@ -493,6 +493,20 @@ trackpad físico e notarização; o relato manual acima é uma evidência separa
 | Pull request | PASS — draft [#3](https://github.com/pedronazarito98/Tico/pull/3) contra `main` |
 | Release pública | NOT-PUBLISHED — nenhuma tag/versionamento de release foi inventado; o artefato ad hoc permanece para desenvolvimento/QA |
 
+### Correção pós-PR e CI remoto
+
+O primeiro check do PR encontrou uma diferença de isolamento de concorrência no
+compilador do runner: `Commands.swift` chamava `AppCommandRouter.send` a partir
+de um `Commands` não anotado como `@MainActor`. A correção mínima foi registrada
+no commit `67ba8e1`, sem alterar comportamento ou contratos.
+
+| Evidência | Resultado |
+|---|---|
+| `swift build --disable-sandbox --product AirShortcut` após `67ba8e1` | PASS |
+| `swift test --disable-sandbox` após `67ba8e1` | PASS — 125 testes, 0 falhas |
+| `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` após `67ba8e1` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc verificado |
+| GitHub Actions [run 31486494426](https://github.com/pedronazarito98/Tico/actions/runs/31486494426) | PASS — job completo em 37s |
+
 Uma revisão independente final confirmou o HEAD e encontrou apenas duas frases
 stale no handoff; elas foram removidas no commit documental seguinte. Nenhum
 finding de código, dependência acidental ou regressão adicional foi reportado.
