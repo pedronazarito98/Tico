@@ -29,7 +29,7 @@ O target SwiftPM continua sendo `AirShortcut` com o bridge C
 dependências sem uma análise de grafo e um gate próprios.
 
 O gate automatizado cobre compilação, testes, regressões de segurança,
-replay e empacotamento ad hoc. Ele não comprova hardware físico,
+replay e empacotamento ad hoc em ZIP e DMG. Ele não comprova hardware físico,
 compatibilidade com todas as versões do macOS, Developer ID ou notarização.
 
 Para uma mudança que altere o comportamento do trackpad, execute também o

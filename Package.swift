@@ -20,6 +20,12 @@ let package = Package(
             name: "AirShortcut",
             dependencies: ["AirShortcutMultitouchBridge"],
             path: "Sources/AirShortcut",
+            exclude: [
+                "AGENTS.md",
+                "Services/AGENTS.md",
+                "Stores/AGENTS.md",
+                "Views/AGENTS.md"
+            ],
             resources: [
                 .process("Resources")
             ]
@@ -28,6 +34,7 @@ let package = Package(
             name: "AirShortcutTests",
             dependencies: ["AirShortcut"],
             path: "Tests/AirShortcutTests",
+            exclude: ["AGENTS.md"],
             resources: [
                 .process("Fixtures")
             ]
