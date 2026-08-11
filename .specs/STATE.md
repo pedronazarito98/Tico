@@ -95,13 +95,14 @@
 ## Handoff
 
 - **Feature**: `.specs/features/architecture-modernization/`
-- **Phase / Task**: Handoff — T01–T22 concluídas; validações manuais registradas como PASS informado pelo usuário.
-- **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell, avaliação de módulo, gates finais e handoff.
+- **Phase / Task**: Pós-merge — T01–T22 concluídas; handoff integrado em `main`.
+- **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell, avaliação de módulo, gates finais, revisão independente e merge do PR.
 - **In-progress**: Nenhum.
-- **Next step**: Nenhuma tarefa de implementação pendente; preservar a evidência manual e os artefatos de distribuição conforme necessário.
-- **Blockers**: Nenhum bloqueio reportado pelo usuário. Os PASS manuais são autorrelato e não foram reproduzidos nem coletados pelo agente nesta sessão; os gates automatizados continuam separados.
-- **Uncommitted files**: nenhum.
-- **Branch**: `feature/melhorando-estrutura`
-- **Remote**: `origin/feature/melhorando-estrutura` publicado e sincronizado com este handoff.
-- **Pull request**: draft [#3](https://github.com/pedronazarito98/Tico/pull/3) contra `main`.
-- **Release candidate**: `dist/Tico.zip` preparado localmente; preflight estrutural PASS, assinatura ad hoc e sem release pública.
+- **Next step**: Preservar as evidências atuais. Se o trabalho for reaberto, usar `.specs/features/release-readiness/validation.md` como ponto de entrada para os gates que ainda não são release-ready.
+- **Blockers**: Build/test/package local e CI remoto estão verdes. A release-readiness binária continua `BLOCKED` por ausência de relatório físico sanitizado completo, Developer ID/notarização/staple/Gatekeeper/máquina limpa e pela falta de uma execução remota controlada em estado vermelho. PASS manual continua sendo autorrelato separado, não reprodução do agente.
+- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/architecture-modernization/validation.md`, `.specs/features/release-readiness/execution.md` e `.specs/features/release-readiness/validation.md`.
+- **Branch**: `main`
+- **Remote**: `origin/main` em `1a7593cd12f4363e28224e817fb96d1568b3f550`.
+- **Pull request**: [#3](https://github.com/pedronazarito98/Tico/pull/3) merged em `2026-08-11`; não é mais draft.
+- **CI remoto**: [PR run 31486597406](https://github.com/pedronazarito98/Tico/actions/runs/31486597406) e [merge push run 31487484224](https://github.com/pedronazarito98/Tico/actions/runs/31487484224) concluídos com sucesso.
+- **Release candidate**: `dist/Tico.zip` validado localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.

@@ -489,8 +489,8 @@ trackpad físico e notarização; o relato manual acima é uma evidência separa
 | `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/build_and_run.sh --release-package` | PASS — `dist/Tico.app` e `dist/Tico.zip` gerados; build release local-only por ausência de identidade Developer ID configurada |
 | `./script/release_preflight.sh dist/Tico.zip` | PASS estrutural — identidade pública/técnica preservada, assinatura profunda estrita PASS e Hardened Runtime habilitado |
 | Notarização, stapling e execução em máquina limpa | NOT-RUN pelo agente; o preflight não reivindica esses gates |
-| Push remoto | PASS — `origin/feature/melhorando-estrutura` sincronizado com o handoff |
-| Pull request | PASS — draft [#3](https://github.com/pedronazarito98/Tico/pull/3) contra `main` |
+| Push remoto / merge | PASS — `origin/main` em `1a7593c`; PR [#3](https://github.com/pedronazarito98/Tico/pull/3) integrado em `main` |
+| Pull request | PASS — PR [#3](https://github.com/pedronazarito98/Tico/pull/3) merged; não é mais draft |
 | Release pública | NOT-PUBLISHED — nenhuma tag/versionamento de release foi inventado; o artefato ad hoc permanece para desenvolvimento/QA |
 
 ### Correção pós-PR e CI remoto
@@ -510,3 +510,19 @@ no commit `67ba8e1`, sem alterar comportamento ou contratos.
 Uma revisão independente final confirmou o HEAD e encontrou apenas duas frases
 stale no handoff; elas foram removidas no commit documental seguinte. Nenhum
 finding de código, dependência acidental ou regressão adicional foi reportado.
+
+### Handoff pós-merge
+
+O merge foi confirmado localmente e no remoto antes deste registro:
+
+| Evidência | Resultado |
+|---|---|
+| `HEAD` local / `origin/main` | PASS — `1a7593cd12f4363e28224e817fb96d1568b3f550` |
+| Check do PR | PASS — [run 31486597406](https://github.com/pedronazarito98/Tico/actions/runs/31486597406), job completo |
+| Check do merge em `main` | PASS — [run 31487484224](https://github.com/pedronazarito98/Tico/actions/runs/31487484224), job completo |
+| Gate local no merge | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc verificado |
+| Handoff de implementação | FECHADO — nenhuma tarefa T01–T22 pendente |
+
+Os checks remotos fecham a evidência que estava pendente no snapshot anterior.
+Eles não alteram os limites: hardware físico, TCC em máquina real, assinatura
+Developer ID, notarização e execução em máquina limpa permanecem gates separados.

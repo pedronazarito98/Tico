@@ -1,157 +1,128 @@
-# Release Readiness Validation
+# Release Readiness Validation — atualização pós-merge
 
-**Date**: 2026-07-26
+**Atualizado**: 2026-08-11
 **Spec**: `.specs/features/release-readiness/spec.md`
-**Diff range**: `27e0650..57fb0ed`
-**Verifier**: third independent sub-agent (author != verifier)
-**Verdict**: **BLOCKED**
+**Base verificada**: `main` / `1a7593cd12f4363e28224e817fb96d1568b3f550`
+**PR integrado**: [#3](https://github.com/pedronazarito98/Tico/pull/3)
+**Natureza**: refresh de evidências; não substitui uma nova execução independente do Verifier
+**Veredito**: **BLOCKED — preview técnico saudável; release binária não pronta**
 
-The automated preview baseline is healthy, but the feature is not fully
-verified. A third fresh-eyes pass re-derived all RR-01–RR-18 outcomes, reran
-the package gate, and killed three new scratch mutants. Explicit `NOT-RUN` and
-external blockers are not counted as PASS.
+Esta atualização corrige o snapshot de 2026-07-26 com o estado pós-merge real.
+Ela mantém `PASS`, `NOT-RUN` e `BLOCKED` separados: build, testes e CI verde não
+provam hardware físico, TCC em máquina real, notarização ou Gatekeeper.
 
-## Task Completion
+## Estado pós-merge
 
-| Tasks | Status | Notes |
-| --- | --- | --- |
-| T1-T3 | Partial | Shared local gate passes; no real GitHub Actions run or controlled failing PR was supplied. |
-| T4-T7 | Partial | Public/status/security docs are coherent; `LICENSE` is intentionally absent pending owner choice. |
-| T8-T11 | Done | Evidence schema, validator, replay, permission, and fallback automated checks are present. |
-| T12 | Blocked | Report is sanitized and structurally valid, but physical session/UAT is `NOT-RUN`. |
-| T13-T15 | Done for ad hoc | ZIP dry-run passes strict/deep signature verification and is honestly labeled development-only. |
-| T16 | Blocked | No Developer ID identity, notarization, staple, Gatekeeper, or clean-machine evidence. |
-| T17-T19 | Partial | Preview/blocker map and lessons tooling exist; the second-sensor survivor was fixed and grounded as lesson `L-005`, while external gates remain blocked. |
-
-## Spec-Anchored Acceptance Criteria
-
-| AC | Spec-defined outcome | Evidence-or-zero | Result |
-| --- | --- | --- | --- |
-| RR-01 | A PR to `main` runs macOS build, tests, shell validation, and package verification and fails on non-zero. | `.github/workflows/ci.yml:3-23` configures the event/runner/gate; `script/ci_verify.sh:37-58` is fail-fast. No real workflow run or controlled failing PR evidence. | **BLOCKED** |
-| RR-02 | The documented local gate is CI-equivalent and reports tests/artifacts. | `README.md:47-70`; `script/ci_verify.sh:67-76`; verifier gate: 100 tests and verified `dist/AirShortcut.zip`. | **PASS** |
-| RR-03 | Successful CI summary distinguishes replay/automation from physical hardware and never claims hardware PASS. | `.github/workflows/ci.yml:25-34` has the required wording. No successful remote CI job summary was supplied. | **BLOCKED** |
-| RR-04 | README and QA use executable shortcut `⌘6`, with no contradictory `⌘4`. | `README.md:105`; `outputs/qa-checklist.md:31-35`; range search found no `⌘4` in the changed public docs. | **PASS** |
-| RR-05 | Published repo contains chosen license, status/support, and private-framework disclosure. | `README.md:5-25` supplies status/private API; `outputs/release-readiness-checklist.md:41` records missing `LICENSE`. | **BLOCKED** |
-| RR-06 | Vulnerability reports use GitHub private reporting and exclude sensitive local artifacts. | `SECURITY.md:8-28` explicitly prohibits public reporting and sensitive attachments. | **PASS** |
-| RR-07 | Completed manual report records OS, device, mode, gesture, expected, observed, and PASS/FAIL/NOT-RUN for every row. | `outputs/hardware-validation/report-2026-07-26.md:9-36` has the schema but explicitly states no physical session; rows are `NOT-RUN`. | **BLOCKED** |
-| RR-08 | Unavailable/denied private capture is explained and keyboard/mouse remain safe. | Automated assertions: `Tests/AirShortcutTests/PermissionCoordinatorTests.swift:38-54`, `Tests/AirShortcutTests/TrackpadGestureServiceTests.swift:49-79`. Manual outcomes remain `NOT-RUN` at `outputs/hardware-validation/report-2026-07-26.md:15-16,30-32`. | **BLOCKED** |
-| RR-09 | Replay at 0.5x/1x/2x updates only the laboratory and adds no action entry. | `Tests/AirShortcutTests/TrackpadLaboratoryPhaseOneTests.swift:190-203` asserts exact progress, ended/accepted state, gesture, and unchanged action log at all speeds. | **PASS** |
-| RR-10 | Missing required physical scenarios prevents physical-support PASS. | `outputs/hardware-validation/report-2026-07-26.md:5-11,17-33` keeps the verdict `NOT-RUN`; `outputs/release-readiness-checklist.md:46` blocks physical PASS. | **PASS** |
-| RR-11 | `--package` produces app/ZIP whose extracted app passes strict/deep verification. | Verifier gate passed; `script/ci_verify.sh:50-58` extracts and verifies; `script/release_preflight.sh:20-31` independently applies strict/deep verification. | **PASS** |
-| RR-12 | Without Developer ID, result is ad hoc/development and makes no trust/notarization claim. | `script/release_preflight.sh:37-40,56-68`; verifier output classified the package as ad hoc and CI summary did not claim notarization. | **PASS** |
-| RR-13 | Developer ID checklist requires nested signing, Hardened Runtime, notarization acceptance, staple validation, and clean-machine execution. | `outputs/release-validation-2026-07-26.md:11-39` and `outputs/release-template.md:32-52` require every gate and preserve `NOT-RUN`. | **PASS** |
-| RR-14 | A published release includes version, commit, signing, minimum macOS, private-API limitation, and verification evidence. | `outputs/release-template.md:6-18,20-61` defines the contract, but no publishable Developer ID release artifact/notes exist. | **BLOCKED** |
-| RR-15 | Independent verifier maps every AC to evidence or a gap. | This report maps RR-01-RR-18 with file/line evidence or explicit zero/blocker. | **PASS** |
-| RR-16 | One to three scratch behavior mutations are killed; survivors become fix tasks. | Third sensor killed 3/3 new mutants: omitted `.swipe` from the exact fallback mask, removed the username sanitizer, and misclassified an ad hoc signature as Developer ID. | **PASS** |
-| RR-17 | Any AC gap/survivor/precision/deviation/gate failure records a grounded lesson through `scripts/lessons.py`. | `scripts/lessons.py add` recorded candidate `L-005` for the prior second-sensor M1; the four prior `ac_gap` lessons remain present, and this clean third sensor adds no new lesson. | **PASS** |
-| RR-18 | Required ACs still unverified after the bounded cycle are escalated as not ready. | `outputs/release-readiness-checklist.md:63-70` lists blockers; this independent verdict remains BLOCKED and does not silently complete them. | **PASS** |
-
-**Spec-anchored status**: 12/18 PASS; 0/18 FAIL; 6/18 BLOCKED; 0 false PASS.
-
-## Build Gate
-
-- **Canonical command**: `./script/ci_verify.sh --package`
-- **Environment isolation**:
-  `CLANG_MODULE_CACHE_PATH`, `SWIFTPM_MODULECACHE_OVERRIDE`, and
-  `XDG_CACHE_HOME` pointed to `/private/tmp`, with
-  `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1`.
-- **Result at `57fb0ed`**: **PASS**
-- **Swift suite**: 100 executed, 100 passed, 0 failed, 0 skipped.
-- **Focused security suite**: 8 executed, 8 passed, 0 failed, 0 skipped.
-- **Package**: `dist/AirShortcut.zip`; extracted app passed
-  `codesign --verify --deep --strict`.
-- **Signing scope**: ad hoc/development only; physical hardware and
-  notarization not exercised.
-- **Test count**: author freeze records 97 baseline and 100 current (+3);
-  the verifier independently observed 100 current tests.
-- **Diff hygiene**: `git diff --check 27e0650..57fb0ed` passed.
-- **Third-verifier gate**: `./script/ci_verify.sh --package` passed with
-  100/100 Swift tests, 8/8 focused security tests, and verified
-  `dist/AirShortcut.zip`; hardware and notarization remained unexercised.
-
-## Discrimination Sensor
-
-Scratch roots: `/private/tmp/AirShortcut-verifier3.uI9Xkfjz`,
-`/private/tmp/AirShortcut-verifier3-mut2.5i132Mfp`, and
-`/private/tmp/AirShortcut-verifier3-mut3.yUVqFX6N` (archive copies of
-`57fb0ed`; the real working tree was never mutated).
-
-| Mutation | Target and behavioral fault | Probe | Result |
-| --- | --- | --- | --- |
-| M1 | Removed `.swipe` from `TrackpadGestureService.fallbackEventMask`, testing positive completeness rather than repeating the prior extra-event fault. | Focused fallback-mask test failed at `XCTAssertEqual`: actual mask omitted the required system swipe event. | **KILLED** |
-| M2 | Removed the `user name` branch from the hardware-report sensitive-marker sanitizer. | `username-marker.md`, which must be rejected, changed to exit 0; the negative-fixture probe detected the regression. | **KILLED** |
-| M3 | Changed the non-Developer-ID branch of release preflight to report `developer-id`. | Preflight still exited 0, but the required `signing mode: ad-hoc/development` assertion failed and exposed the false distribution classification. | **KILLED** |
-
-**Sensor depth**: lightweight, 3 targeted behavior mutations.
-**Third-sensor result**: 3/3 killed — **PASS**.
-
-The semantic fallback recheck proves both sides of the exact-mask contract:
-the prior correction rejects unrelated events, while M1 above proves that a
-required public gesture cannot be silently removed.
-
-## Interactive UAT and Manual Evidence
-
-No interactive or physical session was performed. The committed report states
-this directly at `outputs/hardware-validation/report-2026-07-26.md:5-11`.
-Internal/Magic Trackpad gestures, permission denial, fallback pass-through,
-sleep/wake, reconnection, and false-positive observation remain `NOT-RUN`.
-Developer ID, notarization, staple, `spctl`, and clean-machine execution remain
-`BLOCKED/NOT-RUN` at `outputs/release-validation-2026-07-26.md:15-29`.
-
-## Code Quality
-
-| Check | Status |
+| Evidência | Resultado |
 | --- | --- |
-| Scope limited to release readiness | PASS |
-| Surgical production change | PASS: only fallback mask exposure/usage changed in product code |
-| Existing patterns/style retained | PASS |
-| No test weakening/deletion found in range | PASS |
-| Spec-anchored assertions are value/state assertions | PASS for automated replay, permission, and fallback scope |
-| Manual/external outcomes are not inferred from automation | PASS |
-| Changed docs/scripts map to RR criteria or task done-when | PASS |
-| Guidelines followed | PASS: `README.md`, `SECURITY.md`, `outputs/qa-checklist.md`, `Package.swift`, TLC validation/coding principles, and macOS build/signing skills |
+| Branch local | `main`, worktree limpo antes desta edição documental |
+| `HEAD` / `origin/main` | `1a7593cd12f4363e28224e817fb96d1568b3f550` |
+| PR #3 | merged em `2026-08-11`; não é mais draft |
+| CI do PR | PASS — [run 31486597406](https://github.com/pedronazarito98/Tico/actions/runs/31486597406), job `Build, test, and package` concluído |
+| CI do merge | PASS — [run 31487484224](https://github.com/pedronazarito98/Tico/actions/runs/31487484224), job `Build, test, and package` concluído |
+| `git diff --check` no HEAD | PASS |
 
-## Ranked Gaps and Fix Tasks
+Os dois runs remotos executaram o workflow `macOS verification` em `macos-14`.
+O run de merge fecha a evidência remota que estava ausente no relatório anterior.
 
-1. **Blocker — RR-05**: owner must choose a compatible open-source license and
-   add `LICENSE`; legal choice cannot be inferred by the verifier.
-2. **Blocker — RR-07/RR-08/RR-10**: execute and sanitize the full internal and
-   Magic Trackpad matrix, including permission denial, fallback input safety,
-   sleep/wake, reconnection, and false-positive duration/count.
-3. **Blocker — RR-13/RR-14 distribution outcome**: produce one Developer ID
-   artifact with Hardened Runtime, nested signing, accepted notarization,
-   staple validation, `spctl`, and clean-machine execution before binary
-   release. RR-13's checklist contract passes; the actual distribution remains
-   blocked.
-4. **Major — RR-01/RR-03**: run the workflow on a real PR, inject a controlled
-   failing test in a throwaway branch to prove red status, then preserve a clean
-   successful run and its summary.
-## Lessons
+## Gate local atual
 
-The canonical TLC lessons layer is available at `scripts/lessons.py`.
-Four `ac_gap` lessons were recorded through the script and remain candidates,
-as required until corroboration across a distinct feature:
+**Comando executado**:
 
-- `L-001`: preserve remote CI run evidence before claiming workflow outcomes;
-- `L-002`: require an owner-approved license before declaring publication ready;
-- `L-003`: require sanitized physical evidence before claiming hardware support;
-- `L-004`: require Developer ID/notarization/staple/Gatekeeper/clean-machine
-  evidence before declaring a distributable release.
+```sh
+AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
+```
 
-`L-005` records the prior second-sensor M1 signal as a `surviving_mutant`
-candidate and was added through the canonical script after the post-review
-correction. The third sensor produced no new surviving mutant or precision
-gap, so no additional lesson was recorded.
+| Check | Resultado atual |
+| --- | --- |
+| Validação de shell | PASS — `bash -n` para os cinco scripts do gate |
+| Build | PASS — produto SwiftPM `AirShortcut` |
+| Suíte Swift | PASS — 125 testes, 0 falhas |
+| `SecurityRegressionTests` | PASS — 8 testes, 0 falhas |
+| Package | PASS — `dist/Tico.zip`; app extraído passou `codesign --verify --deep --strict` e identidade Tico/AirShortcut |
+| Hardware físico | NOT-RUN pelo gate automatizado |
+| Notarização | NOT-RUN pelo gate automatizado |
 
-## Summary
+O ambiente local reportou Swift 6.3.3 e Xcode 26.6. O SwiftPM emitiu apenas
+warnings de arquivos `AGENTS.md` não declarados como resources; o comando
+terminou com exit code 0.
 
-**Overall**: **BLOCKED — the automated gate and third discrimination sensor
-pass, but release readiness remains incomplete.**
+## Preflight do artefato atual
 
-What works: local SwiftPM build/tests/security gate, ad hoc packaging and
-strict extracted-signature verification, honest preview documentation, replay
-isolation, fallback/permission automated assertions, sanitized-report
-structure, and all three new targeted mutation probes killed.
+**Comando executado**:
 
-What blocks completion: real CI evidence, license decision, physical UAT,
-publishable Developer ID/notarization evidence, and final release metadata.
+```sh
+./script/release_preflight.sh dist/Tico.zip
+```
+
+Resultado observado:
+
+- identidade pública: `Tico`;
+- executável técnico: `AirShortcut`;
+- bundle identifier: `com.pedronazarito.AirShortcut`;
+- assinatura profunda estrita: `PASS`;
+- modo de assinatura: `ad-hoc/development`;
+- Hardened Runtime: `not-confirmed`;
+- entitlements: `none`;
+- notarização: `not-attempted`;
+- staple: `not-validated`;
+- execução em máquina limpa: `not-run`;
+- decisão: somente desenvolvimento/QA; nenhuma reivindicação de Gatekeeper ou notarização.
+
+## Tasks
+
+| Tasks | Estado pós-merge | Evidência |
+| --- | --- | --- |
+| T1–T3 | Parcial | Gate local e runs reais passam; injeção de falha controlada no CI continua `NOT-RUN`. |
+| T4–T7 | Concluído para preview | `LICENSE` MIT, README, contribuição, segurança, QA e distribuição estão presentes e coerentes. |
+| T8–T11 | Concluído no escopo automatizado | Template/validador, replay, permissões e fallback têm cobertura automatizada. |
+| T12 | `BLOCKED` | Não existe relatório físico sanitizado preenchido no checkout atual. |
+| T13–T15 | Concluído para ad hoc | ZIP atual passa preflight e é rotulado como desenvolvimento. |
+| T16 | `BLOCKED` | Não há Developer ID, notarização aceita, staple, Gatekeeper ou máquina limpa. |
+| T17–T19 | Parcial | Evidência e lições históricas existem; este refresh não é um novo Verifier independente. |
+
+## Matriz RR-01–RR-18
+
+| AC | Evidência atual | Resultado |
+| --- | --- | --- |
+| RR-01 | `.github/workflows/ci.yml:3-23` aciona PR/push em `main`; `script/ci_verify.sh:1-5,39-72` é fail-fast; [run real do PR](https://github.com/pedronazarito98/Tico/actions/runs/31486597406) passou. A execução controlada de uma falha ainda não foi feita. | **BLOCKED** |
+| RR-02 | `README.md:50-69` documenta o gate; `script/ci_verify.sh:74-89` imprime contagem e artefatos; execução atual registrou 125 testes e `dist/Tico.zip`. | **PASS** |
+| RR-03 | `.github/workflows/ci.yml:25-34` separa cobertura automatizada, física e distribuição; [run de merge](https://github.com/pedronazarito98/Tico/actions/runs/31487484224) concluiu o step de resumo. | **PASS** |
+| RR-04 | `README.md:34-48` e `outputs/qa-checklist.md:29-45` usam `⌘6`; não há referência contraditória a `⌘4` nos documentos públicos atuais. | **PASS** |
+| RR-05 | `LICENSE:1-20` contém MIT; `README.md:32-48,80-85` declara technical preview, status, fallback e compatibilidade com framework privado; `outputs/distribuicao.md:3-16` mantém a fronteira de distribuição. | **PASS** |
+| RR-06 | `SECURITY.md:8-28` direciona vulnerabilidades para fluxo privado e proíbe credenciais, dados pessoais e logs sensíveis públicos. | **PASS** |
+| RR-07 | `outputs/hardware-validation/report-template.md:3-26` define o schema, mas não há `report-AAAA-MM-DD.md` preenchido no checkout atual. | **BLOCKED** |
+| RR-08 | `Tests/AirShortcutTests/PermissionCoordinatorTests.swift:38-55`, `Tests/AirShortcutTests/SecurityRegressionTests.swift:212-260` e `Tests/AirShortcutTests/TrackpadGestureServiceTests.swift:49-80` cobrem estados negados/fallback; a observação física e o relatório sanitizado continuam ausentes. | **BLOCKED** |
+| RR-09 | `Tests/AirShortcutTests/TrackpadLaboratoryPhaseOneTests.swift:190-203` verifica replay em `0.5`, `1.0` e `2.0`, estado do laboratório e log de ações inalterado. | **PASS** |
+| RR-10 | `outputs/qa-checklist.md:47-63` e `outputs/trackpad.md:27-31` impedem declarar Magic Trackpad sem teste; `outputs/hardware-validation/report-template.md:5-8` diferencia `NOT-RUN` de aprovação. | **PASS** — política de bloqueio preservada; suporte físico segue bloqueado. |
+| RR-11 | `script/ci_verify.sh:55-71` extrai o ZIP, limpa xattrs, verifica assinatura profunda e identidade; o gate local atual passou. | **PASS** |
+| RR-12 | `script/release_preflight.sh:48-56,71-90` classifica o pacote atual como `ad-hoc/development` e não reivindica notarização/Gatekeeper. | **PASS** |
+| RR-13 | `outputs/distribuicao.md:25-59` e `outputs/qa-checklist.md:74-83` exigem Developer ID, Hardened Runtime, notarização, staple, Gatekeeper e máquina limpa antes de release binária. | **PASS** — contrato documental; execução real continua ausente. |
+| RR-14 | `CHANGELOG.md:23-45` registra o preview e suas limitações, mas não há release binária publicada com metadados/evidências do commit atual; `dist/Tico.zip` é ad hoc. | **BLOCKED** |
+| RR-15 | O relatório independente histórico em `57fb0ed` mapeou RR-01–RR-18 com evidence-or-zero; este documento atualiza o estado pós-merge, mas não reivindica uma nova rodada independente. | **PASS** — evidência independente histórica preservada. |
+| RR-16 | O Verifier histórico registrou três mutações comportamentais mortas (3/3) no snapshot de release-readiness; não foi injetada nova mutação neste refresh documental. | **PASS** — sensor histórico preservado; não é novo resultado do merge. |
+| RR-17 | `.specs/LESSONS.md` e `.specs/lessons.json` preservam os gaps de CI, licença, hardware, distribuição e o sinal do sensor anterior. | **PASS** |
+| RR-18 | Este relatório mantém o veredito `BLOCKED` e lista os gaps sem promovê-los a `PASS` por causa do CI verde. | **PASS** |
+
+**Status rastreável**: 14/18 PASS; 0/18 FAIL; 4/18 BLOCKED; nenhum falso
+`PASS` para hardware físico ou distribuição notarizada.
+
+## Gaps que permanecem
+
+1. **RR-01** — executar uma falha controlada em um PR descartável e preservar o
+   run vermelho e o run verde correspondente.
+2. **RR-07/RR-08** — executar e sanitizar a matriz física aplicável, incluindo
+   permissão negada, fallback e segurança de teclado/mouse.
+3. **RR-14/T16** — se houver intenção de distribuir binário, obter Developer ID,
+   assinar com Hardened Runtime, notarizar, validar staple/Gatekeeper e testar
+   o mesmo ZIP em máquina limpa; não há credenciais fornecidas nesta tarefa.
+
+## Limites da atualização
+
+- Nenhuma sessão interativa ou física foi executada nesta atualização.
+- Nenhum teste, mock ou fixture foi criado.
+- O pacote `dist/Tico.zip` é local, ad hoc e não deve ser publicado como release
+  para usuários finais.
+- Os PASS manuais registrados em documentos anteriores continuam classificados
+  como informação do responsável pelo produto; não foram reproduzidos pelo agente
+  neste handoff.

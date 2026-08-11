@@ -13,6 +13,22 @@ Os quatro documentos de origem foram incluídos sem reescrita pelo worker do
 Batch 3. O Verifier deve tratá-los como fonte de verdade e não herdar as
 conclusões deste relatório.
 
+## Atualização pós-merge — 2026-08-11
+
+Este arquivo preserva o freeze histórico de 2026-07-26. A evidência operacional
+mais recente está consolidada em `validation.md` e foi coletada no merge atual:
+
+| Evidência | Resultado |
+| --- | --- |
+| Base atual | `main` / `1a7593cd12f4363e28224e817fb96d1568b3f550` |
+| PR #3 | merged em `2026-08-11`; deixou de ser draft |
+| GitHub Actions no PR | PASS — [31486597406](https://github.com/pedronazarito98/Tico/actions/runs/31486597406) |
+| GitHub Actions no merge | PASS — [31487484224](https://github.com/pedronazarito98/Tico/actions/runs/31487484224) |
+| Gate local `--package` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; ZIP ad hoc verificado |
+
+Assim, a ausência de execução real do workflow, registrada no freeze abaixo,
+foi resolvida. A execução controlada de uma falha no CI continua `NOT-RUN`.
+
 ## Tarefas do Batch 3
 
 | Task | Commit | Resultado |
@@ -54,16 +70,18 @@ testes de replay/permissão/fallback, correção limitada do serviço necessári
 `dist/AirShortcut.zip` e `dist/AirShortcut.app` permanecem artefatos locais
 fora do commit.
 
-## Blockers e limites preservados
+## Blockers e limites preservados no freeze
 
-- `LICENSE`: BLOCKED até decisão explícita do proprietário.
+- `LICENSE`: BLOCKED no freeze; atualmente resolvido com `LICENSE` MIT no root.
 - Physical-support/UAT: NOT-RUN; não há PASS inferido de replay ou unit tests.
 - Magic Trackpad, sleep/wake, reconexão e false-positive observation: NOT-RUN.
 - Developer ID: BLOCKED; `security find-identity` encontrou 0 identidades
   válidas.
 - Notarização: `not-attempted`; sem evidência `notarytool`.
 - Staple, `stapler validate`, `spctl` e máquina limpa: NOT-RUN.
-- Workflow remoto do GitHub Actions: ainda requer evidência de execução real.
+- Workflow remoto do GitHub Actions: pendente no freeze; atualmente fechado pelos
+  runs `31486597406` e `31487484224`. A injeção de falha controlada continua
+  `NOT-RUN`.
 - `scripts/lessons.py`: restaurado a partir do asset canônico do
   `tlc-spec-driven`; quatro gaps reais foram registrados sem promover guidance
   antes de recorrência em outra feature.
@@ -80,4 +98,7 @@ O orquestrador deve fornecer ao Verifier fresco:
 3. testes e relatórios referenciados no checklist;
 4. o contrato de evidence-or-zero e sensor de mutação em scratch.
 
-O worker autor não executou o Verifier e não criou `validation.md`.
+No freeze histórico, o worker autor não executou o Verifier nem criou
+`validation.md`; o relatório independente foi produzido depois e permanece
+registrado em `validation.md`. Esta atualização pós-merge também não substitui
+uma nova rodada independente.
