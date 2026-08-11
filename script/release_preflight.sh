@@ -7,8 +7,13 @@ BUNDLE_ID="com.pedronazarito.AirShortcut"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARCHIVE_PATH="${1:-$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip}"
 TEMP_ROOT="$(/usr/bin/mktemp -d /private/tmp/TicoPreflight.XXXXXXXX)"
+DMG_ATTACHED=0
+DMG_MOUNT_POINT="$TEMP_ROOT/dmg-mount"
 
 cleanup() {
+  if [[ "$DMG_ATTACHED" -eq 1 ]]; then
+    /usr/bin/hdiutil detach "$DMG_MOUNT_POINT" >/dev/null 2>&1 || true
+  fi
   /bin/rm -rf -- "$TEMP_ROOT"
 }
 trap cleanup EXIT HUP INT TERM
@@ -22,14 +27,29 @@ fi
 EXTRACT_DIR="$TEMP_ROOT/extracted"
 EXTRACTED_APP="$EXTRACT_DIR/$PUBLIC_APP_NAME.app"
 /bin/mkdir -p "$EXTRACT_DIR"
-/usr/bin/ditto -x -k "$ARCHIVE_PATH" "$EXTRACT_DIR"
+if [[ "$ARCHIVE_PATH" == *.dmg ]]; then
+  /usr/bin/hdiutil verify "$ARCHIVE_PATH" >/dev/null
+  /bin/mkdir -p "$DMG_MOUNT_POINT"
+  /usr/bin/hdiutil attach \
+    -readonly \
+    -nobrowse \
+    -noautoopen \
+    -mountpoint "$DMG_MOUNT_POINT" \
+    "$ARCHIVE_PATH" >/dev/null
+  DMG_ATTACHED=1
+  EXTRACTED_APP="$DMG_MOUNT_POINT/$PUBLIC_APP_NAME.app"
+else
+  /usr/bin/ditto -x -k "$ARCHIVE_PATH" "$EXTRACT_DIR"
+fi
 
 if [[ ! -d "$EXTRACTED_APP" ]]; then
   echo "error: archive does not contain $PUBLIC_APP_NAME.app at its root" >&2
   exit 3
 fi
 
-/usr/bin/xattr -cr "$EXTRACTED_APP"
+if [[ "$ARCHIVE_PATH" != *.dmg ]]; then
+  /usr/bin/xattr -cr "$EXTRACTED_APP"
+fi
 /usr/bin/codesign --verify --deep --strict "$EXTRACTED_APP"
 
 INFO_PLIST="$EXTRACTED_APP/Contents/Info.plist"
@@ -70,7 +90,12 @@ fi
 
 echo "Tico release preflight"
 echo "archive: $ARCHIVE_PATH"
-echo "extracted bundle: temporary directory"
+if [[ "$ARCHIVE_PATH" == *.dmg ]]; then
+  echo "archive format: dmg (mounted read-only for verification)"
+else
+  echo "archive format: zip (extracted for verification)"
+fi
+echo "bundle source: temporary extraction or read-only mount"
 echo "public name: $DISPLAY_NAME"
 echo "technical executable: $EXECUTABLE_NAME_IN_BUNDLE"
 echo "bundle identifier: $BUNDLE_ID_IN_BUNDLE"

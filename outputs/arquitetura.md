@@ -30,7 +30,7 @@ ações. Ele pode atualizar o Laboratório e os diagnósticos sem disparar regra
 ## Compatibilidade
 
 - Bundle público: `Tico.app`.
-- Artefato: `Tico.zip`.
+- Artefatos: `Tico.zip` e `Tico.dmg`.
 - Executável: `AirShortcut`.
 - Bundle identifier: `com.pedronazarito.AirShortcut`.
 - Dados: `Application Support/AirShortcut`.

@@ -7,8 +7,11 @@ PRODUCT_NAME="AirShortcut"
 PUBLIC_APP_NAME="Tico"
 BUNDLE_ID="com.pedronazarito.AirShortcut"
 ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip"
+DMG_ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.dmg"
 TEST_LOG="$(/usr/bin/mktemp /private/tmp/Tico-ci-tests.XXXXXXXX)"
 VERIFY_DIR=""
+DMG_VERIFY_MOUNT=""
+DMG_ATTACHED=0
 SWIFT_ARGS=()
 
 if [[ "${AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX:-0}" == "1" ]]; then
@@ -16,6 +19,12 @@ if [[ "${AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX:-0}" == "1" ]]; then
 fi
 
 cleanup() {
+  if [[ "$DMG_ATTACHED" -eq 1 ]]; then
+    /usr/bin/hdiutil detach "$DMG_VERIFY_MOUNT" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$DMG_VERIFY_MOUNT" ]]; then
+    /bin/rm -rf -- "$DMG_VERIFY_MOUNT"
+  fi
   /bin/rm -f -- "$TEST_LOG"
   if [[ -n "$VERIFY_DIR" ]]; then
     /bin/rm -rf -- "$VERIFY_DIR"
@@ -56,6 +65,7 @@ if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   step "Building and verifying local ad hoc package"
   ./script/build_and_run.sh --package
   [[ -f "$ARCHIVE_PATH" ]]
+  [[ -f "$DMG_ARCHIVE_PATH" ]]
 
   VERIFY_DIR="$(/usr/bin/mktemp -d /private/tmp/Tico-ci-package.XXXXXXXX)"
   /usr/bin/ditto -x -k "$ARCHIVE_PATH" "$VERIFY_DIR"
@@ -69,6 +79,23 @@ if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   [[ "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$INFO_PLIST")" == "$BUNDLE_ID" ]]
   [[ -x "$EXTRACTED_APP/Contents/MacOS/$PRODUCT_NAME" ]]
   [[ -f "$EXTRACTED_APP/Contents/Resources/Tico.icns" ]]
+
+  step "Verifying Tico DMG"
+  /usr/bin/hdiutil verify "$DMG_ARCHIVE_PATH" >/dev/null
+  DMG_VERIFY_MOUNT="$(/usr/bin/mktemp -d /private/tmp/Tico-ci-dmg.XXXXXXXX)"
+  /usr/bin/hdiutil attach \
+    -readonly \
+    -nobrowse \
+    -noautoopen \
+    -mountpoint "$DMG_VERIFY_MOUNT" \
+    "$DMG_ARCHIVE_PATH" >/dev/null
+  DMG_ATTACHED=1
+  DMG_EXTRACTED_APP="$DMG_VERIFY_MOUNT/$PUBLIC_APP_NAME.app"
+  /usr/bin/codesign --verify --deep --strict "$DMG_EXTRACTED_APP"
+  /usr/bin/plutil -lint "$DMG_EXTRACTED_APP/Contents/Info.plist"
+  [[ -L "$DMG_VERIFY_MOUNT/Applications" ]]
+  /usr/bin/hdiutil detach "$DMG_VERIFY_MOUNT" >/dev/null
+  DMG_ATTACHED=0
 fi
 
 TEST_COUNT="$(/usr/bin/sed -nE 's/.*Executed ([0-9]+) tests?.*/\1/p' "$TEST_LOG" | /usr/bin/tail -n 1)"
@@ -82,6 +109,7 @@ echo "Swift tests: $TEST_COUNT"
 echo "Local app path: $ROOT_DIR/dist/$PUBLIC_APP_NAME.app"
 if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   echo "Verified ad hoc archive: $ARCHIVE_PATH"
+  echo "Verified DMG: $DMG_ARCHIVE_PATH"
 else
   echo "Package verification: not requested (use --package)"
 fi

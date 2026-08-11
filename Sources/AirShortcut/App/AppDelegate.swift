@@ -4,8 +4,13 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let lifecycle: any ApplicationLifecycleControlling
 
-    init(lifecycle: (any ApplicationLifecycleControlling)? = nil) {
-        self.lifecycle = lifecycle ?? ApplicationLifecycleService()
+    override init() {
+        self.lifecycle = ApplicationLifecycleService()
+        super.init()
+    }
+
+    init(lifecycle: any ApplicationLifecycleControlling) {
+        self.lifecycle = lifecycle
         super.init()
     }
 

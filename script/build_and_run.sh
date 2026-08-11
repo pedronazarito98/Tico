@@ -17,17 +17,13 @@ DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$PUBLIC_APP_NAME.app"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 APP_ARCHIVE="$DIST_DIR/$PUBLIC_APP_NAME.zip"
+DMG_ARCHIVE="$DIST_DIR/$PUBLIC_APP_NAME.dmg"
 LEGACY_APP_BUNDLE="$DIST_DIR/$EXECUTABLE_NAME.app"
 LEGACY_APP_ARCHIVE="$DIST_DIR/$EXECUTABLE_NAME.zip"
 RESOURCE_BUNDLE_NAME="${PRODUCT_NAME}_${PRODUCT_NAME}.bundle"
 ICON_FILE_NAME="Tico.icns"
 TEMP_ROOT="$(/usr/bin/mktemp -d /private/tmp/Tico.XXXXXXXX)"
 /bin/chmod 700 "$TEMP_ROOT"
-cleanup() {
-  /bin/rm -rf -- "$TEMP_ROOT"
-}
-trap cleanup EXIT HUP INT TERM
-
 STAGING_DIR="$TEMP_ROOT/staging"
 STAGED_APP_BUNDLE="$STAGING_DIR/$PUBLIC_APP_NAME.app"
 STAGED_CONTENTS="$STAGED_APP_BUNDLE/Contents"
@@ -39,6 +35,17 @@ RUN_DIR="$TEMP_ROOT/run"
 RUN_APP_BUNDLE="$RUN_DIR/$PUBLIC_APP_NAME.app"
 VERIFY_DIR="$TEMP_ROOT/verify"
 VERIFY_APP_BUNDLE="$VERIFY_DIR/$PUBLIC_APP_NAME.app"
+DMG_STAGING_DIR="$TEMP_ROOT/dmg-staging"
+DMG_VERIFY_MOUNT="$TEMP_ROOT/dmg-mount"
+DMG_ATTACHED=0
+
+cleanup() {
+  if [[ "$DMG_ATTACHED" -eq 1 ]]; then
+    /usr/bin/hdiutil detach "$DMG_VERIFY_MOUNT" >/dev/null 2>&1 || true
+  fi
+  /bin/rm -rf -- "$TEMP_ROOT"
+}
+trap cleanup EXIT HUP INT TERM
 
 if [[ "$MODE" != "--package" && "$MODE" != "package" \
       && "$MODE" != "--release-package" && "$MODE" != "release-package" ]]; then
@@ -146,15 +153,45 @@ rm -rf "$LEGACY_APP_BUNDLE"
 rm -rf "$DIST_DIR/.signed"
 rm -f "$APP_ARCHIVE"
 rm -f "$LEGACY_APP_ARCHIVE"
+rm -f "$DMG_ARCHIVE"
 mkdir -p "$DIST_DIR"
-# The visible .app is convenient for local use. The zip is the distributable
-# artifact because synced folders can reattach FinderInfo to bundle directories.
+# The visible .app is convenient for local use. ZIP and DMG are distributable
+# artifacts; the DMG also provides a standard drag-to-Applications flow.
 /usr/bin/ditto --norsrc "$STAGED_APP_BUNDLE" "$APP_BUNDLE"
 /usr/bin/ditto -c -k --norsrc --keepParent "$STAGED_APP_BUNDLE" "$APP_ARCHIVE"
 /usr/bin/xattr -cr "$APP_BUNDLE"
 /usr/bin/ditto -x -k "$APP_ARCHIVE" "$VERIFY_DIR"
 /usr/bin/xattr -cr "$VERIFY_APP_BUNDLE"
 codesign --verify --deep --strict "$VERIFY_APP_BUNDLE"
+
+# Build a read-only compressed disk image with the conventional Applications
+# alias. The app inside is copied from the already verified staging bundle, so
+# the DMG does not change its code signature or compatibility identity.
+mkdir -p "$DMG_STAGING_DIR"
+/usr/bin/ditto --norsrc "$STAGED_APP_BUNDLE" "$DMG_STAGING_DIR/$PUBLIC_APP_NAME.app"
+/bin/ln -s /Applications "$DMG_STAGING_DIR/Applications"
+/usr/bin/hdiutil create \
+  -quiet \
+  -volname "$PUBLIC_APP_NAME" \
+  -srcfolder "$DMG_STAGING_DIR" \
+  -format UDZO \
+  -ov \
+  "$DMG_ARCHIVE"
+/usr/bin/hdiutil verify "$DMG_ARCHIVE" >/dev/null
+/bin/mkdir -p "$DMG_VERIFY_MOUNT"
+/usr/bin/hdiutil attach \
+  -readonly \
+  -nobrowse \
+  -noautoopen \
+  -mountpoint "$DMG_VERIFY_MOUNT" \
+  "$DMG_ARCHIVE" >/dev/null
+DMG_ATTACHED=1
+DMG_VERIFY_APP="$DMG_VERIFY_MOUNT/$PUBLIC_APP_NAME.app"
+codesign --verify --deep --strict "$DMG_VERIFY_APP"
+/usr/bin/plutil -lint "$DMG_VERIFY_APP/Contents/Info.plist"
+[[ -L "$DMG_VERIFY_MOUNT/Applications" ]]
+/usr/bin/hdiutil detach "$DMG_VERIFY_MOUNT" >/dev/null
+DMG_ATTACHED=0
 open_app() {
   # Launch Services may attach more metadata to the opened bundle. Run from a
   # clean temporary copy so the distributable zip stays untouched.

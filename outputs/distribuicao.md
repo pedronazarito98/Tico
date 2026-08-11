@@ -6,10 +6,11 @@ O projeto está no modo **preview técnico open source**. A distribuição
 recomendada neste estágio é publicar o código e orientar pessoas técnicas a
 buildarem localmente.
 
-O projeto gera `dist/Tico.app` e `dist/Tico.zip`. Sem uma identidade Developer
-ID configurada, ambos recebem assinatura ad hoc e servem somente para
-desenvolvimento e QA local. Esse ZIP não deve ser apresentado como release
-binária pronta para usuários finais.
+O projeto gera `dist/Tico.app`, `dist/Tico.zip` e `dist/Tico.dmg`. Sem uma
+identidade Developer ID configurada, o app recebe assinatura ad hoc e os dois
+arquivos de distribuição servem somente para desenvolvimento e QA local. O
+DMG facilita a instalação por arrastar para Aplicativos, mas não remove os
+alertas do Gatekeeper nem equivale a notarização.
 
 Se no futuro houver uma release binária pública, o caminho previsto continua
 sendo distribuição direta fora da Mac App Store, porque a captura avançada usa
@@ -18,9 +19,10 @@ um framework privado da Apple.
 ## O que já está automatizado
 
 - build otimizado com `./script/build_and_run.sh --release-package`;
+- geração do ZIP e do DMG com verificação estrutural e de assinatura;
 - Hardened Runtime e timestamp quando uma identidade real é informada;
 - envio, espera, stapling e validações em `script/notarize_release.sh`;
-- verificação local do ZIP com `script/release_preflight.sh`.
+- verificação local do ZIP ou DMG com `script/release_preflight.sh`.
 
 ## Se houver release binária pública
 
@@ -69,4 +71,5 @@ O pacote ad hoc pode ser inspecionado com:
 
 ```sh
 ./script/release_preflight.sh dist/Tico.zip
+./script/release_preflight.sh dist/Tico.dmg
 ```

@@ -64,9 +64,10 @@ Para executar o gate completo:
 Na primeira execução, o macOS pode pedir Monitoramento de Entrada e, dependendo
 da automação, Acessibilidade.
 
-O projeto também consegue gerar `dist/Tico.zip`, mas esse pacote usa assinatura
-ad hoc quando não há Developer ID instalado. Ele serve para desenvolvimento e
-QA local, não como release pública pronta para usuários finais.
+O projeto também gera `dist/Tico.zip` e `dist/Tico.dmg`. O DMG oferece o fluxo
+convencional de arrastar o Tico para Aplicativos, mas usa a mesma assinatura do
+app: ad hoc quando não há Developer ID instalado. ZIP e DMG servem para preview
+técnico, desenvolvimento e QA local; não são releases públicas notarizadas.
 
 ## Documentação
 
