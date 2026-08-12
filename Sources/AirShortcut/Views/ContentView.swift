@@ -17,9 +17,15 @@ struct ContentView: View {
         NavigationSplitView {
             SidebarView(
                 selection: sectionBinding,
+                selectedRuleID: $selectedRuleID,
+                ruleItems: sidebarRuleItems,
                 enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
                 totalRuleCount: shortcutStore.rules.count,
-                captureIsRunning: controller.captureIsRunning
+                captureIsRunning: controller.captureIsRunning,
+                onSetRuleEnabled: { id, isEnabled in
+                    try shortcutStore.setEnabled(isEnabled, for: id)
+                },
+                onDeleteRule: deleteRule
             )
         } detail: {
             detail
@@ -228,6 +234,18 @@ struct ContentView: View {
         selectedSection
     }
 
+    private var sidebarRuleItems: [RuleSidebarItem] {
+        shortcutStore.rules.map { rule in
+            RuleSidebarItem(
+                id: rule.id,
+                name: rule.name,
+                detail: "\(rule.trigger.displayName) · \(contextName(for: rule))",
+                isEnabled: rule.isEnabled,
+                hasConflict: !shortcutStore.conflicts(for: rule).isEmpty
+            )
+        }
+    }
+
     private func handle(_ command: AppCommand) {
         switch command {
         case .openMainWindow:
@@ -309,10 +327,24 @@ struct ContentView: View {
     private func deleteSelectedRule() {
         guard currentSection == .rules, let selectedRuleID else { return }
         do {
-            try shortcutStore.delete(id: selectedRuleID)
-            self.selectedRuleID = shortcutStore.rules.first?.id
+            try deleteRule(selectedRuleID)
         } catch {
             controller.presentedError = error.localizedDescription
+        }
+    }
+
+    private func contextName(for rule: ShortcutRule) -> String {
+        if let profileID = rule.profileID,
+           let profile = shortcutStore.profiles.first(where: { $0.id == profileID }) {
+            return profile.name
+        }
+        return rule.scope.displayName(applications: controller.availableApplications)
+    }
+
+    private func deleteRule(_ id: ShortcutRule.ID) throws {
+        try shortcutStore.delete(id: id)
+        if selectedRuleID == id {
+            selectedRuleID = shortcutStore.rules.first?.id
         }
     }
 
