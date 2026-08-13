@@ -18,7 +18,9 @@ Paralelo mental adotado:
 
 ## Estado observado
 
-- `Package.swift` reúne o app em um target executável e um target C auxiliar.
+- Após a AD-012, `Package.swift` mantém o código do app no target `Tico`, o
+  bridge no target C auxiliar e um launcher executável mínimo. O App Target
+  Xcode consome o produto local `TicoApplication`.
 - `RuleEditorView.swift`, `AppController.swift` e `ShortcutStore.swift` eram os principais seams da modernização; as responsabilidades foram separadas nas fases T04–T16 e as fachadas compatíveis permanecem.
 - `ContentView` e `Commands` usam `AppCommandRouter`; notificações internas usam o namespace `Tico.*`.
 - O projeto já possui protocolos e injeção em serviços, stores e replay; esses padrões devem ser reutilizados.
@@ -34,8 +36,8 @@ Paralelo mental adotado:
   composition root.
 - O shell usa comandos tipados e `ApplicationLifecycleService`; as views não
   importam nem referenciam AppKit.
-- A avaliação T20 concluiu que `TicoCore` não deve ser extraído nesta
-  fase; `Package.swift` permanece sem target Swift adicional.
+- A avaliação T20 concluiu que `TicoCore` não deve ser extraído nesta fase. A
+  AD-012 adicionou apenas um target launcher, não um novo módulo de domínio.
 - As validações manuais de editor, shell, captura, automação, laboratório,
   trackpad, TCC, sleep/wake, assinatura e notarização foram declaradas PASS
   pelo usuário em 2026-08-10; o agente não as reproduziu nesta sessão.
@@ -60,6 +62,8 @@ Paralelo mental adotado:
    com consumo único e owner explícito.
 4. A auditoria de concorrência corrigiu as races proprietárias de T13–T15,
    sem ativar Swift 6 estrito global.
+5. A AD-012 separou o `@main` dos hosts SwiftPM e Xcode. Os dois chamam
+   `TicoApp.main()` e todo o código de produto permanece no módulo `Tico`.
 
 ## Gate de entrada para Execute (histórico)
 

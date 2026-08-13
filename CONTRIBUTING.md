@@ -8,7 +8,8 @@ posterior compatível. O deployment target do aplicativo é macOS 26.
 
 ## Antes de abrir um pull request
 
-1. Mantenha a mudança focada e preserve a arquitetura SwiftPM existente.
+1. Mantenha a mudança focada e preserve a arquitetura compartilhada entre
+   SwiftPM e o host fino do Xcode.
 2. Execute:
 
    ```sh
@@ -27,13 +28,15 @@ repository; coordenadores devem declarar ownership e isolamento. Comandos de
 menu usam `AppCommandRouter`, e operações que exigem AppKit ficam nos
 adaptadores de ciclo de vida ou serviços de plataforma.
 
-O target SwiftPM é `Tico`, com o bridge C
-`TicoMultitouchBridge`. Não extraia `TicoCore` nem adicione
-dependências sem uma análise de grafo e um gate próprios.
+O módulo de implementação SwiftPM é `Tico`, com o bridge C
+`TicoMultitouchBridge`. O executável SwiftPM `TicoLauncher` e o App Target
+Xcode `TicoApp` são apenas composition roots: ambos iniciam `TicoApp`, sem
+duplicar código do produto. Não extraia `TicoCore` nem adicione dependências
+sem uma análise de grafo e um gate próprios.
 
 O gate automatizado cobre compilação, testes, regressões de segurança,
-replay e empacotamento ad hoc em ZIP e DMG no macOS 26. Ele não comprova
-hardware físico, Developer ID ou notarização.
+replay, o bundle do target Xcode e empacotamento ad hoc em ZIP e DMG no macOS
+26. Ele não comprova hardware físico, Developer ID ou notarização.
 Os metadados do bundle vêm de `version.env`; mudanças de release devem atualizar
 `MARKETING_VERSION` e sempre incrementar `BUILD_NUMBER`.
 

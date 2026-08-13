@@ -53,11 +53,15 @@ bash -n script/create_dmg.sh
 bash -n script/load_version.sh
 bash -n script/ci_verify.sh
 bash -n script/release_preflight.sh
+bash -n script/verify_xcode_app.sh
 bash -n script/notarize_release.sh
 bash -n script/validate_hardware_report.sh
 
 step "Building Tico (SwiftPM product Tico)"
 swift build ${SWIFT_ARGS[@]+"${SWIFT_ARGS[@]}"} --product "$PRODUCT_NAME"
+
+step "Building and verifying thin Xcode app target"
+./script/verify_xcode_app.sh
 
 step "Running complete Swift test suite"
 swift test ${SWIFT_ARGS[@]+"${SWIFT_ARGS[@]}"} 2>&1 | /usr/bin/tee "$TEST_LOG"
@@ -82,6 +86,7 @@ if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   [[ "$(/usr/bin/plutil -extract CFBundleExecutable raw "$INFO_PLIST")" == "$PRODUCT_NAME" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$INFO_PLIST")" == "$BUNDLE_ID" ]]
   [[ "$(/usr/bin/plutil -extract LSMinimumSystemVersion raw "$INFO_PLIST")" == "$MIN_SYSTEM_VERSION" ]]
+  [[ "$(/usr/bin/plutil -extract LSApplicationCategoryType raw "$INFO_PLIST")" == "public.app-category.productivity" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleShortVersionString raw "$INFO_PLIST")" == "$MARKETING_VERSION" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleVersion raw "$INFO_PLIST")" == "$BUILD_NUMBER" ]]
   [[ -x "$EXTRACTED_APP/Contents/MacOS/$PRODUCT_NAME" ]]
@@ -117,6 +122,7 @@ fi
 
 step "Automated verification summary"
 echo "Swift tests: $TEST_COUNT"
+echo "Xcode app target: verified"
 echo "Local app path: $ROOT_DIR/dist/$PUBLIC_APP_NAME.app"
 if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   echo "Verified ad hoc archive: $ARCHIVE_PATH"

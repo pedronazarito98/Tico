@@ -4,9 +4,10 @@ Data da rodada: `2026-08-13`.
 
 ## Resultado
 
-O código, o manifesto SwiftPM e os artefatos locais estão configurados para
-executar exclusivamente no macOS 26 ou posterior. A auditoria automatizada e a
-auditoria visual local passaram sem falhas conhecidas no escopo executado.
+O código, o manifesto SwiftPM, o App Target Xcode e os artefatos locais estão
+configurados para executar exclusivamente no macOS 26 ou posterior. A
+auditoria automatizada e a auditoria visual local passaram sem falhas
+conhecidas no escopo executado.
 
 A compatibilidade física completa ainda não pode ser declarada: 22 cenários da
 [matriz manual](macos-26-manual-matrix.md) permanecem `NOT-RUN` porque exigem
@@ -27,9 +28,12 @@ atualização entre builds. Nenhum desses itens foi inferido a partir de testes.
 | SwiftPM | `PASS` | plataforma `macos 26.0` no manifesto resolvido |
 | Executável Tico | `PASS` | `LC_BUILD_VERSION minos 26.0` |
 | Executável de testes | `PASS` | `LC_BUILD_VERSION minos 26.0` |
+| App Target Xcode Debug | `PASS` | `Tico.app`, scheme `Tico`, `LSMinimumSystemVersion = 26.0` |
+| Archive Xcode Release | `PASS` | universal `arm64` + `x86_64`, ambos com `minos 26.0` e Hardened Runtime |
 | Bundle `.app` | `PASS` | `LSMinimumSystemVersion = 26.0` |
 | Scripts de pacote e preflight | `PASS` | validam explicitamente `26.0` |
-| CI | `PASS` remoto | run `31729757980` concluído no runner `macos-26` |
+| CI da AD-011 | `PASS` remoto | run `31729757980` concluído no runner `macos-26` |
+| CI da AD-012 | `PASS` remoto | run `31741121816` no commit `7b57e4f`, incluindo o gate Xcode completo |
 
 A linha `Target Platform: arm64e-apple-macos14.0` emitida pela biblioteca
 Swift Testing não representa o deployment target do produto. A inspeção do
@@ -46,12 +50,30 @@ TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
 Resultados:
 
 - `PASS`: build SwiftPM;
+- `PASS`: App Target Xcode Debug e Archive Release universal;
+- `PASS`: identidade, versão, categoria, ícone, resources, assinatura ad hoc
+  estrita, Hardened Runtime e mínimo `26.0` no host Xcode;
 - `PASS`: 125 testes, zero falhas;
 - `PASS`: 8 regressões de segurança, zero falhas;
 - `PASS`: ZIP e DMG ad hoc, assinatura profunda estrita e metadados;
 - `PASS`: versão mínima `26.0` nos artefatos;
-- `PASS`: GitHub Actions no macOS `26.5.2`, Xcode `26.6` e Swift `6.3.3`;
+- `PASS` histórico da AD-011: GitHub Actions no macOS `26.5.2`, Xcode
+  `26.6` e Swift `6.3.3`;
+- `PASS` remoto para AD-012 no commit `7b57e4f`: run `31741121816`;
 - `NOT-RUN`: Developer ID, notarização, staple, Gatekeeper e máquina limpa.
+
+## Runtime do host Xcode
+
+O `.app` Debug do target Xcode foi copiado para uma área temporária, recebeu
+bundle identifier exclusivo e executou com diretório home isolado. O processo
+abriu uma janela real de camada 0, com título `Visão geral`, e foi encerrado e
+removido depois da inspeção. Isso confirma que o launcher Xcode inicia o mesmo
+`TicoApp` sem reutilizar os dados do Tico instalado.
+
+A tentativa de screenshot dessa janela retornou `could not create image from
+window`; portanto, screenshot do novo host fica `NOT-RUN`, sem ser inferido do
+processo. A auditoria visual abaixo permanece válida para a árvore SwiftUI
+compartilhada, que não foi copiada ou alterada pelos launchers.
 
 ## Auditoria visual
 

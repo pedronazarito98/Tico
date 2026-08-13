@@ -28,7 +28,10 @@ Criar limites claros e verificáveis entre interface, estado de edição, aplica
 
 1. A modernização será incremental e cada etapa deverá manter o app compilável.
 2. `ObservableObject`, `@StateObject` e `@ObservedObject` continuam válidos; qualquer migração de Observation será uma decisão separada.
-3. Primeiro serão criadas fronteiras dentro do target atual. Novos targets SwiftPM só serão introduzidos depois que o grafo de dependências estiver desacoplado e validado.
+3. Fronteiras de domínio permanecem dentro do target de implementação atual;
+   novos módulos internos só serão introduzidos depois que o grafo estiver
+   desacoplado e validado. Targets launcher podem existir como fronteiras de
+   entrega desde que não dupliquem código da aplicação.
 4. A iniciativa original preservou os contratos técnicos existentes; a migração nominal para `Tico` foi aprovada e executada separadamente.
 5. Testes existentes podem ser ajustados junto da responsabilidade movida, mas não enfraquecidos ou removidos. Se uma tarefa realmente exigir um novo arquivo de teste, ela deverá parar e pedir aprovação.
 6. Nenhum commit, push, PR ou publicação é autorizado apenas pela existência desta spec.
@@ -85,6 +88,13 @@ Criar limites claros e verificáveis entre interface, estado de edição, aplica
 **WHEN** a arquitetura implementada divergir da documentação  
 **THEN** `outputs/arquitetura.md`, as regras dos agentes e esta spec **SHALL** ser atualizadas na mesma fase, sem documentar uma estrutura ainda inexistente como concluída.
 
+### ARCH-11 — Hosts finos e código compartilhado
+
+**WHEN** o app for compilado por SwiftPM ou Xcode
+**THEN** cada host **SHALL** conter somente seu entry point e iniciar o mesmo
+`TicoApp` do módulo `Tico`, preservando identidade, resources e deployment
+target sem duplicar implementação.
+
 ## Critérios de aceite
 
 - As regras gerais e especializadas existem, têm escopo claro e não se contradizem.
@@ -94,6 +104,8 @@ Criar limites claros e verificáveis entre interface, estado de edição, aplica
 - O número de testes não diminui sem justificativa e aprovação explícitas.
 - A validação manual cobre criação, edição, conflito, importação/exportação, captura e automação; hardware continua sendo um gate separado.
 - Nenhuma credencial, sessão, log bruto, banco de autenticação, gravação pessoal ou identificador sensível é incorporado como evidência.
+- O produto SwiftPM e o App Target Xcode compilam no mesmo gate e geram a
+  identidade pública `Tico` com mínimo macOS 26.
 
 ## Rastreabilidade
 
@@ -109,3 +121,4 @@ Criar limites claros e verificáveis entre interface, estado de edição, aplica
 | ARCH-08 | Auditoria de concorrência | T03, T13–T16, T22 |
 | ARCH-09 | Matriz de validação | Todas; fechamento em T22 |
 | ARCH-10 | Documentação final | T21 |
+| ARCH-11 | Hosts finos e package local | AD-012 |

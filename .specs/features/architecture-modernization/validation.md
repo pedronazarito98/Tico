@@ -526,3 +526,24 @@ O merge foi confirmado localmente e no remoto antes deste registro:
 Os checks remotos fecham a evidência que estava pendente no snapshot anterior.
 Eles não alteram os limites: hardware físico, TCC em máquina real, assinatura
 Developer ID, notarização e execução em máquina limpa permanecem gates separados.
+
+## AD-012 — App Target Xcode fino (2026-08-13)
+
+A alteração posterior às tarefas T01–T22 separou somente os entry points. O
+módulo de implementação continua sendo `Tico`; `TicoLauncher` produz o
+executável SwiftPM e `TicoApp`/`TicoXcodeApp` produz o bundle pelo Xcode. Os
+dois hosts chamam o mesmo `TicoApp.main()`.
+
+| Evidência | Resultado |
+|---|---|
+| `git diff --check` | PASS |
+| `swift package describe` | PASS — módulo `Tico`, produto `TicoApplication`, executável `Tico` via `TicoLauncher` |
+| `xcodebuild -list -project Tico.xcodeproj` | PASS — target `TicoApp`, scheme compartilhado `Tico` |
+| `./script/verify_xcode_app.sh` | PASS — Debug, Archive Release universal, identidade, resources, categoria, assinatura estrita, Hardened Runtime e `minos 26.0` |
+| Runtime isolado do host Xcode | PASS — processo abriu janela de camada 0 intitulada `Visão geral`; screenshot `NOT-RUN` por falha do `screencapture` |
+| `TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` | PASS — 125 testes, 8 regressões de segurança, Xcode Debug/Archive, ZIP e DMG |
+| CI remoto da AD-012 | PASS no commit `7b57e4f` — run [31741121816](https://github.com/pedronazarito98/Tico/actions/runs/31741121816), gate completo em 2m36s |
+
+O novo ARCH-11 fica `PASS` local: não há cópia das views, stores, serviços ou
+resources. Hardware, TCC, Developer ID, notarização, Gatekeeper e máquina limpa
+continuam fora da evidência automatizada.

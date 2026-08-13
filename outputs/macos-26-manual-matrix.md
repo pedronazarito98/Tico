@@ -34,9 +34,13 @@ executado na mesma sessão para `PASS` ou `FAIL`.
 | Plataforma declarada pelo SwiftPM | `PASS` | `macos 26.0` em `swift package dump-package` |
 | Deployment target do executável | `PASS` | `LC_BUILD_VERSION minos 26.0`, SDK `26.5` |
 | Deployment target do bundle | `PASS` | `LSMinimumSystemVersion = 26.0` |
+| App Target Xcode Debug | `PASS` | bundle, identidade, versão, ícone, resources, categoria e assinatura estrita verificados |
+| Archive Xcode Release | `PASS` | universal `arm64` + `x86_64`, `minos 26.0` e Hardened Runtime |
+| Runtime isolado do host Xcode | `PASS` | processo abriu janela `Visão geral` com bundle e home temporários |
 | Build, suíte e regressões de segurança | `PASS` | 125 testes e 8 regressões de segurança, zero falhas |
 | ZIP e DMG ad hoc | `PASS` | assinatura estrita, Info.plist e DMG verificados |
-| Workflow do GitHub Actions | `PASS` | run `31729757980` no `macos-26`: macOS 26.5.2, Xcode 26.6, 125 testes, ZIP e DMG aprovados |
+| Workflow do GitHub Actions da AD-011 | `PASS` | run `31729757980` no `macos-26`: macOS 26.5.2, Xcode 26.6, 125 testes, ZIP e DMG aprovados |
+| Workflow do GitHub Actions da AD-012 | `PASS` | run `31741121816` no commit `7b57e4f`: gate Xcode completo aprovado em 2m36s |
 
 A inspeção visual usou uma cópia temporária e isolada do app, sem reutilizar a
 identidade, os dados ou as permissões do Tico instalado. A aparência escura foi

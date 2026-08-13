@@ -15,7 +15,9 @@ mantém interface, permissões e hardware separados dos gates automatizados.
 
 Confirmar:
 
-- build SwiftPM e suíte completa sem falhas;
+- builds SwiftPM e do App Target Xcode sem falhas;
+- `Tico.app` do Xcode preserva versão, bundle identifier, ícone, resources,
+  assinatura ad hoc estrita e deployment target `26.0`;
 - regressões de segurança sem falhas;
 - `dist/Tico.zip` contém `Tico.app`;
 - app extraído passa `codesign --verify --deep --strict`;
