@@ -2,7 +2,7 @@
 
 **Status:** implementação T01–T22 concluída; gates automatizados e validações manuais informadas pelo usuário registrados
 **Feature key:** `architecture-modernization`  
-**Stack preservada:** SwiftUI, Swift Package Manager e macOS 14+
+**Stack atual:** SwiftUI, Swift Package Manager e macOS 26+; o mínimo foi elevado posteriormente pela AD-011
 
 ## Problema
 

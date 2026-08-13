@@ -6,6 +6,7 @@ PACKAGE_MODE=0
 PRODUCT_NAME="Tico"
 PUBLIC_APP_NAME="Tico"
 BUNDLE_ID="com.pedronazarito.Tico"
+MIN_SYSTEM_VERSION="26.0"
 source "$ROOT_DIR/script/load_version.sh" "$ROOT_DIR"
 ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip"
 DMG_ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.dmg"
@@ -80,6 +81,7 @@ if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   [[ "$(/usr/bin/plutil -extract CFBundleDisplayName raw "$INFO_PLIST")" == "$PUBLIC_APP_NAME" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleExecutable raw "$INFO_PLIST")" == "$PRODUCT_NAME" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$INFO_PLIST")" == "$BUNDLE_ID" ]]
+  [[ "$(/usr/bin/plutil -extract LSMinimumSystemVersion raw "$INFO_PLIST")" == "$MIN_SYSTEM_VERSION" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleShortVersionString raw "$INFO_PLIST")" == "$MARKETING_VERSION" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleVersion raw "$INFO_PLIST")" == "$BUILD_NUMBER" ]]
   [[ -x "$EXTRACTED_APP/Contents/MacOS/$PRODUCT_NAME" ]]

@@ -42,7 +42,7 @@ Paralelo mental adotado:
 
 ## Restrições confirmadas
 
-- Manter SwiftUI, SwiftPM e macOS 14+.
+- Manter SwiftUI, SwiftPM e macOS 26+ conforme a decisão posterior AD-011.
 - Preservar comportamento e contratos persistidos.
 - Não adicionar dependências nem iniciar uma reescrita.
 - Não criar novos testes ou mocks sem pedido explícito.

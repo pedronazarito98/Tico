@@ -82,7 +82,7 @@ gestos e segue as decisões AD-001/AD-002/AD-003.
 - **Location**: `script/ci_verify.sh`.
 - **Interface**: `./script/ci_verify.sh [--package]`; exit code zero somente
   quando todos os comandos exigidos passam.
-- **Dependencies**: Swift 5.10/macOS 14+, `Package.swift`, build script.
+- **Dependencies**: Swift 5.10/macOS 26+, `Package.swift`, build script.
 - **Reuses**: `swift build`, `swift test`, `build_and_run.sh --package`.
 
 ### GitHub workflow

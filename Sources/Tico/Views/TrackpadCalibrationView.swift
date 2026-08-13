@@ -7,74 +7,93 @@ struct TrackpadCalibrationView: View {
 
     var body: some View {
         ScrollView {
-            HStack(alignment: .top, spacing: 20) {
-                Form {
-                    Section("Gesto") {
-                        Picker("Calibrar", selection: $selectedGesture) {
-                            ForEach(TrackpadGesture.allCases, id: \.self) { gesture in
-                                Text(gesture.displayName).tag(gesture)
-                            }
-                        }
-                        Picker("Preset", selection: presetBinding) {
-                            ForEach(GestureCalibrationPreset.allCases, id: \.self) { preset in
-                                Text(preset.displayName).tag(preset)
-                            }
-                        }
-                    }
-
-                    Section("Limiar") {
-                        sliderRow(
-                            "Sensibilidade",
-                            value: calibrationBinding(\.sensitivity),
-                            range: 0.25...2,
-                            format: { $0.formatted(.number.precision(.fractionLength(2))) }
-                        )
-                        sliderRow(
-                            "Confiança mínima",
-                            value: calibrationBinding(\.confidenceThreshold),
-                            range: 0.1...0.95,
-                            format: { $0.formatted(.percent.precision(.fractionLength(0))) }
-                        )
-                    }
-
-                    Section("Velocidade") {
-                        optionalVelocityRow(
-                            "Mínima",
-                            value: calibration.minimumVelocity,
-                            onChange: updateMinimumVelocity
-                        )
-                        optionalVelocityRow(
-                            "Máxima",
-                            value: calibration.maximumVelocity,
-                            onChange: updateMaximumVelocity
-                        )
-                    }
-
-                    Section {
-                        Button("Restaurar padrão equilibrado") {
-                            store.applyPreset(.balanced, to: selectedGesture)
-                        }
-                    }
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 16) {
+                    calibrationForm
+                        .frame(minWidth: 340, maxWidth: .infinity)
+                    previewPane
+                        .frame(minWidth: 280, idealWidth: 320, maxWidth: 380)
                 }
-                .formStyle(.grouped)
-                .frame(minWidth: 430)
+                .frame(minWidth: 680)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Picker("Visualizar região", selection: $highlightedRegion) {
-                        ForEach(TrackpadRegion.allCases, id: \.self) { region in
-                            Text(region.displayName).tag(region)
-                        }
-                    }
-                    TrackpadCanvasView(snapshot: nil, highlightedRegion: highlightedRegion)
-                        .frame(width: 380, height: 280)
-                    Text("As regiões de borda, canto e grade podem ser usadas tanto no início quanto no final de uma regra.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 16) {
+                    calibrationForm
+                    previewPane
+                        .frame(maxWidth: 420)
                 }
-                .padding(.top, 18)
             }
             .padding(8)
         }
+    }
+
+    private var calibrationForm: some View {
+        Form {
+            Section("Gesto") {
+                Picker("Calibrar", selection: $selectedGesture) {
+                    ForEach(TrackpadGesture.allCases, id: \.self) { gesture in
+                        Text(gesture.displayName).tag(gesture)
+                    }
+                }
+                Picker("Preset", selection: presetBinding) {
+                    ForEach(GestureCalibrationPreset.allCases, id: \.self) { preset in
+                        Text(preset.displayName).tag(preset)
+                    }
+                }
+            }
+
+            Section("Limiar") {
+                sliderRow(
+                    "Sensibilidade",
+                    value: calibrationBinding(\.sensitivity),
+                    range: 0.25...2,
+                    format: { $0.formatted(.number.precision(.fractionLength(2))) }
+                )
+                sliderRow(
+                    "Confiança mínima",
+                    value: calibrationBinding(\.confidenceThreshold),
+                    range: 0.1...0.95,
+                    format: { $0.formatted(.percent.precision(.fractionLength(0))) }
+                )
+            }
+
+            Section("Velocidade") {
+                optionalVelocityRow(
+                    "Mínima",
+                    value: calibration.minimumVelocity,
+                    onChange: updateMinimumVelocity
+                )
+                optionalVelocityRow(
+                    "Máxima",
+                    value: calibration.maximumVelocity,
+                    onChange: updateMaximumVelocity
+                )
+            }
+
+            Section {
+                Button("Restaurar padrão equilibrado") {
+                    store.applyPreset(.balanced, to: selectedGesture)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var previewPane: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Picker("Visualizar região", selection: $highlightedRegion) {
+                ForEach(TrackpadRegion.allCases, id: \.self) { region in
+                    Text(region.displayName).tag(region)
+                }
+            }
+            TrackpadCanvasView(snapshot: nil, highlightedRegion: highlightedRegion)
+                .aspectRatio(19.0 / 14.0, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+            Text("As regiões de borda, canto e grade podem ser usadas tanto no início quanto no final de uma regra.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.top, 18)
     }
 
     private var calibration: GestureCalibration {
@@ -114,7 +133,7 @@ struct TrackpadCalibrationView: View {
         LabeledContent(title) {
             HStack {
                 Slider(value: value, in: range)
-                    .frame(width: 190)
+                    .frame(minWidth: 100, idealWidth: 190)
                 Text(format(value.wrappedValue))
                     .monospacedDigit()
                     .frame(width: 54, alignment: .trailing)

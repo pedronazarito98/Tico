@@ -31,14 +31,18 @@ Tudo fica no Mac: regras, calibrações e histórico são locais.
 
 ## Estado atual
 
-O Tico é um **preview técnico open source para macOS 14+**. A forma
+O Tico é um **preview técnico open source exclusivo para macOS 26+**. A forma
 recomendada de testar por enquanto é clonar o repositório e rodar o app
 localmente. Não há binário público assinado com Developer ID.
 
-O uso no trackpad interno do Mac já foi validado manualmente. Build, testes,
+Para compilar localmente, use macOS 26 e Xcode 26 ou uma versão posterior
+compatível. O aplicativo não oferece suporte a macOS 14–25.
+
+Há validações manuais anteriores no trackpad interno, mas elas não substituem
+uma nova rodada após mudanças de sistema ou de captura. Build, testes,
 regressões de segurança, replay e pacote local são verificados
-automaticamente pelo CI; não existe um gate separado que exija formalizar a
-validação manual em relatório.
+automaticamente; trackpad físico, TCC e recursos de acessibilidade permanecem
+registrados separadamente na matriz manual.
 
 Magic Trackpad e outros dispositivos externos ainda não têm compatibilidade
 garantida. Quando houver um, o procedimento curto está no
@@ -82,6 +86,8 @@ atualize `MARKETING_VERSION` e incremente `BUILD_NUMBER`.
 - [Como o projeto funciona](outputs/arquitetura.md)
 - [Capacidades e limites do trackpad](outputs/trackpad.md)
 - [Checklist de QA](outputs/qa-checklist.md)
+- [Auditoria de compatibilidade com macOS 26](outputs/macos-26-compatibility-audit.md)
+- [Matriz manual para macOS 26, trackpad e TCC](outputs/macos-26-manual-matrix.md)
 - [Segurança](outputs/seguranca.md)
 - [Distribuição](outputs/distribuicao.md)
 

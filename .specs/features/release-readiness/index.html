@@ -169,7 +169,7 @@
 <p>igual no local e no CI.</p>
 <ul><li><strong>Location</strong>: <code>script/ci_verify.sh</code>.</li><li><strong>Interface</strong>: <code>./script/ci_verify.sh [--package]</code>; exit code zero somente</li></ul>
 <p>quando todos os comandos exigidos passam.</p>
-<ul><li><strong>Dependencies</strong>: Swift 5.10/macOS 14+, <code>Package.swift</code>, build script.</li><li><strong>Reuses</strong>: <code>swift build</code>, <code>swift test</code>, <code>build_and_run.sh --package</code>.</li></ul>
+<ul><li><strong>Dependencies</strong>: Swift 5.10/macOS 26+, <code>Package.swift</code>, build script.</li><li><strong>Reuses</strong>: <code>swift build</code>, <code>swift test</code>, <code>build_and_run.sh --package</code>.</li></ul>
 <h3>GitHub workflow</h3>
 <ul><li><strong>Purpose</strong>: executar o gate em pull requests e pushes para <code>main</code>.</li><li><strong>Location</strong>: <code>.github/workflows/ci.yml</code>.</li><li><strong>Interface</strong>: workflow status + summary com test count, command results e</li></ul>
 <p>artifact paths.</p>

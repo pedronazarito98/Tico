@@ -4,6 +4,7 @@ set -euo pipefail
 PUBLIC_APP_NAME="Tico"
 EXECUTABLE_NAME="Tico"
 BUNDLE_ID="com.pedronazarito.Tico"
+MIN_SYSTEM_VERSION="26.0"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/script/load_version.sh" "$ROOT_DIR"
 ARCHIVE_PATH="${1:-$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip}"
@@ -60,6 +61,7 @@ EXECUTABLE_NAME_IN_BUNDLE="$(/usr/bin/plutil -extract CFBundleExecutable raw "$I
 BUNDLE_ID_IN_BUNDLE="$(/usr/bin/plutil -extract CFBundleIdentifier raw "$INFO_PLIST")"
 MARKETING_VERSION_IN_BUNDLE="$(/usr/bin/plutil -extract CFBundleShortVersionString raw "$INFO_PLIST")"
 BUILD_NUMBER_IN_BUNDLE="$(/usr/bin/plutil -extract CFBundleVersion raw "$INFO_PLIST")"
+MIN_SYSTEM_VERSION_IN_BUNDLE="$(/usr/bin/plutil -extract LSMinimumSystemVersion raw "$INFO_PLIST")"
 
 if [[ "$DISPLAY_NAME" != "$PUBLIC_APP_NAME" ||
       "$EXECUTABLE_NAME_IN_BUNDLE" != "$EXECUTABLE_NAME" ||
@@ -70,6 +72,10 @@ fi
 if [[ "$MARKETING_VERSION_IN_BUNDLE" != "$MARKETING_VERSION" ||
       "$BUILD_NUMBER_IN_BUNDLE" != "$BUILD_NUMBER" ]]; then
   echo "error: bundle version does not match version.env" >&2
+  exit 4
+fi
+if [[ "$MIN_SYSTEM_VERSION_IN_BUNDLE" != "$MIN_SYSTEM_VERSION" ]]; then
+  echo "error: minimum system version must be macOS $MIN_SYSTEM_VERSION" >&2
   exit 4
 fi
 
@@ -131,6 +137,7 @@ echo "public name: $DISPLAY_NAME"
 echo "technical executable: $EXECUTABLE_NAME_IN_BUNDLE"
 echo "bundle identifier: $BUNDLE_ID_IN_BUNDLE"
 echo "version: $MARKETING_VERSION_IN_BUNDLE ($BUILD_NUMBER_IN_BUNDLE)"
+echo "minimum system version: macOS $MIN_SYSTEM_VERSION_IN_BUNDLE"
 echo "strict deep signature: PASS"
 echo "signing mode: $SIGNING_MODE"
 echo "code identity scope: $CODE_IDENTITY_SCOPE"
