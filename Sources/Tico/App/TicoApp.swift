@@ -1,8 +1,7 @@
 import SwiftUI
 
-@main
 @MainActor
-struct TicoApp: App {
+public struct TicoApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     @StateObject private var shortcutStore: ShortcutStore
@@ -15,7 +14,7 @@ struct TicoApp: App {
     @StateObject private var commandRouter: AppCommandRouter
     private let lifecycle: any ApplicationLifecycleControlling
 
-    init() {
+    public init() {
         let shortcutStore: ShortcutStore = ShortcutStore()
         let settings: AppSettingsStore = AppSettingsStore()
         let eventLogStore: EventLogStore = EventLogStore()
@@ -44,7 +43,7 @@ struct TicoApp: App {
         self.lifecycle = lifecycle
     }
 
-    var body: some Scene {
+    public var body: some Scene {
         WindowGroup(TicoBrand.displayName, id: "main") {
             ContentView(
                 controller: controller,

@@ -263,9 +263,9 @@ singleton de aplicação ou migração ampla para Observation.
 
 ## Atualização pós-T20 — avaliação de `TicoCore`
 
-O target `TicoCore` não foi extraído. A evidência do pacote atual é um
-executável Swift `Tico`, um target C local para o bridge de multitouch e
-um target de testes que depende do executável. Embora os arquivos em `Models`
+O target `TicoCore` não foi extraído. Ao fim da T20, a evidência do pacote era
+um executável Swift `Tico`, um target C local para o bridge de multitouch e
+um target de testes que dependia do executável. Embora os arquivos em `Models`
 usem somente `Foundation`, eles participam de uma malha interna compartilhada
 por codec, stores, engines, serviços, coordenadores e views.
 
@@ -273,6 +273,20 @@ Criar o módulo agora exigiria expor uma quantidade ampla de tipos atualmente
 `internal`, mover consumidores que dependem de AppKit/ApplicationServices/
 CoreGraphics/IOKit/SwiftUI ou criar adaptadores duplicados. Isso não atende ao
 critério de fronteira pura sem dependência de plataforma e aumentaria o risco
-da modernização incremental. A decisão é manter o target único e reavaliar a
-extração somente quando houver um conjunto de consumidores independentes e uma
-fronteira de visibilidade demonstrável.
+da modernização incremental. A decisão é manter um único target de
+implementação e reavaliar a extração somente quando houver um conjunto de
+consumidores independentes e uma fronteira de visibilidade demonstrável.
+
+## Atualização pós-AD-012 — hosts SwiftPM e Xcode
+
+Para adicionar Run, Profile e Archive nativos no Xcode sem reescrever o app, o
+target de implementação `Tico` passou a ser exposto pelo produto de biblioteca
+`TicoApplication`. Dois launchers mínimos possuem os entry points:
+
+- `TicoLauncher` produz o executável SwiftPM `Tico`;
+- `TicoApp`/`TicoXcodeApp` produz `Tico.app` pelo scheme Xcode `Tico`.
+
+Essa divisão é uma fronteira de entrega, não a extração de `TicoCore`. Os dois
+hosts chamam `TicoApp.main()`, e somente o projeto Xcode declara metadados,
+ícone, assinatura e ações de Run/Profile/Archive do bundle nativo. O gate
+compila e inspeciona ambos para impedir divergência silenciosa.

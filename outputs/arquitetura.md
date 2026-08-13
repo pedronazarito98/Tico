@@ -1,8 +1,22 @@
 # Arquitetura do Tico
 
 O Tico é um aplicativo nativo exclusivo para macOS 26+, feito em SwiftUI e organizado
-como um pacote SwiftPM. Produto, target, executável e pacote do app usam a
-identidade `Tico`.
+como um pacote SwiftPM consumido por dois hosts finos. Produto, executável,
+bundle e módulo compartilhado usam a identidade `Tico`.
+
+## Hosts de desenvolvimento
+
+- **SwiftPM:** o produto executável `Tico` usa `TicoLauncher` como `@main`.
+- **Xcode:** o target `TicoApp`, no scheme compartilhado `Tico`, gera
+  `Tico.app` e usa `TicoXcodeApp` como `@main`.
+- **Aplicação compartilhada:** o produto de biblioteca `TicoApplication`
+  expõe o módulo `Tico`, onde vivem `TicoApp`, views, stores, serviços e
+  recursos.
+
+Os launchers apenas chamam `TicoApp.main()`. O projeto Xcode referencia o
+package local e reutiliza o mesmo ícone e bundle de resources; não existe uma
+segunda cópia da aplicação. O nome técnico `TicoApp` evita colisão de produtos
+de build com o módulo SwiftPM `Tico`, mas não altera a identidade pública.
 
 ## Camadas
 
@@ -41,8 +55,8 @@ cópia atômica, validação e rollback.
 
 ## Estrutura efetivamente entregue na modernização
 
-A modernização foi aplicada por fronteiras internas, mantendo o target
-SwiftPM e as fachadas existentes:
+A modernização foi aplicada por fronteiras internas, mantendo um único target
+SwiftPM de implementação e as fachadas existentes:
 
 - **Editor:** `RuleEditingSession` é a fonte de verdade do rascunho, dirty
   state, validação e transições; `RuleEditorView` compõe header, trigger,
@@ -64,6 +78,9 @@ formam uma malha interna compartilhada com stores, serviços, coordenadores e
 views; a extração exigiria expor APIs internas ou levar dependências de
 plataforma para o novo target. Essa decisão está detalhada em
 `.specs/features/architecture-modernization/design.md`.
+
+A adição posterior dos launchers não é uma extração de domínio: ela separa
+somente a responsabilidade de iniciar o mesmo app em SwiftPM e Xcode.
 
 ## Limites de validação
 

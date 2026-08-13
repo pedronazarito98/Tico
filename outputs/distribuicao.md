@@ -12,6 +12,12 @@ arquivos de distribuição servem somente para desenvolvimento e QA local. O
 DMG facilita a instalação por arrastar para Aplicativos, mas não remove os
 alertas do Gatekeeper nem equivale a notarização.
 
+O scheme compartilhado `Tico` também suporta Run, Profile e Archive no Xcode.
+Seu target `TicoApp` reaproveita o package local e gera o mesmo produto público
+`Tico.app`. Archive organiza o fluxo de entrega no Xcode, mas não fornece
+automaticamente certificado, Team, Developer ID ou notarização; esses gates
+continuam obrigatórios para distribuição pública.
+
 A assinatura ad hoc usa a identidade padrão específica do build. Isso evita
 que outro binário ad hoc seja tratado como o Tico apenas por declarar o mesmo
 bundle identifier, mas pode fazer o macOS solicitar novamente permissões após
@@ -25,6 +31,7 @@ um framework privado da Apple.
 ## O que já está automatizado
 
 - build otimizado com `./script/build_and_run.sh --release-package`;
+- build e inspeção do App Target Xcode com `./script/verify_xcode_app.sh`;
 - versão e build centralizados em `version.env` e conferidos pelo gate;
 - geração reutilizável do DMG por `script/create_dmg.sh`;
 - geração do ZIP e do DMG com verificação estrutural, de versão e de assinatura;

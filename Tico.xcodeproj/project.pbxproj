@@ -1,0 +1,242 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000000001 /* TicoXcodeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000011 /* TicoXcodeApp.swift */; };
+		000000000000000000000002 /* Tico.icns in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000012 /* Tico.icns */; };
+		000000000000000000000003 /* TicoApplication in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000072 /* TicoApplication */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		000000000000000000000011 /* TicoXcodeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xcode/TicoApp/TicoXcodeApp.swift; sourceTree = SOURCE_ROOT; };
+		000000000000000000000012 /* Tico.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Sources/Tico/Resources/Brand/Tico.icns; sourceTree = SOURCE_ROOT; };
+		000000000000000000000013 /* Tico.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tico.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		000000000000000000000014 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Xcode/Config/Base.xcconfig; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000000032 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000003 /* TicoApplication in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000000021 = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000022 /* Xcode */,
+				000000000000000000000024 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		000000000000000000000022 /* Xcode */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000011 /* TicoXcodeApp.swift */,
+				000000000000000000000012 /* Tico.icns */,
+				000000000000000000000023 /* Config */,
+			);
+			name = Xcode;
+			sourceTree = "<group>";
+		};
+		000000000000000000000023 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000014 /* Base.xcconfig */,
+			);
+			name = Config;
+			sourceTree = "<group>";
+		};
+		000000000000000000000024 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000013 /* Tico.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000041 /* TicoApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000062 /* Build configuration list for PBXNativeTarget "TicoApp" */;
+			buildPhases = (
+				000000000000000000000031 /* Sources */,
+				000000000000000000000032 /* Frameworks */,
+				000000000000000000000033 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = TicoApp;
+			packageProductDependencies = (
+				000000000000000000000072 /* TicoApplication */,
+			);
+			productName = Tico;
+			productReference = 000000000000000000000013 /* Tico.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000042 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					000000000000000000000041 = {
+						CreatedOnToolsVersion = 26.6;
+					};
+				};
+			};
+			buildConfigurationList = 000000000000000000000061 /* Build configuration list for PBXProject "Tico" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000000021;
+			packageReferences = (
+				000000000000000000000071 /* XCLocalSwiftPackageReference "." */,
+			);
+			productRefGroup = 000000000000000000000024 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000041 /* TicoApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000000033 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000002 /* Tico.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000000031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000001 /* TicoXcodeApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000000051 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		000000000000000000000052 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		000000000000000000000053 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 000000000000000000000014 /* Base.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		000000000000000000000054 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 000000000000000000000014 /* Base.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000000061 /* Build configuration list for PBXProject "Tico" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000051 /* Debug */,
+				000000000000000000000052 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000062 /* Build configuration list for PBXNativeTarget "TicoApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000053 /* Debug */,
+				000000000000000000000054 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		000000000000000000000071 /* XCLocalSwiftPackageReference "." */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = .;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		000000000000000000000072 /* TicoApplication */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 000000000000000000000071 /* XCLocalSwiftPackageReference "." */;
+			productName = TicoApplication;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 000000000000000000000042 /* Project object */;
+}

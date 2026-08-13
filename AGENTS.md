@@ -12,7 +12,7 @@ Estas regras valem para todo o repositório. Um `AGENTS.md` mais próximo do arq
 ## Contratos do projeto
 
 - Preserve SwiftUI, Swift Package Manager e o deployment target macOS 26+; não introduza framework arquitetural ou dependência sem aprovação.
-- `Tico` é o nome público e técnico. Preserve target, executável, bundle identifier, diretório de dados e preferências com a identidade Tico.
+- `Tico` é o nome público e o módulo compartilhado. Preserve o produto e executável `Tico`, o módulo SwiftPM `Tico`, o App Target fino `TicoApp`, o bundle identifier, o diretório de dados e as preferências com a identidade Tico.
 - Prefira refatoração incremental com fachada compatível. Não faça reescritas amplas.
 - Não use arquivos agregadores apenas para reexportar símbolos. Importe módulos reais diretamente.
 - Não mova ou renomeie código sem benefício de responsabilidade demonstrável.

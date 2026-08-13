@@ -36,7 +36,7 @@ jobs:
             echo
             echo "- Runner: macos-26."
             echo "- Minimum supported system: macOS 26."
-            echo "- Automated coverage: build, Swift tests, security regressions, and ad hoc ZIP/DMG package verification."
+            echo "- Automated coverage: SwiftPM build, thin Xcode Debug build and universal Release archive, Swift tests, security regressions, and ad hoc ZIP/DMG package verification."
             echo "- Physical coverage: not exercised in CI; use the manual trackpad QA matrix."
             echo "- Distribution coverage: ad hoc only; notarization and Gatekeeper acceptance are not claimed."
           } >> "$GITHUB_STEP_SUMMARY"

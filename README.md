@@ -53,7 +53,12 @@ ela não estiver disponível, o Tico usa um fallback público com menos recursos
 
 ## Como testar
 
-Clone o projeto e rode:
+Para desenvolver pelo Xcode, abra `Tico.xcodeproj`, selecione o scheme
+compartilhado `Tico` e use Run. O target `TicoApp` é somente o host nativo do
+`.app`: toda a aplicação continua em `Sources/Tico` e é consumida pelo package
+local, sem cópia de telas, serviços ou recursos.
+
+Para desenvolver e empacotar pelo fluxo SwiftPM existente, rode:
 
 ```sh
 ./script/build_and_run.sh
@@ -64,6 +69,10 @@ Para executar o gate completo:
 ```sh
 ./script/ci_verify.sh --package
 ```
+
+Esse gate compila os hosts SwiftPM e Xcode, executa a suíte e valida os
+artefatos ad hoc. O target Xcode também pode ser verificado isoladamente com
+`./script/verify_xcode_app.sh`.
 
 Na primeira execução, o macOS pode pedir Monitoramento de Entrada e, dependendo
 da automação, Acessibilidade.

@@ -85,7 +85,7 @@
 
 ### AD-010
 
-- **Decision**: A avaliação T20 mantém o target SwiftPM único e não extrai `TicoCore` nesta modernização.
+- **Decision**: A avaliação T20 mantém um único target SwiftPM de implementação e não extrai `TicoCore` nesta modernização.
 - **Reason**: Os modelos puros ainda integram uma malha interna ampla com stores, serviços, coordenadores e views; separar agora exigiria expor APIs ou mover dependências de plataforma sem consumidores independentes suficientes.
 - **Trade-off**: A fronteira física de módulo fica para uma iniciativa futura somente se houver desacoplamento demonstrável.
 - **Scope**: `Package.swift`, modelos, persistência e lógica compartilhada.
@@ -101,17 +101,27 @@
 - **Date**: 2026-08-13
 - **Status**: active
 
+### AD-012
+
+- **Decision**: O código da aplicação permanece no módulo SwiftPM `Tico`; o produto executável `Tico` usa o launcher fino `TicoLauncher`, e o App Target Xcode `TicoApp` usa `TicoXcodeApp`. Ambos iniciam o mesmo `TicoApp` e preservam o produto público `Tico.app`.
+- **Reason**: Um host Xcode habilita Run, Profile, Archive e configuração de assinatura nativos sem duplicar views, domínio, serviços, resources ou o fluxo SwiftPM existente.
+- **Trade-off**: O repositório passa a manter dois composition roots mínimos e precisa compilar ambos no gate; o target Xcode tem nome técnico diferente para não colidir com os produtos do package local.
+- **Scope**: `Package.swift`, launchers, `Tico.xcodeproj`, configuração Xcode, CI e documentação de desenvolvimento/distribuição.
+- **Date**: 2026-08-13
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: `.specs/features/architecture-modernization/`
-- **Phase / Task**: Pós-merge — T01–T22 concluídas; handoff integrado em `main`.
-- **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell, avaliação de módulo, gates finais, revisão independente e merge do PR.
+- **Phase / Task**: Pós-merge de T01–T22; App Target Xcode fino implementado conforme AD-012.
+- **Completed**: Spec, modernização, exclusividade macOS 26, módulo compartilhado, launchers SwiftPM/Xcode, projeto e scheme compartilhados, configuração centralizada, gate do bundle e documentação.
 - **In-progress**: Nenhum.
-- **Next step**: Preservar as evidências atuais. Se o trabalho for reaberto, usar `.specs/features/release-readiness/validation.md` como ponto de entrada para os gates que ainda não são release-ready.
-- **Blockers**: Os gates local e remoto no macOS 26 estão verdes. A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN` e por Developer ID/notarização/staple/Gatekeeper/máquina limpa.
-- **Change set atual**: Atualização exclusiva para macOS 26 e auditoria de compatibilidade desta rodada.
-- **Branch**: `feat/macos-26-exclusive`
-- **Remote**: `origin/feat/macos-26-exclusive`.
-- **Pull request**: [#5](https://github.com/pedronazarito98/Tico/pull/5), aberto como draft.
-- **CI remoto**: O run [31729757980](https://github.com/pedronazarito98/Tico/actions/runs/31729757980) do PR #5 passou no runner `macos-26` com macOS 26.5.2, Xcode 26.6, 125 testes, ZIP e DMG verificados. Os runs anteriores à AD-011 não são usados como evidência desta decisão.
+- **Next step**: Revisar o change set e solicitar autorização separada antes de commit, push ou PR.
+- **Blockers**: A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN` e por Developer ID/notarização/staple/Gatekeeper/máquina limpa.
+- **Change set atual**: App Target Xcode fino preservando o código SwiftPM existente.
+- **Branch**: `feat/xcode-thin-app-target`
+- **Remote**: `NOT-RUN` — a branch ainda não foi publicada.
+- **Pull request**: `NOT-RUN` — nenhum PR foi aberto para este change set.
+- **Validação local**: `PASS` no gate canônico: builds SwiftPM e Xcode Debug, Archive Release universal com Hardened Runtime, 125 testes, 8 regressões de segurança, ZIP e DMG verificados.
+- **CI remoto**: `NOT-RUN` para AD-012; o workflow foi atualizado localmente para incluir o App Target Xcode.
 - **Release candidate**: `dist/Tico.zip` e `dist/Tico.dmg` com mínimo `26.0` validados localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.

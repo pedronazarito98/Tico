@@ -8,7 +8,8 @@ let package = Package(
         .macOS("26.0")
     ],
     products: [
-        .executable(name: "Tico", targets: ["Tico"])
+        .library(name: "TicoApplication", targets: ["Tico"]),
+        .executable(name: "Tico", targets: ["TicoLauncher"])
     ],
     targets: [
         .target(
@@ -16,7 +17,7 @@ let package = Package(
             path: "Sources/TicoMultitouchBridge",
             publicHeadersPath: "include"
         ),
-        .executableTarget(
+        .target(
             name: "Tico",
             dependencies: ["TicoMultitouchBridge"],
             path: "Sources/Tico",
@@ -29,6 +30,11 @@ let package = Package(
             resources: [
                 .process("Resources")
             ]
+        ),
+        .executableTarget(
+            name: "TicoLauncher",
+            dependencies: ["Tico"],
+            path: "Sources/TicoLauncher"
         ),
         .testTarget(
             name: "TicoTests",

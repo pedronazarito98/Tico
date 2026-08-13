@@ -10,6 +10,8 @@
 - Workflows, automações locais, ações de aplicativos e janelas.
 - Métricas locais, importação segura e persistência versionada.
 - Identidade Tico aplicada ao produto, executável, dados e permissões técnicas.
+- App Target Xcode fino, com Run/Profile/Archive e código compartilhado pelo
+  package local.
 - Gate local de build, testes, segurança e empacotamento ad hoc.
 - Documentação para publicação como preview técnico open source.
 
@@ -21,9 +23,10 @@
    gate separado de relatório: build, testes, regressões de segurança, replay
    e pacote ad hoc são verificados automaticamente pelo CI. O relatório
    sanitizado permanece opcional para diagnosticar regressões físicas.
-3. **CI remoto:** confirmado no commit de consolidação `87f65ef`. A execução
-   de push [#30209304727](https://github.com/pedronazarito98/Tico/actions/runs/30209304727)
-   concluiu com sucesso no workflow `macOS verification`.
+3. **CI remoto do macOS 26:** a execução
+   [#31729757980](https://github.com/pedronazarito98/Tico/actions/runs/31729757980)
+   concluiu com sucesso no runner `macos-26`. O gate local do App Target Xcode
+   está verde; sua primeira execução remota depende de publicar o change set.
 
 ## O que fica para depois
 
