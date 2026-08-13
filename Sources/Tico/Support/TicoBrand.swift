@@ -117,6 +117,12 @@ enum TicoBrand {
             appearance == .dark ? wordmarkDark : wordmarkLight
         }
 
+        static func image(named name: String) -> NSImage {
+            resourceURL(named: name, extension: "png")
+                .flatMap(NSImage.init(contentsOf:))
+                ?? NSImage()
+        }
+
         static func resourceURL(named name: String, extension fileExtension: String) -> URL? {
             bundle.url(forResource: name, withExtension: fileExtension)
         }

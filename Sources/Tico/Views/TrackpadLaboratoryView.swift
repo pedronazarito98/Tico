@@ -35,46 +35,46 @@ struct TrackpadLaboratoryView: View {
             Divider()
 
             TabView(selection: $selectedTab) {
-                TrackpadLiveView(
-                    snapshot: snapshot,
-                    startupError: startupError,
-                    highlightedRegion: $highlightedRegion
-                )
-                .tabItem { Label("Ao vivo", systemImage: "waveform.path.ecg") }
-                .tag(LaboratoryTab.live)
+                Tab("Ao vivo", systemImage: "waveform.path.ecg", value: LaboratoryTab.live) {
+                    TrackpadLiveView(
+                        snapshot: snapshot,
+                        startupError: startupError,
+                        highlightedRegion: $highlightedRegion
+                    )
+                }
 
-                TrackpadCalibrationView(
-                    store: calibrationStore,
-                    highlightedRegion: $highlightedRegion
-                )
-                .tabItem { Label("Calibração", systemImage: "slider.horizontal.3") }
-                .tag(LaboratoryTab.calibration)
+                Tab("Calibração", systemImage: "slider.horizontal.3", value: LaboratoryTab.calibration) {
+                    TrackpadCalibrationView(
+                        store: calibrationStore,
+                        highlightedRegion: $highlightedRegion
+                    )
+                }
 
-                TrackpadSessionView(
-                    isRecording: isRecording,
-                    recordedFrameCount: recordedFrameCount,
-                    lastRecording: lastRecording,
-                    isReplaying: isReplaying,
-                    replayProgress: replayProgress,
-                    onStartRecording: onStartRecording,
-                    onStopRecording: onStopRecording,
-                    onCancelRecording: onCancelRecording,
-                    onReplay: onReplay,
-                    onCancelReplay: onCancelReplay
-                )
-                .tabItem { Label("Sessões", systemImage: "record.circle") }
-                .tag(LaboratoryTab.sessions)
+                Tab("Sessões", systemImage: "record.circle", value: LaboratoryTab.sessions) {
+                    TrackpadSessionView(
+                        isRecording: isRecording,
+                        recordedFrameCount: recordedFrameCount,
+                        lastRecording: lastRecording,
+                        isReplaying: isReplaying,
+                        replayProgress: replayProgress,
+                        onStartRecording: onStartRecording,
+                        onStopRecording: onStopRecording,
+                        onCancelRecording: onCancelRecording,
+                        onReplay: onReplay,
+                        onCancelReplay: onCancelReplay
+                    )
+                }
 
-                TrackpadValidationView(
-                    store: validationStore,
-                    captureMode: captureMode,
-                    detectedTrackpads: detectedTrackpads,
-                    onActivateFallback: onActivateFallback,
-                    onRestoreAdvanced: onRestoreAdvanced,
-                    onRefreshHardware: onRefreshHardware
-                )
-                .tabItem { Label("Validação", systemImage: "checklist") }
-                .tag(LaboratoryTab.validation)
+                Tab("Validação", systemImage: "checklist", value: LaboratoryTab.validation) {
+                    TrackpadValidationView(
+                        store: validationStore,
+                        captureMode: captureMode,
+                        detectedTrackpads: detectedTrackpads,
+                        onActivateFallback: onActivateFallback,
+                        onRestoreAdvanced: onRestoreAdvanced,
+                        onRefreshHardware: onRefreshHardware
+                    )
+                }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
@@ -92,9 +92,11 @@ struct TrackpadLaboratoryView: View {
                 Text("Observe, calibre e reproduza gestos sem executar regras.")
                     .foregroundStyle(.secondary)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
             Label(captureMode.displayName, systemImage: captureModeIcon)
                 .foregroundStyle(captureMode == .advancedGlobal ? .green : .secondary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
     }
 

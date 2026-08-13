@@ -10,7 +10,7 @@ PRODUCT_NAME="Tico"
 EXECUTABLE_NAME="Tico"
 PUBLIC_APP_NAME="Tico"
 BUNDLE_ID="com.pedronazarito.Tico"
-MIN_SYSTEM_VERSION="14.0"
+MIN_SYSTEM_VERSION="26.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT_DIR/script/load_version.sh" "$ROOT_DIR"

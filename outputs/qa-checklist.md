@@ -3,6 +3,10 @@
 Use `PASS`, `FAIL` ou `NOT-RUN`. Um item não executado nunca equivale a
 aprovação.
 
+Para validar especificamente a atualização do sistema, use também a
+[matriz manual de macOS 26, trackpad e TCC](macos-26-manual-matrix.md). Ela
+mantém interface, permissões e hardware separados dos gates automatizados.
+
 ## Gate automatizado
 
 ```sh

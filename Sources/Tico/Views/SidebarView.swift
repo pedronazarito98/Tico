@@ -56,7 +56,6 @@ struct SidebarView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
         }
-        .background(.regularMaterial)
         .navigationTitle(TicoBrand.displayName)
         .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
     }

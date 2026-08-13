@@ -15,7 +15,7 @@ struct TicoMarkView: View {
     }
 
     var body: some View {
-        Image(assetName, bundle: TicoBrand.Assets.bundle)
+        Image(nsImage: TicoBrand.Assets.image(named: assetName))
             .resizable()
             .interpolation(.high)
             .antialiased(true)

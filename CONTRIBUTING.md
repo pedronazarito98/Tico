@@ -3,6 +3,9 @@
 O Tico ainda é um preview técnico. Contribuições são bem-vindas sob os termos
 da [licença MIT](LICENSE).
 
+O ambiente de desenvolvimento suportado é macOS 26 com Xcode 26 ou uma versão
+posterior compatível. O deployment target do aplicativo é macOS 26.
+
 ## Antes de abrir um pull request
 
 1. Mantenha a mudança focada e preserve a arquitetura SwiftPM existente.
@@ -29,8 +32,8 @@ O target SwiftPM é `Tico`, com o bridge C
 dependências sem uma análise de grafo e um gate próprios.
 
 O gate automatizado cobre compilação, testes, regressões de segurança,
-replay e empacotamento ad hoc em ZIP e DMG. Ele não comprova hardware físico,
-compatibilidade com todas as versões do macOS, Developer ID ou notarização.
+replay e empacotamento ad hoc em ZIP e DMG no macOS 26. Ele não comprova
+hardware físico, Developer ID ou notarização.
 Os metadados do bundle vêm de `version.env`; mudanças de release devem atualizar
 `MARKETING_VERSION` e sempre incrementar `BUILD_NUMBER`.
 

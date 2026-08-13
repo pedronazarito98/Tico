@@ -1,6 +1,6 @@
 # Arquitetura do Tico
 
-O Tico é um aplicativo nativo para macOS 14+, feito em SwiftUI e organizado
+O Tico é um aplicativo nativo exclusivo para macOS 26+, feito em SwiftUI e organizado
 como um pacote SwiftPM. Produto, target, executável e pacote do app usam a
 identidade `Tico`.
 

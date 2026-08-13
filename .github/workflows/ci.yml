@@ -11,13 +11,19 @@ permissions:
 
 jobs:
   verify:
-    name: Build, test, and package
-    runs-on: macos-14
+    name: Build, test, and package (macOS 26)
+    runs-on: macos-26
     timeout-minutes: 30
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Report macOS and toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
 
       - name: Run shared verification gate
         run: ./script/ci_verify.sh --package
@@ -28,6 +34,8 @@ jobs:
           {
             echo "## Tico verification"
             echo
+            echo "- Runner: macos-26."
+            echo "- Minimum supported system: macOS 26."
             echo "- Automated coverage: build, Swift tests, security regressions, and ad hoc ZIP/DMG package verification."
             echo "- Physical coverage: not exercised in CI; use the manual trackpad QA matrix."
             echo "- Distribution coverage: ad hoc only; notarization and Gatekeeper acceptance are not claimed."

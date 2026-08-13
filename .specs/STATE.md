@@ -45,7 +45,7 @@
 - **Trade-off**: Fachadas antigas e novas fronteiras poderão coexistir temporariamente.
 - **Scope**: Iniciativa `architecture-modernization` e alterações estruturais relacionadas.
 - **Date**: 2026-08-09
-- **Status**: active
+- **Status**: superseded by AD-011
 
 ### AD-006
 
@@ -92,6 +92,15 @@
 - **Date**: 2026-08-10
 - **Status**: active
 
+### AD-011
+
+- **Decision**: O Tico passa a ser exclusivo do macOS 26; `Package.swift`, o bundle empacotado, o CI e a documentação devem declarar macOS 26 como versão mínima.
+- **Reason**: O produto adotará diretamente as APIs e o comportamento visual do macOS 26, sem manter fallbacks de interface para macOS 14–25.
+- **Trade-off**: O aplicativo deixa de instalar e executar no macOS 14–25, e o CI deixa de validar essas versões.
+- **Scope**: Manifest SwiftPM, empacotamento, interface, CI, documentação e matriz de compatibilidade.
+- **Date**: 2026-08-13
+- **Status**: active
+
 ## Handoff
 
 - **Feature**: `.specs/features/architecture-modernization/`
@@ -99,10 +108,10 @@
 - **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell, avaliação de módulo, gates finais, revisão independente e merge do PR.
 - **In-progress**: Nenhum.
 - **Next step**: Preservar as evidências atuais. Se o trabalho for reaberto, usar `.specs/features/release-readiness/validation.md` como ponto de entrada para os gates que ainda não são release-ready.
-- **Blockers**: Build/test/package local e CI remoto estão verdes. A release-readiness binária continua `BLOCKED` por ausência de relatório físico sanitizado completo, Developer ID/notarização/staple/Gatekeeper/máquina limpa e pela falta de uma execução remota controlada em estado vermelho. PASS manual continua sendo autorrelato separado, não reprodução do agente.
-- **Uncommitted files**: `.specs/STATE.md`, `.specs/features/architecture-modernization/validation.md`, `.specs/features/release-readiness/execution.md` e `.specs/features/release-readiness/validation.md`.
+- **Blockers**: O gate local no macOS 26 está verde, mas o workflow atualizado para `macos-26` ainda não foi executado remotamente. A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN`, por Developer ID/notarização/staple/Gatekeeper/máquina limpa e pela falta de uma execução remota da configuração nova.
+- **Change set atual**: Atualização exclusiva para macOS 26 e auditoria de compatibilidade desta rodada.
 - **Branch**: `main`
 - **Remote**: `origin/main` em `1a7593cd12f4363e28224e817fb96d1568b3f550`.
 - **Pull request**: [#3](https://github.com/pedronazarito98/Tico/pull/3) merged em `2026-08-11`; não é mais draft.
-- **CI remoto**: [PR run 31486597406](https://github.com/pedronazarito98/Tico/actions/runs/31486597406) e [merge push run 31487484224](https://github.com/pedronazarito98/Tico/actions/runs/31487484224) concluídos com sucesso.
-- **Release candidate**: `dist/Tico.zip` validado localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.
+- **CI remoto**: Os runs [31486597406](https://github.com/pedronazarito98/Tico/actions/runs/31486597406) e [31487484224](https://github.com/pedronazarito98/Tico/actions/runs/31487484224) são anteriores à AD-011 e não validam o novo runner ou deployment target; CI macOS 26 `NOT-RUN`.
+- **Release candidate**: `dist/Tico.zip` e `dist/Tico.dmg` com mínimo `26.0` validados localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.

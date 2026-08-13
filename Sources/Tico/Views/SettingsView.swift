@@ -7,42 +7,48 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            Form {
-                Section("Inicialização") {
-                    Toggle("Abrir \(TicoBrand.displayName) ao iniciar sessão", isOn: launchAtLoginBinding)
-                    Toggle("Iniciar captura de eventos ao abrir", isOn: $settings.startEventCaptureOnLaunch)
-                }
-
-                Section("Acesso rápido") {
-                    Toggle("Mostrar \(TicoBrand.displayName) na barra de menus", isOn: $settings.showMenuBarExtra)
-                }
-
-                if let loginItemError {
-                    Text(loginItemError)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-            }
-            .formStyle(.grouped)
-            .tabItem {
-                Label("Geral", systemImage: "gearshape")
+            Tab("Geral", systemImage: "gearshape") {
+                generalSettings
             }
 
-            Form {
-                Section("Scripts locais") {
-                    Label("Confirmação obrigatória em toda execução", systemImage: "checkmark.shield")
-                    Text("Scripts podem modificar arquivos e executar outros programas com sua conta. O \(TicoBrand.displayName) sempre mostra o comando antes de executá-lo.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .formStyle(.grouped)
-            .tabItem {
-                Label("Segurança", systemImage: "lock.shield")
+            Tab("Segurança", systemImage: "lock.shield") {
+                securitySettings
             }
         }
         .frame(width: 520, height: 310)
-        .padding()
+        .scenePadding()
+    }
+
+    private var generalSettings: some View {
+        Form {
+            Section("Inicialização") {
+                Toggle("Abrir \(TicoBrand.displayName) ao iniciar sessão", isOn: launchAtLoginBinding)
+                Toggle("Iniciar captura de eventos ao abrir", isOn: $settings.startEventCaptureOnLaunch)
+            }
+
+            Section("Acesso rápido") {
+                Toggle("Mostrar \(TicoBrand.displayName) na barra de menus", isOn: $settings.showMenuBarExtra)
+            }
+
+            if let loginItemError {
+                Text(loginItemError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var securitySettings: some View {
+        Form {
+            Section("Scripts locais") {
+                Label("Confirmação obrigatória em toda execução", systemImage: "checkmark.shield")
+                Text("Scripts podem modificar arquivos e executar outros programas com sua conta. O \(TicoBrand.displayName) sempre mostra o comando antes de executá-lo.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .formStyle(.grouped)
     }
 
     private var launchAtLoginBinding: Binding<Bool> {
