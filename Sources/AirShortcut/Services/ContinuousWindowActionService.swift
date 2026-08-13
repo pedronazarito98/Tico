@@ -62,7 +62,7 @@ final class ContinuousWindowActionService: ContinuousWindowActionControlling {
             kAXFocusedWindowAttribute as CFString,
             &value
         ) == .success,
-        let window = value as! AXUIElement? else {
+        let window = AccessibilityValueDecoder.element(value) else {
             throw WindowControlError.windowNotFound
         }
         sessions[sessionID] = Session(
@@ -147,14 +147,10 @@ final class ContinuousWindowActionService: ContinuousWindowActionControlling {
             kAXSizeAttribute as CFString,
             &sizeValue
         ))
-        guard let positionAXValue = positionValue as! AXValue?,
-              let sizeAXValue = sizeValue as! AXValue? else {
+        guard let origin = AccessibilityValueDecoder.point(positionValue),
+              let size = AccessibilityValueDecoder.size(sizeValue) else {
             throw WindowControlError.operationFailed("frame indisponível")
         }
-        var origin = CGPoint.zero
-        var size = CGSize.zero
-        AXValueGetValue(positionAXValue, .cgPoint, &origin)
-        AXValueGetValue(sizeAXValue, .cgSize, &size)
         return CGRect(origin: origin, size: size)
     }
 
@@ -201,4 +197,3 @@ final class ContinuousWindowActionService: ContinuousWindowActionControlling {
         }
     }
 }
-

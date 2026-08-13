@@ -2,6 +2,11 @@ import Foundation
 import OSLog
 
 final class WorkflowExecutor {
+    private struct TimedExecution {
+        var result: ActionExecutionResult
+        var reachedWorkflowDeadline: Bool
+    }
+
     private let actionRunner: ActionRunner
     private let now: () -> Date
     private let logger = Logger(
@@ -33,6 +38,7 @@ final class WorkflowExecutor {
                 startedAt: startedAt
             )
         }
+        let deadline = startedAt.addingTimeInterval(workflow.timeout)
 
         for (index, step) in workflow.enabledSteps.enumerated() {
             guard step.delayBefore.isFinite,
@@ -57,26 +63,22 @@ final class WorkflowExecutor {
                     cancelled: true
                 )
             }
-            if now().timeIntervalSince(startedAt) >= workflow.timeout {
-                let result = ActionExecutionResult.failed(
-                    "O workflow excedeu o tempo limite de \(Int(workflow.timeout)) s.",
-                    executedAt: now()
-                )
-                let execution = WorkflowStepExecution(
-                    stepID: step.id,
-                    stepName: step.displayName,
+            let remainingBeforeDelay = deadline.timeIntervalSince(now())
+            guard remainingBeforeDelay > 0 else {
+                appendWorkflowTimeout(
+                    step: step,
                     index: index,
-                    result: result,
-                    duration: 0
+                    workflowTimeout: workflow.timeout,
+                    to: &executions,
+                    onStep: onStep
                 )
-                executions.append(execution)
-                onStep?(execution)
                 break
             }
 
             if step.delayBefore > 0 {
+                let delay = min(step.delayBefore, remainingBeforeDelay)
                 do {
-                    try await Task.sleep(for: .seconds(step.delayBefore))
+                    try await Task.sleep(for: .seconds(delay))
                 } catch {
                     return report(
                         workflow: workflow,
@@ -85,23 +87,71 @@ final class WorkflowExecutor {
                         cancelled: true
                     )
                 }
+                if step.delayBefore >= remainingBeforeDelay {
+                    appendWorkflowTimeout(
+                        step: step,
+                        index: index,
+                        workflowTimeout: workflow.timeout,
+                        to: &executions,
+                        onStep: onStep
+                    )
+                    break
+                }
             }
 
+            let remainingForAction = deadline.timeIntervalSince(now())
+            guard remainingForAction > 0 else {
+                appendWorkflowTimeout(
+                    step: step,
+                    index: index,
+                    workflowTimeout: workflow.timeout,
+                    to: &executions,
+                    onStep: onStep
+                )
+                break
+            }
+            let timeoutConfiguration: (
+                duration: TimeInterval,
+                message: String,
+                reachesWorkflowDeadline: Bool
+            )
+            if let stepTimeout = step.timeout, stepTimeout < remainingForAction {
+                timeoutConfiguration = (
+                    duration: stepTimeout,
+                    message: "A etapa excedeu \(Int(stepTimeout)) s.",
+                    reachesWorkflowDeadline: false
+                )
+            } else {
+                timeoutConfiguration = (
+                    duration: remainingForAction,
+                    message: workflowTimeoutMessage(workflow.timeout),
+                    reachesWorkflowDeadline: true
+                )
+            }
             let stepStartedAt = now()
             logger.info(
                 "Starting workflow step \(index + 1, privacy: .public) action=\(step.action.displayName, privacy: .public)"
             )
-            let result = await execute(step: step, approval: approval)
+            let timedExecution = await execute(
+                step: step,
+                approval: approval,
+                timeout: timeoutConfiguration.duration,
+                timeoutMessage: timeoutConfiguration.message,
+                reachesWorkflowDeadline: timeoutConfiguration.reachesWorkflowDeadline
+            )
             let execution = WorkflowStepExecution(
                 stepID: step.id,
                 stepName: step.displayName,
                 index: index,
-                result: result,
+                result: timedExecution.result,
                 duration: now().timeIntervalSince(stepStartedAt)
             )
             executions.append(execution)
             onStep?(execution)
-            if !result.success, workflow.failurePolicy == .stop {
+            if timedExecution.reachedWorkflowDeadline {
+                break
+            }
+            if !timedExecution.result.success, workflow.failurePolicy == .stop {
                 break
             }
         }
@@ -116,32 +166,69 @@ final class WorkflowExecutor {
 
     private func execute(
         step: WorkflowStep,
-        approval: ScriptApprovalHandler?
-    ) async -> ActionExecutionResult {
-        guard let timeout = step.timeout else {
-            return await actionRunner.execute(step.action, scriptApproval: approval)
-        }
-        guard timeout.isFinite, (0.25...300).contains(timeout) else {
-            return .failed("O timeout da etapa é inválido.", executedAt: now())
-        }
+        approval: ScriptApprovalHandler?,
+        timeout: TimeInterval,
+        timeoutMessage: String,
+        reachesWorkflowDeadline: Bool
+    ) async -> TimedExecution {
 
-        return await withTaskGroup(of: ActionExecutionResult.self) { group in
+        return await withTaskGroup(of: TimedExecution.self) { group in
             group.addTask { [actionRunner] in
-                await actionRunner.execute(step.action, scriptApproval: approval)
+                TimedExecution(
+                    result: await actionRunner.execute(
+                        step.action,
+                        scriptApproval: approval
+                    ),
+                    reachedWorkflowDeadline: false
+                )
             }
             group.addTask { [now] in
                 do {
                     try await Task.sleep(for: .seconds(timeout))
                 } catch {
-                    return .failed("Etapa cancelada.", executedAt: now())
+                    return TimedExecution(
+                        result: .failed("Etapa cancelada.", executedAt: now()),
+                        reachedWorkflowDeadline: false
+                    )
                 }
-                return .failed("A etapa excedeu \(Int(timeout)) s.", executedAt: now())
+                return TimedExecution(
+                    result: .failed(timeoutMessage, executedAt: now()),
+                    reachedWorkflowDeadline: reachesWorkflowDeadline
+                )
             }
             let result = await group.next()
-                ?? .failed("A etapa não produziu resultado.", executedAt: now())
+                ?? TimedExecution(
+                    result: .failed("A etapa não produziu resultado.", executedAt: now()),
+                    reachedWorkflowDeadline: false
+                )
             group.cancelAll()
             return result
         }
+    }
+
+    private func appendWorkflowTimeout(
+        step: WorkflowStep,
+        index: Int,
+        workflowTimeout: TimeInterval,
+        to executions: inout [WorkflowStepExecution],
+        onStep: ((WorkflowStepExecution) -> Void)?
+    ) {
+        let execution = WorkflowStepExecution(
+            stepID: step.id,
+            stepName: step.displayName,
+            index: index,
+            result: .failed(
+                workflowTimeoutMessage(workflowTimeout),
+                executedAt: now()
+            ),
+            duration: 0
+        )
+        executions.append(execution)
+        onStep?(execution)
+    }
+
+    private func workflowTimeoutMessage(_ timeout: TimeInterval) -> String {
+        "O workflow excedeu o tempo limite de \(Int(timeout)) s."
     }
 
     private func report(

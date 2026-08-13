@@ -27,7 +27,7 @@ final class WindowContextReader: WindowContextReading {
             kAXFocusedWindowAttribute as CFString,
             &focusedValue
         ) == .success,
-        let window = focusedValue as! AXUIElement? else {
+        let window = AccessibilityValueDecoder.element(focusedValue) else {
             return WindowContext()
         }
 
@@ -56,14 +56,10 @@ final class WindowContextReader: WindowContextReading {
             kAXSizeAttribute as CFString,
             &sizeValue
         ) == .success,
-        let positionAXValue = positionValue as! AXValue?,
-        let sizeAXValue = sizeValue as! AXValue? else {
+        let origin = AccessibilityValueDecoder.point(positionValue),
+        let size = AccessibilityValueDecoder.size(sizeValue) else {
             return nil
         }
-        var origin = CGPoint.zero
-        var size = CGSize.zero
-        AXValueGetValue(positionAXValue, .cgPoint, &origin)
-        AXValueGetValue(sizeAXValue, .cgSize, &size)
         let center = CGPoint(x: origin.x + size.width / 2, y: origin.y + size.height / 2)
 
         return NSScreen.screens.first { screen in
@@ -73,4 +69,3 @@ final class WindowContextReader: WindowContextReading {
             .map { String(describing: $0) }
     }
 }
-

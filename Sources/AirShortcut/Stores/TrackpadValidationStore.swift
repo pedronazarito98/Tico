@@ -28,56 +28,77 @@ final class TrackpadValidationStore: ObservableObject {
     }
 
     func record(_ snapshot: TrackpadLaboratorySnapshot, acceptedEvent: GestureEvent?) {
+        var updatedReport = report
+        var didChange = false
+
         if let acceptedEvent {
-            report.recognizedByGesture[acceptedEvent.kind, default: 0] += 1
+            updatedReport.recognizedByGesture[acceptedEvent.kind, default: 0] += 1
             lastAcceptedGesture = acceptedEvent.kind
+            didChange = true
         } else if snapshot.phase == .ended {
             switch snapshot.diagnostic.outcome {
             case .rejected:
-                report.rejectedSessionCount += 1
+                updatedReport.rejectedSessionCount += 1
+                didChange = true
             case .ignored:
-                report.ignoredSessionCount += 1
+                updatedReport.ignoredSessionCount += 1
+                didChange = true
             case .inProgress, .accepted, .cancelled:
                 break
             }
         }
-        report.updatedAt = Date()
+
+        guard didChange else { return }
+        updatedReport.updatedAt = Date()
+        report = updatedReport
     }
 
     func recordPublicFallbackGesture(_ gesture: TrackpadGesture) {
-        report.recognizedByGesture[gesture, default: 0] += 1
-        report.completedChecks.insert(.publicFallback)
+        var updatedReport = report
+        updatedReport.recognizedByGesture[gesture, default: 0] += 1
+        updatedReport.completedChecks.insert(.publicFallback)
+        updatedReport.updatedAt = Date()
         lastAcceptedGesture = gesture
-        report.updatedAt = Date()
+        report = updatedReport
     }
 
     func markLastRecognitionAsFalsePositive() {
         guard let lastAcceptedGesture else { return }
-        report.falsePositivesByGesture[lastAcceptedGesture, default: 0] += 1
-        report.updatedAt = Date()
+        var updatedReport = report
+        updatedReport.falsePositivesByGesture[lastAcceptedGesture, default: 0] += 1
+        updatedReport.updatedAt = Date()
+        report = updatedReport
     }
 
     func setCheck(_ check: HardwareValidationCheck, completed: Bool) {
+        var updatedReport = report
         if completed {
-            report.completedChecks.insert(check)
+            guard updatedReport.completedChecks.insert(check).inserted else { return }
         } else {
-            report.completedChecks.remove(check)
+            guard updatedReport.completedChecks.remove(check) != nil else { return }
         }
-        report.updatedAt = Date()
+        updatedReport.updatedAt = Date()
+        report = updatedReport
     }
 
     func startNormalUseMonitoring() {
         guard report.normalUseStartedAt == nil else { return }
-        report.normalUseStartedAt = Date()
-        report.updatedAt = Date()
+        var updatedReport = report
+        let timestamp = Date()
+        updatedReport.normalUseStartedAt = timestamp
+        updatedReport.updatedAt = timestamp
+        report = updatedReport
     }
 
     func stopNormalUseMonitoring() {
         guard let startedAt = report.normalUseStartedAt else { return }
-        report.accumulatedNormalUseDuration += Date().timeIntervalSince(startedAt)
-        report.normalUseStartedAt = nil
-        report.completedChecks.insert(.normalUse)
-        report.updatedAt = Date()
+        var updatedReport = report
+        let timestamp = Date()
+        updatedReport.accumulatedNormalUseDuration += timestamp.timeIntervalSince(startedAt)
+        updatedReport.normalUseStartedAt = nil
+        updatedReport.completedChecks.insert(.normalUse)
+        updatedReport.updatedAt = timestamp
+        report = updatedReport
     }
 
     func reset() {

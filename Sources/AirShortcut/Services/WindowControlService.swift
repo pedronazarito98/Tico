@@ -148,7 +148,7 @@ final class WindowControlService: WindowControlling {
     ) throws -> AXUIElement {
         var value: CFTypeRef?
         try requireSuccess(AXUIElementCopyAttributeValue(element, attribute, &value))
-        guard let result = value as! AXUIElement? else {
+        guard let result = AccessibilityValueDecoder.element(value) else {
             throw WindowControlError.windowNotFound
         }
         return result
@@ -159,12 +159,9 @@ final class WindowControlService: WindowControlling {
         try requireSuccess(
             AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &value)
         )
-        guard let axValue = value as! AXValue?,
-              AXValueGetType(axValue) == .cgSize else {
+        guard let size = AccessibilityValueDecoder.size(value) else {
             throw WindowControlError.operationFailed("tamanho indisponível")
         }
-        var size = CGSize.zero
-        AXValueGetValue(axValue, .cgSize, &size)
         return size
     }
 
@@ -173,12 +170,9 @@ final class WindowControlService: WindowControlling {
         try requireSuccess(
             AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &value)
         )
-        guard let axValue = value as! AXValue?,
-              AXValueGetType(axValue) == .cgPoint else {
+        guard let position = AccessibilityValueDecoder.point(value) else {
             throw WindowControlError.operationFailed("posição indisponível")
         }
-        var position = CGPoint.zero
-        AXValueGetValue(axValue, .cgPoint, &position)
         return position
     }
 
