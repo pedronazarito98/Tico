@@ -36,7 +36,7 @@ executado na mesma sessão para `PASS` ou `FAIL`.
 | Deployment target do bundle | `PASS` | `LSMinimumSystemVersion = 26.0` |
 | Build, suíte e regressões de segurança | `PASS` | 125 testes e 8 regressões de segurança, zero falhas |
 | ZIP e DMG ad hoc | `PASS` | assinatura estrita, Info.plist e DMG verificados |
-| Workflow do GitHub Actions | `NOT-RUN` | configurado para `macos-26`; execução remota exige push ou pull request |
+| Workflow do GitHub Actions | `PASS` | run `31729757980` no `macos-26`: macOS 26.5.2, Xcode 26.6, 125 testes, ZIP e DMG aprovados |
 
 A inspeção visual usou uma cópia temporária e isolada do app, sem reutilizar a
 identidade, os dados ou as permissões do Tico instalado. A aparência escura foi

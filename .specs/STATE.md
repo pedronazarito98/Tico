@@ -108,10 +108,10 @@
 - **Completed**: Spec, contexto, design, tarefas, regras em camadas, editor, persistência, coordenação, shell, avaliação de módulo, gates finais, revisão independente e merge do PR.
 - **In-progress**: Nenhum.
 - **Next step**: Preservar as evidências atuais. Se o trabalho for reaberto, usar `.specs/features/release-readiness/validation.md` como ponto de entrada para os gates que ainda não são release-ready.
-- **Blockers**: O gate local no macOS 26 está verde, mas o workflow atualizado para `macos-26` ainda não foi executado remotamente. A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN`, por Developer ID/notarização/staple/Gatekeeper/máquina limpa e pela falta de uma execução remota da configuração nova.
+- **Blockers**: Os gates local e remoto no macOS 26 estão verdes. A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN` e por Developer ID/notarização/staple/Gatekeeper/máquina limpa.
 - **Change set atual**: Atualização exclusiva para macOS 26 e auditoria de compatibilidade desta rodada.
-- **Branch**: `main`
-- **Remote**: `origin/main` em `1a7593cd12f4363e28224e817fb96d1568b3f550`.
-- **Pull request**: [#3](https://github.com/pedronazarito98/Tico/pull/3) merged em `2026-08-11`; não é mais draft.
-- **CI remoto**: Os runs [31486597406](https://github.com/pedronazarito98/Tico/actions/runs/31486597406) e [31487484224](https://github.com/pedronazarito98/Tico/actions/runs/31487484224) são anteriores à AD-011 e não validam o novo runner ou deployment target; CI macOS 26 `NOT-RUN`.
+- **Branch**: `feat/macos-26-exclusive`
+- **Remote**: `origin/feat/macos-26-exclusive`.
+- **Pull request**: [#5](https://github.com/pedronazarito98/Tico/pull/5), aberto como draft.
+- **CI remoto**: O run [31729757980](https://github.com/pedronazarito98/Tico/actions/runs/31729757980) do PR #5 passou no runner `macos-26` com macOS 26.5.2, Xcode 26.6, 125 testes, ZIP e DMG verificados. Os runs anteriores à AD-011 não são usados como evidência desta decisão.
 - **Release candidate**: `dist/Tico.zip` e `dist/Tico.dmg` com mínimo `26.0` validados localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.
