@@ -120,8 +120,8 @@
 - **Blockers**: A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN` e por Developer ID/notarização/staple/Gatekeeper/máquina limpa.
 - **Change set atual**: App Target Xcode fino preservando o código SwiftPM existente.
 - **Branch**: `feat/xcode-thin-app-target`
-- **Remote**: `NOT-RUN` — a branch ainda não foi publicada.
-- **Pull request**: `NOT-RUN` — nenhum PR foi aberto para este change set.
+- **Remote**: `origin/feat/xcode-thin-app-target`.
+- **Pull request**: [#6](https://github.com/pedronazarito98/Tico/pull/6), aberto como draft.
 - **Validação local**: `PASS` no gate canônico: builds SwiftPM e Xcode Debug, Archive Release universal com Hardened Runtime, 125 testes, 8 regressões de segurança, ZIP e DMG verificados.
-- **CI remoto**: `NOT-RUN` para AD-012; o workflow foi atualizado localmente para incluir o App Target Xcode.
+- **CI remoto**: O primeiro run do PR #6, [31741121816](https://github.com/pedronazarito98/Tico/actions/runs/31741121816), passou no commit `7b57e4f`, incluindo o App Target Xcode. O status requerido do HEAD atual permanece como fonte de verdade antes do merge.
 - **Release candidate**: `dist/Tico.zip` e `dist/Tico.dmg` com mínimo `26.0` validados localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.

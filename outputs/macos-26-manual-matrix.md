@@ -40,7 +40,7 @@ executado na mesma sessão para `PASS` ou `FAIL`.
 | Build, suíte e regressões de segurança | `PASS` | 125 testes e 8 regressões de segurança, zero falhas |
 | ZIP e DMG ad hoc | `PASS` | assinatura estrita, Info.plist e DMG verificados |
 | Workflow do GitHub Actions da AD-011 | `PASS` | run `31729757980` no `macos-26`: macOS 26.5.2, Xcode 26.6, 125 testes, ZIP e DMG aprovados |
-| Workflow do GitHub Actions da AD-012 | `NOT-RUN` | branch local ainda não publicada; workflow preparado para executar o gate Xcode |
+| Workflow do GitHub Actions da AD-012 | `PASS` | run `31741121816` no commit `7b57e4f`: gate Xcode completo aprovado em 2m36s |
 
 A inspeção visual usou uma cópia temporária e isolada do app, sem reutilizar a
 identidade, os dados ou as permissões do Tico instalado. A aparência escura foi

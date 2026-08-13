@@ -33,7 +33,7 @@ atualização entre builds. Nenhum desses itens foi inferido a partir de testes.
 | Bundle `.app` | `PASS` | `LSMinimumSystemVersion = 26.0` |
 | Scripts de pacote e preflight | `PASS` | validam explicitamente `26.0` |
 | CI da AD-011 | `PASS` remoto | run `31729757980` concluído no runner `macos-26` |
-| CI da AD-012 | `NOT-RUN` remoto | branch local ainda não publicada; workflow já inclui o gate Xcode |
+| CI da AD-012 | `PASS` remoto | run `31741121816` no commit `7b57e4f`, incluindo o gate Xcode completo |
 
 A linha `Target Platform: arm64e-apple-macos14.0` emitida pela biblioteca
 Swift Testing não representa o deployment target do produto. A inspeção do
@@ -59,7 +59,7 @@ Resultados:
 - `PASS`: versão mínima `26.0` nos artefatos;
 - `PASS` histórico da AD-011: GitHub Actions no macOS `26.5.2`, Xcode
   `26.6` e Swift `6.3.3`;
-- `NOT-RUN` remoto para AD-012: a branch atual ainda não foi publicada;
+- `PASS` remoto para AD-012 no commit `7b57e4f`: run `31741121816`;
 - `NOT-RUN`: Developer ID, notarização, staple, Gatekeeper e máquina limpa.
 
 ## Runtime do host Xcode

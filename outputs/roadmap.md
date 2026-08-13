@@ -25,8 +25,10 @@
    sanitizado permanece opcional para diagnosticar regressões físicas.
 3. **CI remoto do macOS 26:** a execução
    [#31729757980](https://github.com/pedronazarito98/Tico/actions/runs/31729757980)
-   concluiu com sucesso no runner `macos-26`. O gate local do App Target Xcode
-   está verde; sua primeira execução remota depende de publicar o change set.
+   concluiu com sucesso no runner `macos-26`. O App Target Xcode foi validado
+   remotamente no run
+   [#31741121816](https://github.com/pedronazarito98/Tico/actions/runs/31741121816),
+   incluindo Debug, Archive Release, suíte, ZIP e DMG.
 
 ## O que fica para depois
 
