@@ -12,7 +12,7 @@ Estas regras valem para todo o repositório. Um `AGENTS.md` mais próximo do arq
 ## Contratos do projeto
 
 - Preserve SwiftUI, Swift Package Manager e macOS 14+; não introduza framework arquitetural ou dependência sem aprovação.
-- `Tico` é o nome público. Preserve nomes técnicos, bundle, formatos persistidos, preferências e compatibilidade `AirShortcut` até existir uma migração aprovada.
+- `Tico` é o nome público e técnico. Preserve target, executável, bundle identifier, diretório de dados e preferências com a identidade Tico.
 - Prefira refatoração incremental com fachada compatível. Não faça reescritas amplas.
 - Não use arquivos agregadores apenas para reexportar símbolos. Importe módulos reais diretamente.
 - Não mova ou renomeie código sem benefício de responsabilidade demonstrável.
@@ -53,9 +53,9 @@ Estas regras valem para todo o repositório. Um `AGENTS.md` mais próximo do arq
 
 ```bash
 git diff --check
-swift build --disable-sandbox --product AirShortcut
+swift build --disable-sandbox --product Tico
 swift test --disable-sandbox
-AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
+TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
 ```
 
 - Não declare teste, lint, build, hardware, assinatura ou notarização como aprovados sem execução real. Use `NOT-RUN` ou `BLOCKED` quando aplicável.

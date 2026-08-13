@@ -24,8 +24,8 @@ repository; coordenadores devem declarar ownership e isolamento. Comandos de
 menu usam `AppCommandRouter`, e operações que exigem AppKit ficam nos
 adaptadores de ciclo de vida ou serviços de plataforma.
 
-O target SwiftPM continua sendo `AirShortcut` com o bridge C
-`AirShortcutMultitouchBridge`. Não extraia `AirShortcutCore` nem adicione
+O target SwiftPM é `Tico`, com o bridge C
+`TicoMultitouchBridge`. Não extraia `TicoCore` nem adicione
 dependências sem uma análise de grafo e um gate próprios.
 
 O gate automatizado cobre compilação, testes, regressões de segurança,

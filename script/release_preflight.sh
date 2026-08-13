@@ -2,8 +2,8 @@
 set -euo pipefail
 
 PUBLIC_APP_NAME="Tico"
-EXECUTABLE_NAME="AirShortcut"
-BUNDLE_ID="com.pedronazarito.AirShortcut"
+EXECUTABLE_NAME="Tico"
+BUNDLE_ID="com.pedronazarito.Tico"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARCHIVE_PATH="${1:-$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip}"
 TEMP_ROOT="$(/usr/bin/mktemp -d /private/tmp/TicoPreflight.XXXXXXXX)"
@@ -61,7 +61,7 @@ BUNDLE_ID_IN_BUNDLE="$(/usr/bin/plutil -extract CFBundleIdentifier raw "$INFO_PL
 if [[ "$DISPLAY_NAME" != "$PUBLIC_APP_NAME" ||
       "$EXECUTABLE_NAME_IN_BUNDLE" != "$EXECUTABLE_NAME" ||
       "$BUNDLE_ID_IN_BUNDLE" != "$BUNDLE_ID" ]]; then
-  echo "error: public or technical bundle identity does not match the Tico compatibility contract" >&2
+  echo "error: bundle identity does not match the Tico contract" >&2
   exit 4
 fi
 

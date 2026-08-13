@@ -81,6 +81,3 @@ técnico, desenvolvimento e QA local; não são releases públicas notarizadas.
 ## Licença
 
 Este projeto é disponibilizado sob a [licença MIT](LICENSE).
-
-> Tico é o nome público do produto. O executável ainda se chama `AirShortcut`
-> para preservar dados e permissões existentes.

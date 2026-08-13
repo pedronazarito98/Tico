@@ -19,9 +19,9 @@ Estado medido antes de alterações de produto:
 | Branch | `feature/melhorando-estrutura` |
 | Alterações prévias | Somente preparação documental/regras, consolidada em `556e77d` |
 | `git diff --check` | PASS |
-| `swift build --disable-sandbox --product AirShortcut` | PASS |
+| `swift build --disable-sandbox --product Tico` | PASS |
 | `swift test --disable-sandbox` | PASS — 111 testes, 0 falhas |
-| `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` | PASS — 111 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc verificado |
+| `TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` | PASS — 111 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc verificado |
 | Avisos | SwiftPM reportou os cinco `AGENTS.md` especializados como arquivos não tratados do target |
 | Trackpad físico | NOT-RUN |
 | TCC | NOT-RUN |
@@ -75,15 +75,15 @@ separados por risco.
 | Seam | Produtor | Consumidores | Efeitos | Owner observado |
 |---|---|---|---|---|
 | `RuleEditorView` | `Views/RulesView.swift:35-58` | `Views/ContentView.swift:168-189` → `RulesView` | closures de save/conflito/preset e captura; nenhum IO direto | `@State` local em `RuleEditorView.swift:27-32`; sessão explícita ainda inexistente |
-| `ShortcutStore` | `App/AirShortcutApp.swift:17-24` | `ContentView.swift:4-5,168-223`; `RulesView.swift:4,35-190`; `ProfilesView.swift:4`; `GestureLibraryView.swift:4`; `MenuBarContentView.swift:5-6`; `Support/AppController.swift:33,67,86,164,448-450,578-581,625-627`; `ShortcutStoreTests.swift:18,26,32-35,44,61,78,86,101,109,129,138,162,168,188,192,200,237,242,257,259,282`; `TicoCompatibilityTests.swift:23,47,97`; `SecurityRegressionTests.swift:37,39,98,108,235`; `AutomationAndProfilesTests.swift:84,122,153`; `AdvancedPhasesTests.swift:432,460,469` | leitura/migração, JSON, backup, escrita atômica, import/export | `ObservableObject` publica coleções e coordena invariantes, mas ainda contém IO |
-| `AppController` | `App/AirShortcutApp.swift:29-38` | `ContentView.swift:4,35-41,107-243,287-333`; `MenuBarContentView.swift:5`; `SecurityRegressionTests.swift:234-259` | captura global/trackpad, laboratório, automação, catálogo e tarefas | `@MainActor` em `Support/AppController.swift:12`; fachada temporária compatível |
+| `ShortcutStore` | `App/TicoApp.swift:17-24` | `ContentView.swift:4-5,168-223`; `RulesView.swift:4,35-190`; `ProfilesView.swift:4`; `GestureLibraryView.swift:4`; `MenuBarContentView.swift:5-6`; `Support/AppController.swift:33,67,86,164,448-450,578-581,625-627`; `ShortcutStoreTests.swift:18,26,32-35,44,61,78,86,101,109,129,138,162,168,188,192,200,237,242,257,259,282`; `TicoCompatibilityTests.swift:23,47,97`; `SecurityRegressionTests.swift:37,39,98,108,235`; `AutomationAndProfilesTests.swift:84,122,153`; `AdvancedPhasesTests.swift:432,460,469` | leitura/migração, JSON, backup, escrita atômica, import/export | `ObservableObject` publica coleções e coordena invariantes, mas ainda contém IO |
+| `AppController` | `App/TicoApp.swift:29-38` | `ContentView.swift:4,35-41,107-243,287-333`; `MenuBarContentView.swift:5`; `SecurityRegressionTests.swift:234-259` | captura global/trackpad, laboratório, automação, catálogo e tarefas | `@MainActor` em `Support/AppController.swift:12`; fachada temporária compatível |
 
 **Resultado:** o design documenta o grafo observável e não encontrou ciclos ou
 consumidores ocultos que exijam mudar contratos antes de T04/T10/T13. Os três
-seams permanecem dentro do target `AirShortcut`; T20 continua condicional.
+seams permanecem dentro do target `Tico`; T20 continua condicional.
 
 **Gate T02:** `git diff --check` — PASS; `swift build --disable-sandbox
---product AirShortcut` — PASS. Nenhum comportamento ou teste foi alterado.
+--product Tico` — PASS. Nenhum comportamento ou teste foi alterado.
 
 ## T03 — auditoria de concorrência e callbacks
 
@@ -94,7 +94,7 @@ owners. As invariantes também foram registradas nos comentários dos tipos
 
 | Fronteira | Invariante/owner | Classificação | Tarefa proprietária |
 |---|---|---|---|
-| `Services/MultitouchFrameProvider.swift:8` + bridge C `AirShortcutMultitouchBridge.c:76-117` | O bridge pode chamar fora da main; `TrackpadGestureService` é owner do ciclo `start/stop` e o contexto retido só é liberado depois da parada. | ⚠️ segura sob ownership atual; uso direto concorrente não é suportado e deve permanecer isolado | T13/T16; revisão final T22 |
+| `Services/MultitouchFrameProvider.swift:8` + bridge C `TicoMultitouchBridge.c:76-117` | O bridge pode chamar fora da main; `TrackpadGestureService` é owner do ciclo `start/stop` e o contexto retido só é liberado depois da parada. | ⚠️ segura sob ownership atual; uso direto concorrente não é suportado e deve permanecer isolado | T13/T16; revisão final T22 |
 | `Services/ReplayFrameProvider.swift:34` | Callbacks são agendados na fila serial; `stateLock` protege `running`/`generation` entre start/stop e a fila; `generation` invalida playback anterior. | ✅ estado compartilhado protegido; callback ainda é efeito do owner do laboratório | T15/T16; revisão final T22 |
 | `Services/GestureProcessingWorker.swift:5` | Engine, calibração e flag de fases só são acessados pela fila serial interna. | ✅ isolada por fila; callback entrega somente valor `Sendable` | T13/T15 |
 | `Services/GlobalEventTapService.swift:280` e callback C `:250-278` | `NSLock` protege resolução one-shot; instalação/stop usam run loop e semaphore; handlers são entregues na fila configurada. | ✅ lock/semáforo auditados; lifecycle continua owner do controller/coordenador | T13/T16 |
@@ -144,7 +144,7 @@ incremental; a auditoria não autoriza ativar strict concurrency global.
 `BLOCKED` pelo cache global do Clang (`Operation not permitted`); a repetição
 com `CLANG_MODULE_CACHE_PATH=/private/tmp/tico-clang-module-cache` e
 `SWIFT_MODULECACHE_PATH=/private/tmp/tico-swift-module-cache` passou com
-`swift build --disable-sandbox --product AirShortcut`. Não houve teste novo nem
+`swift build --disable-sandbox --product Tico`. Não houve teste novo nem
 alteração comportamental.
 
 ## Fechamento da Fase 0
@@ -188,7 +188,7 @@ recebem apenas bindings, valores e closures. A fachada pública de
 | Gate | Resultado |
 |---|---|
 | `git diff --check` | PASS |
-| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift build --disable-sandbox --product Tico` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
 | `swift test --disable-sandbox --filter RuleEditingSessionTests` | PASS — 3 testes, 0 falhas |
 | `swift test --disable-sandbox --filter AdvancedPhasesTests` | PASS — 13 testes, 0 falhas |
 | `swift test --disable-sandbox` | PASS — 114 testes, 0 falhas, após a correção final T09 |
@@ -272,7 +272,7 @@ estado e as invariantes.
 | Gate | Resultado |
 |---|---|
 | `git diff --check` | PASS |
-| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift build --disable-sandbox --product Tico` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
 | `swift test --disable-sandbox --filter ShortcutStoreTests` | PASS — 15 testes, 0 falhas |
 | `swift test --disable-sandbox --filter SecurityRegressionTests` | PASS — 8 testes, 0 falhas |
 | `swift test --disable-sandbox` | PASS — 117 testes, 0 falhas |
@@ -341,7 +341,7 @@ views existentes.
 | Gate | Resultado |
 |---|---|
 | `git diff --check` | PASS |
-| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift build --disable-sandbox --product Tico` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
 | `swift test --disable-sandbox --filter CaptureCoordinatorTests` | PASS — 3 testes, 0 falhas |
 | `swift test --disable-sandbox --filter AutomationAndProfilesTests` | PASS — 12 testes, 0 falhas |
 | `swift test --disable-sandbox --filter TrackpadLaboratoryPhaseOneTests` | PASS — 9 testes, 0 falhas |
@@ -368,18 +368,18 @@ ID e notarização permanecem **NOT-RUN**.
 
 **Resultado de código:** concluído. Os comandos de menu/atalho agora passam
 por `AppCommandRouter`, com envelopes consumidos uma vez e uma ponte de
-compatibilidade que ainda traduz as notificações `AirShortcut.*`. O ciclo de
+integração que traduz as notificações internas `Tico.*`. O ciclo de
 vida AppKit está atrás de `ApplicationLifecycleControlling` e
 `ApplicationLifecycleService`; `MenuBarContentView` não importa nem referencia
 AppKit diretamente.
 
-### T20 — decisão de não extrair `AirShortcutCore`
+### T20 — decisão de não extrair `TicoCore`
 
 A análise do checkout não atende ao critério de uma extração segura nesta
 fase:
 
-- `Package.swift` possui um único target executável Swift (`AirShortcut`) e o
-  target C `AirShortcutMultitouchBridge`; o teste depende do executável.
+- `Package.swift` possui um único target executável Swift (`Tico`) e o
+  target C `TicoMultitouchBridge`; o teste depende do executável.
 - `Models` usa apenas `Foundation`, mas os tipos são consumidos diretamente
   por `Stores`, `Services`, coordenadores e views. Uma separação imediata
   exigiria tornar uma malha ampla de tipos/internal APIs pública ou mover
@@ -397,11 +397,11 @@ inalterado; não foi adicionada dependência nem framework arquitetural.
 | Gate | Resultado |
 |---|---|
 | `git diff --check` | PASS |
-| `swift build --disable-sandbox --product AirShortcut` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift build --disable-sandbox --product Tico` | PASS — caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
 | `swift test --disable-sandbox --filter AppCommandRouterTests` | PASS — 2 testes, 0 falhas |
 | `swift test --disable-sandbox --filter ApplicationLifecycleServiceTests` | PASS — 1 teste, 0 falhas |
 | `swift test --disable-sandbox` | PASS — 125 testes, 0 falhas |
-| `swift package dump-package` | PASS — targets `AirShortcutMultitouchBridge`, `AirShortcut` e `AirShortcutTests` |
+| `swift package dump-package` | PASS — targets `TicoMultitouchBridge`, `Tico` e `TicoTests` |
 | Revisão independente da Fase 4 | PASS — `019febaf-25da-7db1-b6d1-9863934a871f`, HEAD `d2395e4` |
 | UAT menus/atalhos/janelas | NOT-RUN — sem prova de interação contínua do shell nativo |
 
@@ -418,7 +418,7 @@ A documentação foi alinhada ao checkout efetivo:
 - `CONTRIBUTING.md` registra branch-by-abstraction, fronteiras de codec/
   repository, comandos tipados, isolamento AppKit e o critério para uma futura
   avaliação de módulo.
-- `AGENTS.md` e `Sources/AirShortcut/AGENTS.md` deixam explícito que Views não
+- `AGENTS.md` e `Sources/Tico/AGENTS.md` deixam explícito que Views não
   referenciam AppKit e que `Support` só abriga coordenação quando o owner está
   claro. As regras especializadas de Views, Stores, Services e Tests continuam
   compatíveis e não foram substituídas.
@@ -434,10 +434,10 @@ posterior do usuário foi registrado separadamente em T22.
 | Evidência | Resultado |
 |---|---|
 | `git diff --check` | PASS antes do fechamento documental |
-| `swift build --disable-sandbox --product AirShortcut` | PASS — produto AirShortcut; caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
+| `swift build --disable-sandbox --product Tico` | PASS — produto Tico; caches de módulo em `/private/tmp/tico-clang-module-cache` e `/private/tmp/tico-swift-module-cache` |
 | `swift test --disable-sandbox` | PASS — 125 testes, 0 falhas |
-| `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc `dist/Tico.zip` verificado |
-| `swift package dump-package` | PASS — `AirShortcutMultitouchBridge`, `AirShortcut` e `AirShortcutTests` |
+| `TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc `dist/Tico.zip` verificado |
+| `swift package dump-package` | PASS — `TicoMultitouchBridge`, `Tico` e `TicoTests` |
 | Arquivos não rastreados após o gate | nenhum |
 | Revisão independente final | PASS — `019febaf-25da-7db1-b6d1-9863934a871f`; revisão read-only do HEAD final |
 
@@ -486,7 +486,7 @@ trackpad físico e notarização; o relato manual acima é uma evidência separa
 
 | Evidência | Resultado |
 |---|---|
-| `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/build_and_run.sh --release-package` | PASS — `dist/Tico.app` e `dist/Tico.zip` gerados; build release local-only por ausência de identidade Developer ID configurada |
+| `TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/build_and_run.sh --release-package` | PASS — `dist/Tico.app` e `dist/Tico.zip` gerados; build release local-only por ausência de identidade Developer ID configurada |
 | `./script/release_preflight.sh dist/Tico.zip` | PASS estrutural — identidade pública/técnica preservada, assinatura profunda estrita PASS e Hardened Runtime habilitado |
 | Notarização, stapling e execução em máquina limpa | NOT-RUN pelo agente; o preflight não reivindica esses gates |
 | Push remoto / merge | PASS — `origin/main` em `1a7593c`; PR [#3](https://github.com/pedronazarito98/Tico/pull/3) integrado em `main` |
@@ -502,9 +502,9 @@ no commit `67ba8e1`, sem alterar comportamento ou contratos.
 
 | Evidência | Resultado |
 |---|---|
-| `swift build --disable-sandbox --product AirShortcut` após `67ba8e1` | PASS |
+| `swift build --disable-sandbox --product Tico` após `67ba8e1` | PASS |
 | `swift test --disable-sandbox` após `67ba8e1` | PASS — 125 testes, 0 falhas |
-| `AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` após `67ba8e1` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc verificado |
+| `TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package` após `67ba8e1` | PASS — 125 testes, 0 falhas; 8 regressões de segurança; pacote ad hoc verificado |
 | GitHub Actions [run 31486494426](https://github.com/pedronazarito98/Tico/actions/runs/31486494426) | PASS — job completo em 37s |
 
 Uma revisão independente final confirmou o HEAD e encontrou apenas duas frases

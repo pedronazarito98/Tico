@@ -20,7 +20,7 @@ Paralelo mental adotado:
 
 - `Package.swift` reúne o app em um target executável e um target C auxiliar.
 - `RuleEditorView.swift`, `AppController.swift` e `ShortcutStore.swift` eram os principais seams da modernização; as responsabilidades foram separadas nas fases T04–T16 e as fachadas compatíveis permanecem.
-- `ContentView` e `Commands` usam `AppCommandRouter`; as notificações legadas continuam somente como ponte de compatibilidade.
+- `ContentView` e `Commands` usam `AppCommandRouter`; notificações internas usam o namespace `Tico.*`.
 - O projeto já possui protocolos e injeção em serviços, stores e replay; esses padrões devem ser reutilizados.
 - A suíte existente cobre domínio, persistência, segurança e compatibilidade, mas não substitui validação física do trackpad; em 2026-08-10, o usuário informou que executou as validações manuais e que o produto está funcionando.
 
@@ -34,7 +34,7 @@ Paralelo mental adotado:
   composition root.
 - O shell usa comandos tipados e `ApplicationLifecycleService`; as views não
   importam nem referenciam AppKit.
-- A avaliação T20 concluiu que `AirShortcutCore` não deve ser extraído nesta
+- A avaliação T20 concluiu que `TicoCore` não deve ser extraído nesta
   fase; `Package.swift` permanece sem target Swift adicional.
 - As validações manuais de editor, shell, captura, automação, laboratório,
   trackpad, TCC, sleep/wake, assinatura e notarização foram declaradas PASS
@@ -51,7 +51,7 @@ Paralelo mental adotado:
 
 ## Decisões resolvidas durante a execução
 
-1. T20 registrou “não extrair” `AirShortcutCore`: a malha de tipos/internal APIs
+1. T20 registrou “não extrair” `TicoCore`: a malha de tipos/internal APIs
    e as dependências de plataforma não formam uma fronteira pura sem custo
    desproporcional.
 2. `RuleEditingSession` foi implementada como estado explícito baseado nas

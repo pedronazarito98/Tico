@@ -2,7 +2,7 @@
 
 ## Versões compatíveis
 
-O AirShortcut ainda está em fase de pré-lançamento. As correções de segurança
+O Tico ainda está em fase de pré-lançamento. As correções de segurança
 são aplicadas somente à revisão mais recente.
 
 ## Como relatar uma vulnerabilidade
@@ -29,7 +29,7 @@ entrar no repositório, em anexos públicos ou em evidências de reprodução.
 
 ## Fronteiras de segurança
 
-O AirShortcut processa arquivos JSON selecionados pelo usuário e pode executar
+O Tico processa arquivos JSON selecionados pelo usuário e pode executar
 automações locais com a autoridade do usuário atual. Regras importadas são
 validadas e sempre entram desativadas até serem revisadas e ativadas localmente.
 

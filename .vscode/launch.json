@@ -5,20 +5,20 @@
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:Tico}",
-            "name": "Debug AirShortcut",
-            "target": "AirShortcut",
+            "name": "Debug Tico",
+            "target": "Tico",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug AirShortcut"
+            "preLaunchTask": "swift: Build Debug Tico"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
             "cwd": "${workspaceFolder:Tico}",
-            "name": "Release AirShortcut",
-            "target": "AirShortcut",
+            "name": "Release Tico",
+            "target": "Tico",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release AirShortcut"
+            "preLaunchTask": "swift: Build Release Tico"
         }
     ]
 }

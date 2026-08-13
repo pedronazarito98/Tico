@@ -72,7 +72,7 @@ Os masters ficam em `Masters/`:
 - `Tico.iconset/` e `Tico.icns`.
 
 Os arquivos usados pelo app ficam em
-`Sources/AirShortcut/Resources/Brand/`.
+`Sources/Tico/Resources/Brand/`.
 
 Todos os exports são derivados da mesma silhueta pelo script
 `script/generate_tico_brand_assets.py`. A fonte Sora e a respectiva licença OFL
@@ -85,5 +85,5 @@ python3 script/generate_tico_brand_assets.py \
   --source Design/Brand/Tico/Masters/tico-symbol-raw.png \
   --font Design/Brand/Tico/Masters/Sora-VariableFont_wght.ttf \
   --design-dir Design/Brand/Tico/Masters \
-  --resources-dir Sources/AirShortcut/Resources/Brand
+  --resources-dir Sources/Tico/Resources/Brand
 ```

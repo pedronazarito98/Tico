@@ -8,7 +8,7 @@ Baseline desta iniciativa: `27e0650`. Consolidação integrada em `87f65ef`.
 
 - identidade pública Tico com ícone, wordmark, menu bar e compatibilidade
   preservada para executável, bundle identifier, dados e permissões do
-  AirShortcut;
+  Tico;
 - gate macOS compartilhado para build, 111 testes Swift, 8 regressões de
   segurança e verificação do package ad hoc;
 - licença MIT adicionada e CI remoto confirmado no commit de consolidação;

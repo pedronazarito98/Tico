@@ -3,9 +3,9 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_MODE=0
-PRODUCT_NAME="AirShortcut"
+PRODUCT_NAME="Tico"
 PUBLIC_APP_NAME="Tico"
-BUNDLE_ID="com.pedronazarito.AirShortcut"
+BUNDLE_ID="com.pedronazarito.Tico"
 ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip"
 DMG_ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.dmg"
 TEST_LOG="$(/usr/bin/mktemp /private/tmp/Tico-ci-tests.XXXXXXXX)"
@@ -14,7 +14,7 @@ DMG_VERIFY_MOUNT=""
 DMG_ATTACHED=0
 SWIFT_ARGS=()
 
-if [[ "${AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX:-0}" == "1" ]]; then
+if [[ "${TICO_DISABLE_SWIFTPM_SANDBOX:-0}" == "1" ]]; then
   SWIFT_ARGS+=(--disable-sandbox)
 fi
 
@@ -52,7 +52,7 @@ bash -n script/release_preflight.sh
 bash -n script/notarize_release.sh
 bash -n script/validate_hardware_report.sh
 
-step "Building Tico (SwiftPM product AirShortcut)"
+step "Building Tico (SwiftPM product Tico)"
 swift build ${SWIFT_ARGS[@]+"${SWIFT_ARGS[@]}"} --product "$PRODUCT_NAME"
 
 step "Running complete Swift test suite"

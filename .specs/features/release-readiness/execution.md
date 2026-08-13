@@ -1,4 +1,4 @@
-# AirShortcut Release Readiness — author execution freeze
+# Tico Release Readiness — author execution freeze
 
 **Frozen on**: 2026-07-26
 
@@ -67,7 +67,7 @@ Contagem estática de métodos XCTest:
 O range altera somente CI/gates, documentação pública, evidência sanitizada,
 testes de replay/permissão/fallback, correção limitada do serviço necessária
 às regressões, scripts de QA/release e os artefatos desta iniciativa.
-`dist/AirShortcut.zip` e `dist/AirShortcut.app` permanecem artefatos locais
+`dist/Tico.zip` e `dist/Tico.app` permanecem artefatos locais
 fora do commit.
 
 ## Blockers e limites preservados no freeze

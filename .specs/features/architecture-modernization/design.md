@@ -72,7 +72,7 @@ Cada coordenador explicita isolamento (`@MainActor`, actor ou fila encapsulada) 
 
 ### 5. Módulo interno condicional
 
-Após as fronteiras anteriores, T20 avalia mover modelos e lógica pura para `AirShortcutCore`. O executável dependerá desse target por `.target(name:)`. A extração será cancelada se exigir levar SwiftUI/AppKit, criar ciclos ou duplicar tipos.
+Após as fronteiras anteriores, T20 avalia mover modelos e lógica pura para `TicoCore`. O executável dependerá desse target por `.target(name:)`. A extração será cancelada se exigir levar SwiftUI/AppKit, criar ciclos ou duplicar tipos.
 
 ## Propriedade e fluxo de estado
 
@@ -99,15 +99,15 @@ Cada extração segue branch-by-abstraction:
 4. migrar consumidores;
 5. remover apenas código comprovadamente morto.
 
-Formatos persistidos, bundle, preferências e nomenclatura técnica não mudam. Qualquer migração de dados futura precisa de decisão e plano próprios.
+Formatos persistidos não mudam. Bundle, preferências e nomenclatura técnica passaram a usar `Tico` na migração nominal aprovada posteriormente. Qualquer nova migração de dados precisa de decisão e plano próprios.
 
 ## Riscos
 
 | Risco | Evidência atual | Mitigação |
 |---|---|---|
-| Estado duplicado no editor | `Sources/AirShortcut/Views/RuleEditorView.swift` concentra rascunho, gravação e conflito | Criar uma sessão única antes de extrair subviews |
-| Regressão de arquivo/migração | `Sources/AirShortcut/Stores/ShortcutStore.swift` combina coleção e IO | Extrair codec/repositório mantendo fachada e testes de store |
-| Ciclo entre coordenadores | `Sources/AirShortcut/Support/AppController.swift` conhece stores e vários serviços | Definir entradas/saídas pequenas e composition root único |
+| Estado duplicado no editor | `Sources/Tico/Views/RuleEditorView.swift` concentra rascunho, gravação e conflito | Criar uma sessão única antes de extrair subviews |
+| Regressão de arquivo/migração | `Sources/Tico/Stores/ShortcutStore.swift` combina coleção e IO | Extrair codec/repositório mantendo fachada e testes de store |
+| Ciclo entre coordenadores | `Sources/Tico/Support/AppController.swift` conhece stores e vários serviços | Definir entradas/saídas pequenas e composition root único |
 | Comando recebido mais de uma vez | `ContentView` e `Commands` usam notificações globais | Ponte temporária com ownership e remoção explícitos |
 | Corrida em callbacks | Serviços contêm fronteiras `@unchecked Sendable` | Inventário em T03 e isolamento documentado por tarefa |
 | Módulo prematuro | Um único target Swift facilita acessos `internal` implícitos | T20 é condicional e vem depois das extrações |
@@ -129,10 +129,10 @@ dependências que não aparecem no código.
 
 ### `RuleEditorView`
 
-- **Produtor/compositor:** `Sources/AirShortcut/Views/RulesView.swift:35-58`
+- **Produtor/compositor:** `Sources/Tico/Views/RulesView.swift:35-58`
   cria a view quando há uma regra selecionada e fornece valores, bindings
   indiretos e closures estreitas.
-- **Fonte dos valores:** `Sources/AirShortcut/Views/ContentView.swift:168-189`
+- **Fonte dos valores:** `Sources/Tico/Views/ContentView.swift:168-189`
   projeta estado de `ShortcutStore` e `AppController`; a view não recebe os
   objetos completos.
 - **Efeitos:** `onSave` e `onReplaceConflicts` retornam para
@@ -148,7 +148,7 @@ dependências que não aparecem no código.
 
 ### `ShortcutStore`
 
-- **Produtor/composition root:** `Sources/AirShortcut/App/AirShortcutApp.swift:17-24`
+- **Produtor/composition root:** `Sources/Tico/App/TicoApp.swift:17-24`
   cria uma única instância de longa duração com `@StateObject`.
 - **Consumidores:** `ContentView.swift:4-5,168-223`,
   `RulesView.swift:4,107-190`, `ProfilesView.swift:4`,
@@ -168,7 +168,7 @@ dependências que não aparecem no código.
 
 ### `AppController`
 
-- **Produtor/composition root:** `AirShortcutApp.swift:29-38` constrói o
+- **Produtor/composition root:** `TicoApp.swift:29-38` constrói o
   controller com store, settings, logs, permissões e stores de laboratório.
 - **Consumidores:** `ContentView.swift:4,35-41,107-243,287-333` e
   `MenuBarContentView.swift:5` observam projeções e chamam métodos públicos;
@@ -188,7 +188,7 @@ dependências que não aparecem no código.
    atuais de `RulesView`; nenhuma assinatura externa é removida em T04–T09.
 2. `ShortcutStore` mantém `fileURL`, `defaultFileURL`, versionamento 6,
    CRUD, conflitos, import/export, seed, migração e erros
-   `ShortcutStoreError`; formatos, path `Application Support/AirShortcut` e
+   `ShortcutStoreError`; formatos, path `Application Support/Tico` e
    chaves técnicas não mudam.
 3. `AppController` mantém o inicializador injetável, propriedades publicadas e
    métodos chamados por `ContentView`/`MenuBarContentView`, incluindo
@@ -196,14 +196,14 @@ dependências que não aparecem no código.
    replay.
 
 O mapa não encontrou dependência que justifique alterar `Package.swift` nesta
-   etapa; a avaliação condicional de um target `AirShortcutCore` permanece em
+   etapa; a avaliação condicional de um target `TicoCore` permanece em
    T20.
 
 ## Atualização pós-T09 — editor
 
 O snapshot acima preserva a evidência histórica do T02. Após T04–T09, o
 ownership do editor foi movido para
-`Sources/AirShortcut/Views/Components/Rules/RuleEditingSession.swift`,
+`Sources/Tico/Views/Components/Rules/RuleEditingSession.swift`,
 observável no `@StateObject` de `RuleEditorView`. A view principal agora é
 composição e tradução de eventos; `RuleTriggerEditorView`,
 `TrackpadTriggerEditorView`, `RuleEditorHeaderView` e
@@ -211,7 +211,7 @@ composição e tradução de eventos; `RuleTriggerEditorView`,
 
 `RuleEditingSession` não conhece persistência, AppKit ou
 `AppController`. A validação pura de URL foi compartilhada em
-`Sources/AirShortcut/Support/RuleURLValidator.swift`. A assinatura pública de
+`Sources/Tico/Support/RuleURLValidator.swift`. A assinatura pública de
 `RuleEditorView` e os closures de `RulesView` permanecem compatíveis.
 
 ## Atualização pós-T12 — persistência
@@ -261,10 +261,10 @@ observável e fazem a ponte com ações de UI. Os efeitos de plataforma continua
 atrás dos serviços/protocolos existentes; não foi introduzido container global,
 singleton de aplicação ou migração ampla para Observation.
 
-## Atualização pós-T20 — avaliação de `AirShortcutCore`
+## Atualização pós-T20 — avaliação de `TicoCore`
 
-O target `AirShortcutCore` não foi extraído. A evidência do pacote atual é um
-executável Swift `AirShortcut`, um target C local para o bridge de multitouch e
+O target `TicoCore` não foi extraído. A evidência do pacote atual é um
+executável Swift `Tico`, um target C local para o bridge de multitouch e
 um target de testes que depende do executável. Embora os arquivos em `Models`
 usem somente `Foundation`, eles participam de uma malha interna compartilhada
 por codec, stores, engines, serviços, coordenadores e views.

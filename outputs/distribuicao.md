@@ -42,7 +42,7 @@ repositório.
 ## Comandos para uma release futura
 
 ```sh
-export AIRSHORTCUT_CODESIGN_IDENTITY="Developer ID Application: NOME (TEAMID)"
+export TICO_CODESIGN_IDENTITY="Developer ID Application: NOME (TEAMID)"
 ./script/build_and_run.sh --release-package
 
 export TICO_NOTARYTOOL_PROFILE="TicoNotary"

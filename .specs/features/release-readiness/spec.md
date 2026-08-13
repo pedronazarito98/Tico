@@ -1,4 +1,4 @@
-# AirShortcut Release Readiness Specification
+# Tico Release Readiness Specification
 
 **Status**: Draft — pronta para revisão do usuário antes do Execute
 **Feature key**: `release-readiness`
@@ -6,7 +6,7 @@
 
 ## Problem Statement
 
-O AirShortcut já possui a implementação de automação, laboratório, replay,
+O Tico já possui a implementação de automação, laboratório, replay,
 regras, workflows e correções de segurança. Ainda falta transformar essa
 validação local em um processo reprodutível para colaboradores e releases:
 CI, documentação pública coerente, evidência física do trackpad e uma trilha

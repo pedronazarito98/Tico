@@ -1,4 +1,4 @@
-# AirShortcut Release Readiness Context
+# Tico Release Readiness Context
 
 **Gathered**: 2026-07-26
 **Spec**: `.specs/features/release-readiness/spec.md`
@@ -6,7 +6,7 @@
 
 ## Feature Boundary
 
-Fechar o ciclo de publicação do AirShortcut existente: gates automatizados,
+Fechar o ciclo de publicação do Tico existente: gates automatizados,
 documentação coerente, matriz física de trackpad, pré-flight de assinatura e
 verificação independente. O ciclo não adiciona novos gestos, backend ou
 compatibilidade com a Mac App Store.
@@ -60,9 +60,9 @@ compatibilidade com a Mac App Store.
 - `outputs/relatorio-correcoes-seguranca.pt-BR.md`
 - `outputs/evidencias-validacao-seguranca.pt-BR.md`
 - `outputs/signing-and-distribution.md`
-- `Sources/AirShortcut/Services/TrackpadGestureService.swift`
-- `Sources/AirShortcut/Services/MultitouchFrameProvider.swift`
-- `Sources/AirShortcut/App/Commands.swift`
+- `Sources/Tico/Services/TrackpadGestureService.swift`
+- `Sources/Tico/Services/MultitouchFrameProvider.swift`
+- `Sources/Tico/App/Commands.swift`
 - `script/build_and_run.sh`
 
 ## Deferred Ideas

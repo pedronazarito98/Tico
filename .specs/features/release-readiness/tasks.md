@@ -1,4 +1,4 @@
-# AirShortcut Release Readiness Tasks
+# Tico Release Readiness Tasks
 
 ## Execution Protocol (MANDATORY)
 
@@ -28,9 +28,9 @@ GitHub Actions/GitHub quando disponível, `tlc-spec-driven`,
 
 | Code Layer | Required Test Type | Coverage Expectation | Location Pattern | Run Command |
 | --- | --- | --- | --- | --- |
-| Domain, recognizers and workflows | unit | Todos os branches relevantes; 1:1 com ACs RR-09, RR-10 e regressões listadas | `Tests/AirShortcutTests/*Gesture*Tests.swift`, `AdvancedPhasesTests.swift` | `swift test` |
-| Persistence, importação e segurança | unit | Todos os limites, rejeições, ativação e compatibilidade descritos pela auditoria | `Tests/AirShortcutTests/SecurityRegressionTests.swift`, `ShortcutStoreTests.swift` | `swift test --filter SecurityRegressionTests` e `swift test` |
-| Replay e isolamento de ações | unit/integration | Cada velocidade, fixture válida, estado do laboratório e ausência de execução de regra | `Tests/AirShortcutTests/TrackpadLaboratoryPhaseOneTests.swift`, `AdvancedPhasesTests.swift` | `swift test` |
+| Domain, recognizers and workflows | unit | Todos os branches relevantes; 1:1 com ACs RR-09, RR-10 e regressões listadas | `Tests/TicoTests/*Gesture*Tests.swift`, `AdvancedPhasesTests.swift` | `swift test` |
+| Persistence, importação e segurança | unit | Todos os limites, rejeições, ativação e compatibilidade descritos pela auditoria | `Tests/TicoTests/SecurityRegressionTests.swift`, `ShortcutStoreTests.swift` | `swift test --filter SecurityRegressionTests` e `swift test` |
+| Replay e isolamento de ações | unit/integration | Cada velocidade, fixture válida, estado do laboratório e ausência de execução de regra | `Tests/TicoTests/TrackpadLaboratoryPhaseOneTests.swift`, `AdvancedPhasesTests.swift` | `swift test` |
 | Scripts de build/package/report | shell/build | Happy path, erro controlado, sintaxe e artefato extraído verificável | `script/*.sh`, fixtures de `outputs/hardware-validation/` | `bash -n ...` e `./script/ci_verify.sh --package` |
 | UI, permissões e fallback | manual UAT | Fluxos de permissão, laboratório, captura privada, fallback e mensagens observáveis | app SwiftUI + `outputs/qa-checklist.md` | `./script/build_and_run.sh --laboratory-verify` + sessão manual |
 | Hardware físico | manual hardware | Todas as linhas obrigatórias de RR-07–RR-10; `NOT-RUN` nunca conta como PASS | `outputs/hardware-validation/` | checklist no Mac compatível |
@@ -44,7 +44,7 @@ GitHub Actions/GitHub quando disponível, `tlc-spec-driven`,
 | Gate Level | When to Use | Command |
 | --- | --- | --- |
 | Quick | Após tarefa somente de teste/unit ou documentação com impacto local | `swift test` |
-| Full | Após tarefa de código, replay, segurança ou integração | `swift build --product AirShortcut && swift test && swift test --filter SecurityRegressionTests` |
+| Full | Após tarefa de código, replay, segurança ou integração | `swift build --product Tico && swift test && swift test --filter SecurityRegressionTests` |
 | Build | Após fase e antes de mover para o próximo lote | `bash -n script/build_and_run.sh && ./script/ci_verify.sh --package` |
 
 **Local recovery only**: se o cache SwiftPM do ambiente causar `ModuleCache:
@@ -299,7 +299,7 @@ automatizados/manuais e transformar cada cenário em resultado PASS/FAIL/NOT-RUN
 ### T10: Fortalecer testes de isolamento do replay
 
 **What**: Adicionar/ajustar testes que provem estado do laboratório em cada velocidade e ausência de execução de regra/action log.
-**Where**: `Tests/AirShortcutTests/TrackpadLaboratoryPhaseOneTests.swift`, `AdvancedPhasesTests.swift`
+**Where**: `Tests/TicoTests/TrackpadLaboratoryPhaseOneTests.swift`, `AdvancedPhasesTests.swift`
 **Depends on**: T8
 **Reuses**: `ReplayFrameProvider`, fixtures existentes
 **Requirement**: RR-09
@@ -320,7 +320,7 @@ automatizados/manuais e transformar cada cenário em resultado PASS/FAIL/NOT-RUN
 ### T11: Fortalecer testes de permissão e fallback
 
 **What**: Adicionar/ajustar regressões para captura negada, fallback público e segurança de teclado/mouse quando o private provider não está disponível.
-**Where**: `Tests/AirShortcutTests/TrackpadGestureServiceTests.swift`, `PermissionCoordinatorTests.swift`, provider tests quando necessário
+**Where**: `Tests/TicoTests/TrackpadGestureServiceTests.swift`, `PermissionCoordinatorTests.swift`, provider tests quando necessário
 **Depends on**: T8
 **Reuses**: `PermissionCoordinator`, `TrackpadFrameProvider`
 **Requirement**: RR-08, RR-10
@@ -403,7 +403,7 @@ automatizados/manuais e transformar cada cenário em resultado PASS/FAIL/NOT-RUN
 ### T15: Executar dry-run de empacotamento e signing review
 
 **What**: Produzir um artefato ad hoc de dry-run, revisar entitlements e registrar a saída de assinatura sem apresentá-lo como release.
-**Where**: `outputs/release-dry-run-*.md` (sanitizado), `dist/AirShortcut.zip` local
+**Where**: `outputs/release-dry-run-*.md` (sanitizado), `dist/Tico.zip` local
 **Depends on**: T13, T14
 **Reuses**: package script e artifact atual
 **Requirement**: RR-11, RR-12, RR-14

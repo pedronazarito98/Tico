@@ -30,16 +30,16 @@ O run de merge fecha a evidência remota que estava ausente no relatório anteri
 **Comando executado**:
 
 ```sh
-AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
+TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
 ```
 
 | Check | Resultado atual |
 | --- | --- |
 | Validação de shell | PASS — `bash -n` para os cinco scripts do gate |
-| Build | PASS — produto SwiftPM `AirShortcut` |
+| Build | PASS — produto SwiftPM `Tico` |
 | Suíte Swift | PASS — 125 testes, 0 falhas |
 | `SecurityRegressionTests` | PASS — 8 testes, 0 falhas |
-| Package | PASS — `dist/Tico.zip`; app extraído passou `codesign --verify --deep --strict` e identidade Tico/AirShortcut |
+| Package | PASS — `dist/Tico.zip`; app extraído passou `codesign --verify --deep --strict` e identidade Tico/Tico |
 | Hardware físico | NOT-RUN pelo gate automatizado |
 | Notarização | NOT-RUN pelo gate automatizado |
 
@@ -58,8 +58,8 @@ terminou com exit code 0.
 Resultado observado:
 
 - identidade pública: `Tico`;
-- executável técnico: `AirShortcut`;
-- bundle identifier: `com.pedronazarito.AirShortcut`;
+- executável técnico: `Tico`;
+- bundle identifier: `com.pedronazarito.Tico`;
 - assinatura profunda estrita: `PASS`;
 - modo de assinatura: `ad-hoc/development`;
 - Hardened Runtime: `not-confirmed`;
@@ -92,8 +92,8 @@ Resultado observado:
 | RR-05 | `LICENSE:1-20` contém MIT; `README.md:32-48,80-85` declara technical preview, status, fallback e compatibilidade com framework privado; `outputs/distribuicao.md:3-16` mantém a fronteira de distribuição. | **PASS** |
 | RR-06 | `SECURITY.md:8-28` direciona vulnerabilidades para fluxo privado e proíbe credenciais, dados pessoais e logs sensíveis públicos. | **PASS** |
 | RR-07 | `outputs/hardware-validation/report-template.md:3-26` define o schema, mas não há `report-AAAA-MM-DD.md` preenchido no checkout atual. | **BLOCKED** |
-| RR-08 | `Tests/AirShortcutTests/PermissionCoordinatorTests.swift:38-55`, `Tests/AirShortcutTests/SecurityRegressionTests.swift:212-260` e `Tests/AirShortcutTests/TrackpadGestureServiceTests.swift:49-80` cobrem estados negados/fallback; a observação física e o relatório sanitizado continuam ausentes. | **BLOCKED** |
-| RR-09 | `Tests/AirShortcutTests/TrackpadLaboratoryPhaseOneTests.swift:190-203` verifica replay em `0.5`, `1.0` e `2.0`, estado do laboratório e log de ações inalterado. | **PASS** |
+| RR-08 | `Tests/TicoTests/PermissionCoordinatorTests.swift:38-55`, `Tests/TicoTests/SecurityRegressionTests.swift:212-260` e `Tests/TicoTests/TrackpadGestureServiceTests.swift:49-80` cobrem estados negados/fallback; a observação física e o relatório sanitizado continuam ausentes. | **BLOCKED** |
+| RR-09 | `Tests/TicoTests/TrackpadLaboratoryPhaseOneTests.swift:190-203` verifica replay em `0.5`, `1.0` e `2.0`, estado do laboratório e log de ações inalterado. | **PASS** |
 | RR-10 | `outputs/qa-checklist.md:47-63` e `outputs/trackpad.md:27-31` impedem declarar Magic Trackpad sem teste; `outputs/hardware-validation/report-template.md:5-8` diferencia `NOT-RUN` de aprovação. | **PASS** — política de bloqueio preservada; suporte físico segue bloqueado. |
 | RR-11 | `script/ci_verify.sh:55-71` extrai o ZIP, limpa xattrs, verifica assinatura profunda e identidade; o gate local atual passou. | **PASS** |
 | RR-12 | `script/release_preflight.sh:48-56,71-90` classifica o pacote atual como `ad-hoc/development` e não reivindica notarização/Gatekeeper. | **PASS** |

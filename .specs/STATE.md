@@ -4,7 +4,7 @@
 
 ### AD-001
 
-- **Decision**: A iniciativa atual trata prontidão para release e validação do AirShortcut existente; novas famílias de gestos ficam fora deste ciclo.
+- **Decision**: A iniciativa atual trata prontidão para release e validação do Tico existente; novas famílias de gestos ficam fora deste ciclo.
 - **Reason**: A implementação principal e a auditoria de segurança já existem; o risco restante é evidência operacional, compatibilidade física e distribuição.
 - **Trade-off**: O produto não ampliará seu escopo funcional enquanto a matriz de validação e os gates de release não estiverem fechados.
 - **Scope**: Todas as tarefas da iniciativa `release-readiness`.
@@ -49,19 +49,19 @@
 
 ### AD-006
 
-- **Decision**: `Tico` permanece o nome público, enquanto nomes técnicos, bundle, formatos persistidos e preferências `AirShortcut` permanecem compatíveis até uma migração explicitamente aprovada.
-- **Reason**: Renomear contratos técnicos junto da refatoração ampliaria risco sem melhorar os limites arquiteturais.
-- **Trade-off**: A árvore continuará exibindo nomenclatura legada em pontos técnicos.
+- **Decision**: `Tico` é o nome público e técnico do produto, target, executável, bridge, bundle, diretório de dados, preferências e notificações internas.
+- **Reason**: A migração nominal completa foi explicitamente aprovada após a modernização arquitetural.
+- **Trade-off**: Instalações locais do preview anterior não são descobertas automaticamente pela nova identidade técnica.
 - **Scope**: Código, pacote, persistência, testes e documentação técnica.
-- **Date**: 2026-08-09
+- **Date**: 2026-08-13
 - **Status**: active
 
 ### AD-007
 
-- **Decision**: Fronteiras serão criadas primeiro dentro do target atual; um target `AirShortcutCore` só poderá ser extraído após análise de dependências e gate verde.
+- **Decision**: Fronteiras serão criadas primeiro dentro do target atual; um target `TicoCore` só poderá ser extraído após análise de dependências e gate verde.
 - **Reason**: Targets SwiftPM são limites de compilação fortes, mas uma divisão prematura pode expor ciclos e forçar mudanças simultâneas em acesso e plataforma.
 - **Trade-off**: A separação física em módulos acontecerá mais tarde ou poderá ser rejeitada se não trouxer benefício líquido.
-- **Scope**: `Package.swift` e organização de `Sources/AirShortcut`.
+- **Scope**: `Package.swift` e organização de `Sources/Tico`.
 - **Date**: 2026-08-09
 - **Status**: active
 
@@ -85,7 +85,7 @@
 
 ### AD-010
 
-- **Decision**: A avaliação T20 mantém o target SwiftPM único e não extrai `AirShortcutCore` nesta modernização.
+- **Decision**: A avaliação T20 mantém o target SwiftPM único e não extrai `TicoCore` nesta modernização.
 - **Reason**: Os modelos puros ainda integram uma malha interna ampla com stores, serviços, coordenadores e views; separar agora exigiria expor APIs ou mover dependências de plataforma sem consumidores independentes suficientes.
 - **Trade-off**: A fronteira física de módulo fica para uma iniciativa futura somente se houver desacoplamento demonstrável.
 - **Scope**: `Package.swift`, modelos, persistência e lógica compartilhada.

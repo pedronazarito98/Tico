@@ -27,7 +27,7 @@
 
 ```bash
 git diff --check
-swift build --disable-sandbox --product AirShortcut
+swift build --disable-sandbox --product Tico
 ```
 
 Adicionar a suíte existente diretamente relacionada, por exemplo:
@@ -45,7 +45,7 @@ swift test --disable-sandbox
 **Gate final canônico**
 
 ```bash
-AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
+TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
 ```
 
 O gate final não prova trackpad físico, TCC, assinatura Developer ID ou notarização.
@@ -197,7 +197,7 @@ O gate final não prova trackpad físico, TCC, assinatura Developer ID ou notari
 
 - **Requisitos:** ARCH-06
 - **Dependências:** T16
-- **Arquivos:** `AirShortcutApp.swift`, `ContentView.swift`, novo roteador
+- **Arquivos:** `TicoApp.swift`, `ContentView.swift`, novo roteador
 - **Ação:** definir comandos internos tipados e uma ponte temporária, se necessária, para notificações legadas.
 - **Aceite:** cada comando tem um único owner e é processado uma vez.
 
@@ -214,12 +214,12 @@ O gate final não prova trackpad físico, TCC, assinatura Developer ID ou notari
 
 - **Requisitos:** ARCH-06
 - **Dependências:** T17, T18
-- **Arquivos:** `ContentView.swift`, `AirShortcutApp.swift`
+- **Arquivos:** `ContentView.swift`, `TicoApp.swift`
 - **Ação:** deixar seleção, navegação e composição visíveis; efeitos seguem ações tipadas.
 - **Gate da fase:** suíte completa + UAT de menus, atalhos e janelas.
 - **Aceite:** navegação e comportamento de janela permanecem estáveis.
 
-### T20 — Avaliar e extrair `AirShortcutCore` condicionalmente
+### T20 — Avaliar e extrair `TicoCore` condicionalmente
 
 - **Requisitos:** ARCH-07
 - **Dependências:** T19

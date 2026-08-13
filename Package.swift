@@ -3,23 +3,23 @@
 import PackageDescription
 
 let package = Package(
-    name: "AirShortcut",
+    name: "Tico",
     platforms: [
         .macOS(.v14)
     ],
     products: [
-        .executable(name: "AirShortcut", targets: ["AirShortcut"])
+        .executable(name: "Tico", targets: ["Tico"])
     ],
     targets: [
         .target(
-            name: "AirShortcutMultitouchBridge",
-            path: "Sources/AirShortcutMultitouchBridge",
+            name: "TicoMultitouchBridge",
+            path: "Sources/TicoMultitouchBridge",
             publicHeadersPath: "include"
         ),
         .executableTarget(
-            name: "AirShortcut",
-            dependencies: ["AirShortcutMultitouchBridge"],
-            path: "Sources/AirShortcut",
+            name: "Tico",
+            dependencies: ["TicoMultitouchBridge"],
+            path: "Sources/Tico",
             exclude: [
                 "AGENTS.md",
                 "Services/AGENTS.md",
@@ -31,9 +31,9 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "AirShortcutTests",
-            dependencies: ["AirShortcut"],
-            path: "Tests/AirShortcutTests",
+            name: "TicoTests",
+            dependencies: ["Tico"],
+            path: "Tests/TicoTests",
             exclude: ["AGENTS.md"],
             resources: [
                 .process("Fixtures")

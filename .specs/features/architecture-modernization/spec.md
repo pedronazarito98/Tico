@@ -18,7 +18,7 @@ Criar limites claros e verificáveis entre interface, estado de edição, aplica
 
 - Redesenhar a interface, os fluxos ou a linguagem visual.
 - Criar novas famílias de gestos ou regras.
-- Renomear o produto técnico, bundle, chaves de preferências ou formatos persistidos de `AirShortcut`.
+- Alterar formatos persistidos além da migração nominal aprovada posteriormente.
 - Adicionar dependências externas.
 - Migrar todo o projeto para `@Observable`, Swift 6 estrito ou uma arquitetura de terceiros.
 - Declarar compatibilidade física, assinatura ou notarização sem os gates próprios.
@@ -29,7 +29,7 @@ Criar limites claros e verificáveis entre interface, estado de edição, aplica
 1. A modernização será incremental e cada etapa deverá manter o app compilável.
 2. `ObservableObject`, `@StateObject` e `@ObservedObject` continuam válidos; qualquer migração de Observation será uma decisão separada.
 3. Primeiro serão criadas fronteiras dentro do target atual. Novos targets SwiftPM só serão introduzidos depois que o grafo de dependências estiver desacoplado e validado.
-4. `Tico` é o nome público atual, enquanto nomes técnicos e contratos legados `AirShortcut` permanecem compatíveis.
+4. A iniciativa original preservou os contratos técnicos existentes; a migração nominal para `Tico` foi aprovada e executada separadamente.
 5. Testes existentes podem ser ajustados junto da responsabilidade movida, mas não enfraquecidos ou removidos. Se uma tarefa realmente exigir um novo arquivo de teste, ela deverá parar e pedir aprovação.
 6. Nenhum commit, push, PR ou publicação é autorizado apenas pela existência desta spec.
 
@@ -68,7 +68,7 @@ Criar limites claros e verificáveis entre interface, estado de edição, aplica
 ### ARCH-07 — Fronteira de módulo validada
 
 **WHEN** as dependências puras de domínio e persistência estiverem desacopladas de SwiftUI/AppKit  
-**THEN** o projeto **SHALL** avaliar e, somente com gate verde, extrair um target interno `AirShortcutCore`; a extração não é obrigatória se aumentar acoplamento ou complexidade.
+**THEN** o projeto **SHALL** avaliar e, somente com gate verde, extrair um target interno `TicoCore`; a extração não é obrigatória se aumentar acoplamento ou complexidade.
 
 ### ARCH-08 — Concorrência explícita
 

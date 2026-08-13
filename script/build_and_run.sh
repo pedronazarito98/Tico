@@ -6,10 +6,10 @@ BUILD_CONFIGURATION="debug"
 if [[ "$MODE" == "--release-package" || "$MODE" == "release-package" ]]; then
   BUILD_CONFIGURATION="release"
 fi
-PRODUCT_NAME="AirShortcut"
-EXECUTABLE_NAME="AirShortcut"
+PRODUCT_NAME="Tico"
+EXECUTABLE_NAME="Tico"
 PUBLIC_APP_NAME="Tico"
-BUNDLE_ID="com.pedronazarito.AirShortcut"
+BUNDLE_ID="com.pedronazarito.Tico"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -18,8 +18,6 @@ APP_BUNDLE="$DIST_DIR/$PUBLIC_APP_NAME.app"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
 APP_ARCHIVE="$DIST_DIR/$PUBLIC_APP_NAME.zip"
 DMG_ARCHIVE="$DIST_DIR/$PUBLIC_APP_NAME.dmg"
-LEGACY_APP_BUNDLE="$DIST_DIR/$EXECUTABLE_NAME.app"
-LEGACY_APP_ARCHIVE="$DIST_DIR/$EXECUTABLE_NAME.zip"
 RESOURCE_BUNDLE_NAME="${PRODUCT_NAME}_${PRODUCT_NAME}.bundle"
 ICON_FILE_NAME="Tico.icns"
 TEMP_ROOT="$(/usr/bin/mktemp -d /private/tmp/Tico.XXXXXXXX)"
@@ -52,7 +50,7 @@ if [[ "$MODE" != "--package" && "$MODE" != "package" \
   pkill -x "$EXECUTABLE_NAME" >/dev/null 2>&1 || true
 fi
 cd "$ROOT_DIR"
-if [[ "${AIRSHORTCUT_DISABLE_SWIFTPM_SANDBOX:-0}" == "1" ]]; then
+if [[ "${TICO_DISABLE_SWIFTPM_SANDBOX:-0}" == "1" ]]; then
   swift build --disable-sandbox -c "$BUILD_CONFIGURATION" --product "$PRODUCT_NAME"
   BUILD_DIR="$(swift build --disable-sandbox -c "$BUILD_CONFIGURATION" --show-bin-path)"
 else
@@ -112,11 +110,11 @@ PLIST
 
 /usr/bin/xattr -cr "$STAGED_APP_BUNDLE"
 /usr/bin/xattr -d com.apple.FinderInfo "$STAGED_APP_BUNDLE" 2>/dev/null || true
-CODESIGN_IDENTITY="${AIRSHORTCUT_CODESIGN_IDENTITY:--}"
+CODESIGN_IDENTITY="${TICO_CODESIGN_IDENTITY:--}"
 if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
   # An ordinary ad hoc signature gets a cdhash-only designated requirement,
   # which changes after every rebuild and breaks TCC permission continuity.
-  # This explicit development-only requirement keeps AirShortcut recognizable.
+  # This explicit development-only requirement keeps Tico recognizable.
   if [[ "$BUILD_CONFIGURATION" == "release" ]]; then
     echo "warning: no Developer ID identity configured; producing a local-only release candidate" >&2
     codesign \
@@ -149,10 +147,8 @@ fi
 codesign --verify --deep --strict "$STAGED_APP_BUNDLE"
 
 rm -rf "$APP_BUNDLE"
-rm -rf "$LEGACY_APP_BUNDLE"
 rm -rf "$DIST_DIR/.signed"
 rm -f "$APP_ARCHIVE"
-rm -f "$LEGACY_APP_ARCHIVE"
 rm -f "$DMG_ARCHIVE"
 mkdir -p "$DIST_DIR"
 # The visible .app is convenient for local use. ZIP and DMG are distributable
@@ -166,7 +162,7 @@ codesign --verify --deep --strict "$VERIFY_APP_BUNDLE"
 
 # Build a read-only compressed disk image with the conventional Applications
 # alias. The app inside is copied from the already verified staging bundle, so
-# the DMG does not change its code signature or compatibility identity.
+# the DMG does not change its code signature or application identity.
 mkdir -p "$DMG_STAGING_DIR"
 /usr/bin/ditto --norsrc "$STAGED_APP_BUNDLE" "$DMG_STAGING_DIR/$PUBLIC_APP_NAME.app"
 /bin/ln -s /Applications "$DMG_STAGING_DIR/Applications"

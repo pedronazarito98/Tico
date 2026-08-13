@@ -1,4 +1,4 @@
-# AirShortcut Release Readiness Design
+# Tico Release Readiness Design
 
 **Spec**: `.specs/features/release-readiness/spec.md`
 **Status**: Draft — decisão recomendada: arquitetura de gates em camadas
@@ -67,10 +67,10 @@ gestos e segue as decisões AD-001/AD-002/AD-003.
 | --- | --- | --- |
 | SwiftPM package and test target | `Package.swift` | Fonte dos comandos de build/test e da matriz unitária. |
 | Existing package/build workflow | `script/build_and_run.sh` | Preservar `--package`, staging privado, assinatura ad hoc e verificação do ZIP extraído. |
-| Security regression suite | `Tests/AirShortcutTests/SecurityRegressionTests.swift` | Gate obrigatório, sem reabrir os 27 achados já corrigidos. |
-| Replay and recognizer tests | `Tests/AirShortcutTests/*Gesture*Tests.swift`, fixtures | Cobertura automatizada de reconhecimento sem hardware. |
-| Laboratory and validation UI | `Sources/AirShortcut/Views/TrackpadLaboratoryView.swift`, `TrackpadValidationView.swift` | Fonte do roteiro manual e dos nomes de capacidades. |
-| Permission and provider services | `Sources/AirShortcut/Services/PermissionCoordinator.swift`, `MultitouchFrameProvider.swift` | Cenários de TCC, private capture e fallback. |
+| Security regression suite | `Tests/TicoTests/SecurityRegressionTests.swift` | Gate obrigatório, sem reabrir os 27 achados já corrigidos. |
+| Replay and recognizer tests | `Tests/TicoTests/*Gesture*Tests.swift`, fixtures | Cobertura automatizada de reconhecimento sem hardware. |
+| Laboratory and validation UI | `Sources/Tico/Views/TrackpadLaboratoryView.swift`, `TrackpadValidationView.swift` | Fonte do roteiro manual e dos nomes de capacidades. |
+| Permission and provider services | `Sources/Tico/Services/PermissionCoordinator.swift`, `MultitouchFrameProvider.swift` | Cenários de TCC, private capture e fallback. |
 | Security/distribution docs | `SECURITY.md`, `outputs/*.md` | Atualizar sem contradizer os controles já verificados. |
 
 ## Components
@@ -182,12 +182,12 @@ substituir a validação real de assinatura.
 
 | Concern | Location | Impact | Mitigation |
 | --- | --- | --- | --- |
-| Private Apple ABI can change | `Sources/AirShortcut/Services/MultitouchFrameProvider.swift` | Advanced gestures can stop working after macOS update. | Keep capability isolation/fallback; require per-OS hardware matrix. |
+| Private Apple ABI can change | `Sources/Tico/Services/MultitouchFrameProvider.swift` | Advanced gestures can stop working after macOS update. | Keep capability isolation/fallback; require per-OS hardware matrix. |
 | Physical test cannot run in ordinary CI | `outputs/qa-checklist.md` | Green CI could be mistaken for hardware support. | Separate RR-07–RR-10 manual gate and CI summary wording. |
 | Synced-folder metadata breaks direct signature verification | `script/build_and_run.sh` | False signing failures or corrupted release evidence. | Verify staged and ZIP-extracted app in clean temporary directory. |
 | Current docs disagree on laboratory shortcut | `README.md` vs `outputs/qa-checklist.md` | Contributor follows the wrong path. | One task updates docs and tests the documented command. |
 | No license in baseline | repository root | Public reuse terms are unclear. | Add chosen license or leave explicit legal blocker; never invent legal approval. |
-| Existing test suite may not prove UI outcomes | `Tests/AirShortcutTests` | User-facing regressions can escape unit tests. | Manual UAT for permissions, laboratory, fallback and release workflow. |
+| Existing test suite may not prove UI outcomes | `Tests/TicoTests` | User-facing regressions can escape unit tests. | Manual UAT for permissions, laboratory, fallback and release workflow. |
 | Notarization credentials may be unavailable | `outputs/signing-and-distribution.md` | Cannot honestly finish distribution gate. | Prepare dry-run and mark Developer ID/notarization pending. |
 
 ## Tech Decisions

@@ -15,8 +15,8 @@ Confirmar:
 - regressões de segurança sem falhas;
 - `dist/Tico.zip` contém `Tico.app`;
 - app extraído passa `codesign --verify --deep --strict`;
-- nome público é Tico, executável é AirShortcut e bundle identifier permanece
-  `com.pedronazarito.AirShortcut`.
+- nome público é Tico, executável é Tico e bundle identifier permanece
+  `com.pedronazarito.Tico`.
 
 ## Permissões e entradas
 

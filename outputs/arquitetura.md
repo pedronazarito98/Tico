@@ -1,8 +1,8 @@
 # Arquitetura do Tico
 
 O Tico é um aplicativo nativo para macOS 14+, feito em SwiftUI e organizado
-como um pacote SwiftPM. `Tico` é o nome público; produto, target e executável
-continuam chamados `AirShortcut` para preservar dados e permissões existentes.
+como um pacote SwiftPM. Produto, target, executável e pacote do app usam a
+identidade `Tico`.
 
 ## Camadas
 
@@ -27,14 +27,14 @@ continuam chamados `AirShortcut` para preservar dados e permissões existentes.
 Replay usa o mesmo motor de reconhecimento, mas fica isolado do executor de
 ações. Ele pode atualizar o Laboratório e os diagnósticos sem disparar regras.
 
-## Compatibilidade
+## Identidade e persistência
 
 - Bundle público: `Tico.app`.
 - Artefatos: `Tico.zip` e `Tico.dmg`.
-- Executável: `AirShortcut`.
-- Bundle identifier: `com.pedronazarito.AirShortcut`.
-- Dados: `Application Support/AirShortcut`.
-- Preferências: chaves legadas `com.airshortcut.*`.
+- Executável: `Tico`.
+- Bundle identifier: `com.pedronazarito.Tico`.
+- Dados: `Application Support/Tico`.
+- Preferências: chaves `com.tico.*`.
 
 Esses nomes técnicos não devem ser alterados sem uma migração própria, com
 cópia atômica, validação e rollback.
@@ -42,7 +42,7 @@ cópia atômica, validação e rollback.
 ## Estrutura efetivamente entregue na modernização
 
 A modernização foi aplicada por fronteiras internas, mantendo o target
-SwiftPM atual e as fachadas compatíveis:
+SwiftPM e as fachadas existentes:
 
 - **Editor:** `RuleEditingSession` é a fonte de verdade do rascunho, dirty
   state, validação e transições; `RuleEditorView` compõe header, trigger,
@@ -55,11 +55,11 @@ SwiftPM atual e as fachadas compatíveis:
   compõe dependências, encaminha eventos e conserva a fachada consumida pela
   UI.
 - **Shell:** `AppCommandRouter` recebe comandos tipados e consome cada
-  envelope uma vez. As notificações `AirShortcut.*` permanecem apenas como
-  ponte de compatibilidade. `ApplicationLifecycleService` concentra
+  envelope uma vez. As notificações internas usam o namespace `Tico.*`.
+  `ApplicationLifecycleService` concentra
   `NSApplication`/`NSWindow`; as views não importam nem referenciam AppKit.
 
-O target `AirShortcutCore` não foi criado. Os modelos usam `Foundation`, mas
+O target `TicoCore` não foi criado. Os modelos usam `Foundation`, mas
 formam uma malha interna compartilhada com stores, serviços, coordenadores e
 views; a extração exigiria expor APIs internas ou levar dependências de
 plataforma para o novo target. Essa decisão está detalhada em
