@@ -6,6 +6,7 @@ PACKAGE_MODE=0
 PRODUCT_NAME="Tico"
 PUBLIC_APP_NAME="Tico"
 BUNDLE_ID="com.pedronazarito.Tico"
+source "$ROOT_DIR/script/load_version.sh" "$ROOT_DIR"
 ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip"
 DMG_ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.dmg"
 TEST_LOG="$(/usr/bin/mktemp /private/tmp/Tico-ci-tests.XXXXXXXX)"
@@ -47,6 +48,8 @@ cd "$ROOT_DIR"
 
 step "Validating shell scripts"
 bash -n script/build_and_run.sh
+bash -n script/create_dmg.sh
+bash -n script/load_version.sh
 bash -n script/ci_verify.sh
 bash -n script/release_preflight.sh
 bash -n script/notarize_release.sh
@@ -77,6 +80,8 @@ if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   [[ "$(/usr/bin/plutil -extract CFBundleDisplayName raw "$INFO_PLIST")" == "$PUBLIC_APP_NAME" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleExecutable raw "$INFO_PLIST")" == "$PRODUCT_NAME" ]]
   [[ "$(/usr/bin/plutil -extract CFBundleIdentifier raw "$INFO_PLIST")" == "$BUNDLE_ID" ]]
+  [[ "$(/usr/bin/plutil -extract CFBundleShortVersionString raw "$INFO_PLIST")" == "$MARKETING_VERSION" ]]
+  [[ "$(/usr/bin/plutil -extract CFBundleVersion raw "$INFO_PLIST")" == "$BUILD_NUMBER" ]]
   [[ -x "$EXTRACTED_APP/Contents/MacOS/$PRODUCT_NAME" ]]
   [[ -f "$EXTRACTED_APP/Contents/Resources/Tico.icns" ]]
 
@@ -96,6 +101,10 @@ if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   [[ -L "$DMG_VERIFY_MOUNT/Applications" ]]
   /usr/bin/hdiutil detach "$DMG_VERIFY_MOUNT" >/dev/null
   DMG_ATTACHED=0
+
+  step "Running release preflight for ZIP and DMG"
+  ./script/release_preflight.sh "$ARCHIVE_PATH"
+  ./script/release_preflight.sh "$DMG_ARCHIVE_PATH"
 fi
 
 TEST_COUNT="$(/usr/bin/sed -nE 's/.*Executed ([0-9]+) tests?.*/\1/p' "$TEST_LOG" | /usr/bin/tail -n 1)"

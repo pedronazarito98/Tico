@@ -13,6 +13,7 @@ BUNDLE_ID="com.pedronazarito.Tico"
 MIN_SYSTEM_VERSION="14.0"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$ROOT_DIR/script/load_version.sh" "$ROOT_DIR"
 DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$PUBLIC_APP_NAME.app"
 APP_BINARY="$APP_BUNDLE/Contents/MacOS/$EXECUTABLE_NAME"
@@ -33,14 +34,8 @@ RUN_DIR="$TEMP_ROOT/run"
 RUN_APP_BUNDLE="$RUN_DIR/$PUBLIC_APP_NAME.app"
 VERIFY_DIR="$TEMP_ROOT/verify"
 VERIFY_APP_BUNDLE="$VERIFY_DIR/$PUBLIC_APP_NAME.app"
-DMG_STAGING_DIR="$TEMP_ROOT/dmg-staging"
-DMG_VERIFY_MOUNT="$TEMP_ROOT/dmg-mount"
-DMG_ATTACHED=0
 
 cleanup() {
-  if [[ "$DMG_ATTACHED" -eq 1 ]]; then
-    /usr/bin/hdiutil detach "$DMG_VERIFY_MOUNT" >/dev/null 2>&1 || true
-  fi
   /bin/rm -rf -- "$TEMP_ROOT"
 }
 trap cleanup EXIT HUP INT TERM
@@ -95,9 +90,9 @@ cat >"$INFO_PLIST" <<PLIST
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>$MARKETING_VERSION</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>$BUILD_NUMBER</string>
   <key>LSMinimumSystemVersion</key>
   <string>$MIN_SYSTEM_VERSION</string>
   <key>NSPrincipalClass</key>
@@ -112,9 +107,8 @@ PLIST
 /usr/bin/xattr -d com.apple.FinderInfo "$STAGED_APP_BUNDLE" 2>/dev/null || true
 CODESIGN_IDENTITY="${TICO_CODESIGN_IDENTITY:--}"
 if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
-  # An ordinary ad hoc signature gets a cdhash-only designated requirement,
-  # which changes after every rebuild and breaks TCC permission continuity.
-  # This explicit development-only requirement keeps Tico recognizable.
+  # Keep the default build-specific designated requirement. A stable local
+  # signing identity must be configured explicitly when TCC continuity matters.
   if [[ "$BUILD_CONFIGURATION" == "release" ]]; then
     echo "warning: no Developer ID identity configured; producing a local-only release candidate" >&2
     codesign \
@@ -123,7 +117,6 @@ if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
       --sign - \
       --options runtime \
       --identifier "$BUNDLE_ID" \
-      --requirements "=designated => identifier \"$BUNDLE_ID\"" \
       "$STAGED_APP_BUNDLE" >/dev/null
   else
     codesign \
@@ -131,7 +124,6 @@ if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
       --deep \
       --sign - \
       --identifier "$BUNDLE_ID" \
-      --requirements "=designated => identifier \"$BUNDLE_ID\"" \
       "$STAGED_APP_BUNDLE" >/dev/null
   fi
 else
@@ -160,34 +152,7 @@ mkdir -p "$DIST_DIR"
 /usr/bin/xattr -cr "$VERIFY_APP_BUNDLE"
 codesign --verify --deep --strict "$VERIFY_APP_BUNDLE"
 
-# Build a read-only compressed disk image with the conventional Applications
-# alias. The app inside is copied from the already verified staging bundle, so
-# the DMG does not change its code signature or application identity.
-mkdir -p "$DMG_STAGING_DIR"
-/usr/bin/ditto --norsrc "$STAGED_APP_BUNDLE" "$DMG_STAGING_DIR/$PUBLIC_APP_NAME.app"
-/bin/ln -s /Applications "$DMG_STAGING_DIR/Applications"
-/usr/bin/hdiutil create \
-  -quiet \
-  -volname "$PUBLIC_APP_NAME" \
-  -srcfolder "$DMG_STAGING_DIR" \
-  -format UDZO \
-  -ov \
-  "$DMG_ARCHIVE"
-/usr/bin/hdiutil verify "$DMG_ARCHIVE" >/dev/null
-/bin/mkdir -p "$DMG_VERIFY_MOUNT"
-/usr/bin/hdiutil attach \
-  -readonly \
-  -nobrowse \
-  -noautoopen \
-  -mountpoint "$DMG_VERIFY_MOUNT" \
-  "$DMG_ARCHIVE" >/dev/null
-DMG_ATTACHED=1
-DMG_VERIFY_APP="$DMG_VERIFY_MOUNT/$PUBLIC_APP_NAME.app"
-codesign --verify --deep --strict "$DMG_VERIFY_APP"
-/usr/bin/plutil -lint "$DMG_VERIFY_APP/Contents/Info.plist"
-[[ -L "$DMG_VERIFY_MOUNT/Applications" ]]
-/usr/bin/hdiutil detach "$DMG_VERIFY_MOUNT" >/dev/null
-DMG_ATTACHED=0
+"$ROOT_DIR/script/create_dmg.sh" "$STAGED_APP_BUNDLE" "$DMG_ARCHIVE"
 open_app() {
   # Launch Services may attach more metadata to the opened bundle. Run from a
   # clean temporary copy so the distributable zip stays untouched.

@@ -68,6 +68,13 @@ O projeto também gera `dist/Tico.zip` e `dist/Tico.dmg`. O DMG oferece o fluxo
 convencional de arrastar o Tico para Aplicativos, mas usa a mesma assinatura do
 app: ad hoc quando não há Developer ID instalado. ZIP e DMG servem para preview
 técnico, desenvolvimento e QA local; não são releases públicas notarizadas.
+Por segurança, a identidade ad hoc é específica de cada build e o macOS pode
+pedir novamente permissões de privacidade após uma recompilação. Quem precisar
+de continuidade local deve configurar explicitamente uma identidade de assinatura
+própria; não existe requisito ad hoc compartilhado apenas pelo bundle identifier.
+
+A versão do pacote fica em `version.env`. Antes de preparar uma nova versão,
+atualize `MARKETING_VERSION` e incremente `BUILD_NUMBER`.
 
 ## Documentação
 
