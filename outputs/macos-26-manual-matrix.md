@@ -23,7 +23,7 @@ executado na mesma sessão para `PASS` ou `FAIL`.
 | macOS | `26.5.2` |
 | Build do macOS | `25F84` |
 | Tipo geral do Mac | `Apple silicon` |
-| Trackpad | `não exercitado nesta rodada` |
+| Trackpad | `não exercitado fisicamente nesta rodada` |
 | Versão do Tico | `0.1.0 (1)` |
 | Assinatura | `ad hoc`, cópia isolada com bundle identifier exclusivo da auditoria |
 
@@ -46,6 +46,11 @@ A inspeção visual usou uma cópia temporária e isolada do app, sem reutilizar
 identidade, os dados ou as permissões do Tico instalado. A aparência escura foi
 aplicada somente ao processo isolado, sem alterar o sistema inteiro.
 
+A rodada do shell Liquid Glass usou o `Tico.app` final gerado pelo gate. O app
+foi relançado após a autorização de Monitoramento de Entrada e permaneceu com a
+captura pausada ao encerrar a sessão. Nenhum contato físico ou dado interno de
+TCC foi registrado nesta matriz.
+
 ## Interface no macOS 26
 
 | ID | Cenário | Resultado esperado | Status | Observação sanitizada |
@@ -57,6 +62,9 @@ aplicada somente ao processo isolado, sem alterar o sistema inteiro.
 | UI26-05 | Abrir Ajustes com `⌘,` e alternar Geral/Segurança | Abas, formulários e mensagens não cortam nem deslocam controles | `PASS` | `⌘,`, Geral e Segurança inspecionados sem corte |
 | UI26-06 | Abrir e usar o item da barra de menus | Ícone adapta-se ao tema e as ações continuam acessíveis | `PASS` | Item template e menu com ações legíveis foram abertos na cópia isolada |
 | UI26-07 | Navegar por teclado e VoiceOver pelos fluxos principais | Foco, rótulos e ordem de leitura permanecem coerentes | `NOT-RUN` | — |
+| UI26-08 | Buscar e reabrir a seção ou regra já selecionada | Busca é encerrada, sidebar completa reaparece e seleção permanece correta | `PASS` | Re-seleção de Laboratório e de regra, além da troca para Visão geral, restauraram a sidebar no app final |
+| UI26-09 | Alternar os estados do controle principal de captura | Permissão necessária, pausa e atividade apresentam ação e feedback coerentes | `PASS` | Estados de permissão, pausa e atividade foram observados; iniciar e pausar atualizaram Overview, sidebar e toolbar |
+| UI26-10 | Inspecionar HUD e árvore de acessibilidade do Laboratório | HUD não duplica títulos e ícones decorativos não anunciam ações falsas | `PASS` | HUD permaneceu compacto e o diagnóstico não expôs o ícone decorativo como “Remover” |
 
 ## TCC e captura global
 
@@ -67,7 +75,7 @@ Sistema. Não automatize `tccutil reset` nesta matriz.
 | --- | --- | --- | --- | --- |
 | TCC26-01 | Abrir o app sem Monitoramento de Entrada nem Acessibilidade | A tela mostra o estado real e o app permanece utilizável | `PASS` | Cópia isolada mostrou Acessibilidade pendente e Monitoramento de Entrada negado; navegação permaneceu utilizável |
 | TCC26-02 | Tentar iniciar captura com ambas as permissões negadas | A captura não inicia e o motivo é apresentado | `PASS` | Captura permaneceu pausada e a tela de permissões apresentou os dois requisitos |
-| TCC26-03 | Solicitar Monitoramento de Entrada e concluir a autorização | Após o relançamento exigido pelo sistema, o estado aparece como concedido | `NOT-RUN` | — |
+| TCC26-03 | Solicitar Monitoramento de Entrada e concluir a autorização | Após o relançamento exigido pelo sistema, o estado aparece como concedido | `PASS` | O bundle final foi adicionado nos Ajustes do Sistema; após relançar, o Tico exibiu “Concedida” e habilitou a captura avançada |
 | TCC26-04 | Abrir os painéis de Monitoramento de Entrada e Acessibilidade | Cada ação abre o painel correto nos Ajustes do Sistema | `NOT-RUN` | — |
 | TCC26-05 | Revogar uma permissão concedida e atualizar o estado no Tico | O estado é atualizado e uma nova captura não usa autorização revogada | `NOT-RUN` | — |
 | TCC26-06 | Usar teclado e mouse enquanto a captura está ativa | Eventos continuam chegando ao aplicativo de destino, sem supressão inesperada | `NOT-RUN` | — |
@@ -81,14 +89,14 @@ identificável, não sucesso silencioso.
 
 | ID | Cenário | Resultado esperado | Status | Observação sanitizada |
 | --- | --- | --- | --- | --- |
-| TP26-01 | Iniciar captura com trackpad interno | O modo informa `Global avançada` e recebe contatos, ou explica o fallback | `NOT-RUN` | — |
+| TP26-01 | Iniciar captura com trackpad interno | O modo informa `Global avançada` e recebe contatos, ou explica o fallback | `NOT-RUN` | O modo `Global avançada` foi observado, mas contatos físicos não foram detalhados nesta sessão |
 | TP26-02 | Executar tap e hold | Gestos reconhecidos uma vez, sem duplicação | `NOT-RUN` | — |
 | TP26-03 | Executar swipes nas quatro direções | Cada direção é identificada corretamente | `NOT-RUN` | — |
 | TP26-04 | Executar pinça para dentro e para fora | Direções reconhecidas corretamente | `NOT-RUN` | — |
 | TP26-05 | Executar rotação nos dois sentidos | Sentidos reconhecidos corretamente | `NOT-RUN` | — |
 | TP26-06 | Colocar o Mac em repouso e acordar | A captura retorna ou cai para fallback com estado explícito, sem travar | `NOT-RUN` | — |
-| TP26-07 | Ativar manualmente o fallback público | Modo informa fallback e reconhece somente swipe, pinça e rotação | `NOT-RUN` | — |
-| TP26-08 | Restaurar captura avançada após o fallback | Modo avançado retorna ou a indisponibilidade permanece explicada | `NOT-RUN` | — |
+| TP26-07 | Ativar manualmente o fallback público | Modo informa fallback e reconhece somente swipe, pinça e rotação | `NOT-RUN` | O estado de fallback foi identificado, mas seus gestos físicos não foram detalhados nesta sessão |
+| TP26-08 | Restaurar captura avançada após o fallback | Modo avançado retorna ou a indisponibilidade permanece explicada | `PASS` | Após o fallback explícito, iniciar a captura global restaurou o estado `Global avançada` |
 | TP26-09 | Usar o Mac normalmente por pelo menos 15 minutos | Falsos positivos são contados objetivamente; nenhum valor é inferido | `NOT-RUN` | — |
 | TP26-10 | Validar pressão quando o hardware expuser faixa confiável | Pressão é calibrável; caso contrário, o item permanece `NOT-RUN` | `NOT-RUN` | — |
 | TP26-11 | Repetir a matriz com Magic Trackpad | Conexão, desconexão e reconexão não travam o app; sem hardware, `NOT-RUN` | `NOT-RUN` | — |
@@ -105,9 +113,9 @@ identificável, não sucesso silencioso.
 
 | Resultado | Quantidade |
 | --- | ---: |
-| `PASS` | 6 |
+| `PASS` | 11 |
 | `FAIL` | 0 |
-| `NOT-RUN` | 22 |
+| `NOT-RUN` | 20 |
 
 Qualquer `FAIL` em TCC, captura avançada, sleep/wake ou persistência bloqueia a
 declaração de compatibilidade com macOS 26. `NOT-RUN` para Magic Trackpad limita

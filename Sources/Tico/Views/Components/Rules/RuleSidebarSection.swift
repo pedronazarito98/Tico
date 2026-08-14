@@ -9,84 +9,35 @@ struct RuleSidebarItem: Identifiable, Hashable {
 }
 
 struct RuleSidebarSection: View {
-    @Binding var selection: TicoSection?
-    @Binding var selectedRuleID: ShortcutRule.ID?
     let items: [RuleSidebarItem]
     let onSetRuleEnabled: (ShortcutRule.ID, Bool) throws -> Void
     let onDeleteRule: (ShortcutRule.ID) throws -> Void
+    let onSelect: (ShortcutRule.ID) -> Void
 
-    @State private var isExpanded = false
-    @State private var searchText = ""
     @State private var presentedError: String?
     @State private var itemPendingDeletion: RuleSidebarItem?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button(action: toggleRulesSection) {
-                HStack(spacing: 8) {
-                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 10)
-
-                    Label(
-                        TicoSection.rules.title,
-                        systemImage: TicoSection.rules.systemImage
-                    )
-
-                    Spacer(minLength: 4)
-
-                    Text("\(items.count)")
-                        .font(.caption2)
-                        .monospacedDigit()
-                        .foregroundStyle(
-                            selection == .rules
-                                ? TicoBrand.Palette.primary
-                                : TicoBrand.Palette.secondaryText
-                        )
+        Section("Regras") {
+            ForEach(items) { item in
+                Button {
+                    onSelect(item.id)
+                } label: {
+                    ruleRow(item)
+                        .contentShape(Rectangle())
                 }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundStyle(
-                    selection == .rules
-                        ? TicoBrand.Palette.primary
-                        : TicoBrand.Palette.text
-                )
-                .background {
-                    if selection == .rules {
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(TicoBrand.Palette.primary.opacity(0.10))
+                .buttonStyle(.plain)
+                    .tag(SidebarDestination.rule(item.id))
+                    .contextMenu {
+                        Button(item.isEnabled ? "Desativar" : "Ativar") {
+                            setEnabled(!item.isEnabled, for: item.id)
+                        }
+                        Divider()
+                        Button("Excluir", role: .destructive) {
+                            itemPendingDeletion = item
+                        }
                     }
-                }
-                .overlay(alignment: .leading) {
-                    if selection == .rules {
-                        Capsule()
-                            .fill(TicoBrand.Palette.primary)
-                            .frame(width: 2, height: 20)
-                            .offset(x: -3)
-                    }
-                }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
-
-            if isExpanded {
-                VStack(alignment: .leading, spacing: 3) {
-                    ruleSearch
-                    ruleList
-                }
-                .padding(.leading, 28)
-                .padding(.top, 4)
-                .padding(.bottom, 6)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear {
-            isExpanded = selection == .rules
-        }
-        .onChange(of: selection) { _, newSelection in
-            isExpanded = newSelection == .rules
         }
         .alert("Não foi possível atualizar a regra", isPresented: errorIsPresented) {
             Button("OK", role: .cancel) { presentedError = nil }
@@ -104,44 +55,6 @@ struct RuleSidebarSection: View {
         }
     }
 
-    @ViewBuilder
-    private var ruleSearch: some View {
-        if shouldShowSearch {
-            TextField("Buscar regras", text: $searchText)
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.small)
-                .padding(.vertical, 2)
-                .accessibilityLabel("Buscar regras")
-        }
-    }
-
-    @ViewBuilder
-    private var ruleList: some View {
-        if filteredItems.isEmpty {
-            Text(items.isEmpty ? "Nenhuma regra criada" : "Nenhuma regra encontrada")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .padding(.vertical, 4)
-        } else {
-            ForEach(filteredItems) { item in
-                ruleRow(item)
-            }
-        }
-    }
-
-    private var filteredItems: [RuleSidebarItem] {
-        let trimmedSearchText = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedSearchText.isEmpty else { return items }
-        return items.filter {
-            $0.name.localizedCaseInsensitiveContains(trimmedSearchText)
-                || $0.detail.localizedCaseInsensitiveContains(trimmedSearchText)
-        }
-    }
-
-    private var shouldShowSearch: Bool {
-        items.count > 5 || !searchText.isEmpty
-    }
-
     private var errorIsPresented: Binding<Bool> {
         Binding(
             get: { presentedError != nil },
@@ -157,84 +70,28 @@ struct RuleSidebarSection: View {
     }
 
     private func ruleRow(_ item: RuleSidebarItem) -> some View {
-        Button {
-            selection = .rules
-            selectedRuleID = item.id
-        } label: {
-            HStack(alignment: .center, spacing: 8) {
-                Circle()
-                    .fill(statusColor(for: item))
-                    .frame(width: 6, height: 6)
-                    .help(statusDescription(for: item))
+        HStack(alignment: .center, spacing: 8) {
+            Circle()
+                .fill(statusColor(for: item))
+                .frame(width: 6, height: 6)
+                .help(statusDescription(for: item))
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
-                        .fontWeight(isSelected(item) ? .semibold : .regular)
-                        .foregroundStyle(
-                            isSelected(item)
-                                ? TicoBrand.Palette.primary
-                                : (item.isEnabled
-                                    ? TicoBrand.Palette.text
-                                    : TicoBrand.Palette.secondaryText)
-                        )
-                        .lineLimit(1)
-                        .help(item.name)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .foregroundStyle(item.isEnabled ? .primary : .secondary)
+                    .lineLimit(1)
+                    .help(item.name)
 
-                    Text(item.detail)
-                        .font(.caption)
-                        .foregroundStyle(
-                            isSelected(item)
-                                ? TicoBrand.Palette.text.opacity(0.72)
-                                : TicoBrand.Palette.secondaryText
-                        )
-                        .lineLimit(1)
-                        .help(item.detail)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                if isSelected(item) {
-                    Image(systemName: "chevron.forward")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(TicoBrand.Palette.primary)
-                        .accessibilityHidden(true)
-                }
+                Text(item.detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .help(item.detail)
             }
-            .padding(.vertical, 4)
-            .padding(.leading, isSelected(item) ? 4 : 0)
-            .overlay(alignment: .leading) {
-                if isSelected(item) {
-                    Capsule()
-                        .fill(TicoBrand.Palette.primary)
-                        .frame(width: 2, height: 24)
-                }
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .contextMenu {
-            Button(item.isEnabled ? "Desativar" : "Ativar") {
-                setEnabled(!item.isEnabled, for: item.id)
-            }
-            Divider()
-            Button("Excluir", role: .destructive) {
-                itemPendingDeletion = item
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityLabel(item.name)
         .accessibilityValue("\(item.detail), \(statusDescription(for: item))")
-    }
-
-    private func isSelected(_ item: RuleSidebarItem) -> Bool {
-        selection == .rules && selectedRuleID == item.id
-    }
-
-    private func toggleRulesSection() {
-        if selection != .rules {
-            selection = .rules
-            isExpanded = true
-        } else {
-            isExpanded.toggle()
-        }
     }
 
     private func statusColor(for item: RuleSidebarItem) -> Color {

@@ -7,14 +7,17 @@ struct ContentView: View {
     @ObservedObject var permissions: PermissionCoordinator
     @ObservedObject var commandRouter: AppCommandRouter
 
+    @Environment(\.dismissSearch) private var dismissSearch
     @Environment(\.openWindow) private var openWindow
     @SceneStorage("mainSection") private var storedSection = TicoSection.overview.rawValue
+    @State private var navigationVisibility = NavigationSplitViewVisibility.all
     @State private var selectedSection = TicoSection.overview
     @State private var selectedRuleID: ShortcutRule.ID?
+    @State private var searchText = ""
     @State private var didPerformInitialSetup = false
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $navigationVisibility) {
             SidebarView(
                 selection: sectionBinding,
                 selectedRuleID: $selectedRuleID,
@@ -22,6 +25,7 @@ struct ContentView: View {
                 enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
                 totalRuleCount: shortcutStore.rules.count,
                 captureIsRunning: controller.captureIsRunning,
+                searchText: searchText,
                 onSetRuleEnabled: { id, isEnabled in
                     try shortcutStore.setEnabled(isEnabled, for: id)
                 },
@@ -29,23 +33,40 @@ struct ContentView: View {
             )
         } detail: {
             detail
+                .scrollEdgeEffectStyle(.soft, for: .top)
         }
         .frame(minWidth: 860, minHeight: 560)
-        .toolbar {
-            ToolbarItemGroup {
+        .searchable(
+            text: $searchText,
+            placement: .toolbar,
+            prompt: "Buscar seções e regras"
+        )
+        .searchToolbarBehavior(.automatic)
+        .toolbar(id: "main-toolbar") {
+            ToolbarItem(id: "new-rule", placement: .primaryAction) {
                 Button {
                     select(.rules)
                     createRule()
                 } label: {
                     Label("Nova regra", systemImage: "plus")
                 }
+            }
 
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+
+            ToolbarItem(id: "capture", placement: .primaryAction) {
                 Button(action: controller.toggleCapture) {
                     Label(
                         controller.captureIsRunning ? "Pausar captura" : "Iniciar captura",
                         systemImage: controller.captureIsRunning ? "pause.fill" : "play.fill"
                     )
                 }
+                .buttonStyle(.glassProminent)
+                .tint(
+                    controller.captureIsRunning
+                        ? Color.orange
+                        : TicoBrand.Palette.primary
+                )
                 .help(controller.captureIsRunning ? "Pausar captura global" : "Iniciar captura global")
             }
         }
@@ -279,10 +300,7 @@ struct ContentView: View {
     private var sectionBinding: Binding<TicoSection?> {
         Binding(
             get: { selectedSection },
-            set: { newValue in
-                guard let newValue, newValue != selectedSection else { return }
-                select(newValue)
-            }
+            set: applySelection
         )
     }
 
@@ -307,8 +325,23 @@ struct ContentView: View {
     }
 
     private func select(_ section: TicoSection) {
-        selectedSection = section
-        storedSection = section.rawValue
+        applySelection(section)
+    }
+
+    private func applySelection(_ section: TicoSection?) {
+        guard let selection = ShellNavigationSelection.resolve(
+            requestedSection: section,
+            currentSection: selectedSection
+        ) else { return }
+
+        if selection.changesDestination {
+            selectedSection = selection.selectedSection
+            storedSection = selection.selectedSection.rawValue
+        }
+        searchText = selection.searchText
+        if selection.dismissesSearch {
+            dismissSearch()
+        }
     }
 
     private func createRule() {
