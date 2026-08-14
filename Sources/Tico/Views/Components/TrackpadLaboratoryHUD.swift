@@ -14,12 +14,23 @@ struct TrackpadLaboratoryHUD: View {
 
     var body: some View {
         GlassEffectContainer(spacing: 12) {
-            HStack(spacing: 12) {
-                modeControl
-                captureStatus
-                sessionControl
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    modeControl
+                    captureStatus(showsTitle: true)
+                    sessionControl
+                }
+                .fixedSize(horizontal: true, vertical: false)
+
+                HStack(spacing: 12) {
+                    modeControl
+                    captureStatus(showsTitle: false)
+                    sessionControl
+                        .layoutPriority(1)
+                }
             }
         }
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
     }
 
@@ -32,7 +43,7 @@ struct TrackpadLaboratoryHUD: View {
         }
         .labelsHidden()
         .pickerStyle(.segmented)
-        .frame(width: 390)
+        .frame(minWidth: 260, idealWidth: 390, maxWidth: 390)
         .padding(.horizontal, 10)
         .padding(.vertical, 10)
         .glassEffect(
@@ -41,20 +52,28 @@ struct TrackpadLaboratoryHUD: View {
         )
     }
 
-    private var captureStatus: some View {
-        Label(captureMode.displayName, systemImage: captureMode.systemImage)
-            .font(.callout.weight(.medium))
-            .foregroundStyle(captureMode.foregroundStyle)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .glassEffect(
-                .regular.tint(captureMode.tint),
-                in: Capsule()
-            )
-            .accessibilityLabel("Captura do trackpad")
-            .accessibilityValue(captureMode.displayName)
+    private func captureStatus(showsTitle: Bool) -> some View {
+        Group {
+            if showsTitle {
+                Label(captureMode.displayName, systemImage: captureMode.systemImage)
+            } else {
+                Label(captureMode.displayName, systemImage: captureMode.systemImage)
+                    .labelStyle(.iconOnly)
+            }
+        }
+        .font(.callout.weight(.medium))
+        .foregroundStyle(captureMode.foregroundStyle)
+        .lineLimit(1)
+        .minimumScaleFactor(0.85)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .glassEffect(
+            .regular.tint(captureMode.tint),
+            in: Capsule()
+        )
+        .accessibilityLabel("Captura do trackpad")
+        .accessibilityValue(captureMode.displayName)
+        .help(captureMode.displayName)
     }
 
     @ViewBuilder

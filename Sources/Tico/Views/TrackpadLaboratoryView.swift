@@ -88,6 +88,7 @@ struct TrackpadLaboratoryView: View {
             )
             .padding(.horizontal, 20)
             .padding(.top, 14)
+            .zIndex(2)
         }
         .navigationTitle("Laboratório do Trackpad")
         .onAppear(perform: onStartObservation)
