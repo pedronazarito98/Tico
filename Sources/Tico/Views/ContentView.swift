@@ -300,14 +300,7 @@ struct ContentView: View {
     private var sectionBinding: Binding<TicoSection?> {
         Binding(
             get: { selectedSection },
-            set: { newValue in
-                guard let newValue else { return }
-                if newValue == selectedSection {
-                    finishSearchNavigation()
-                } else {
-                    select(newValue)
-                }
-            }
+            set: applySelection
         )
     }
 
@@ -332,14 +325,23 @@ struct ContentView: View {
     }
 
     private func select(_ section: TicoSection) {
-        selectedSection = section
-        storedSection = section.rawValue
-        finishSearchNavigation()
+        applySelection(section)
     }
 
-    private func finishSearchNavigation() {
-        searchText = ""
-        dismissSearch()
+    private func applySelection(_ section: TicoSection?) {
+        guard let selection = ShellNavigationSelection.resolve(
+            requestedSection: section,
+            currentSection: selectedSection
+        ) else { return }
+
+        if selection.changesDestination {
+            selectedSection = selection.selectedSection
+            storedSection = selection.selectedSection.rawValue
+        }
+        searchText = selection.searchText
+        if selection.dismissesSearch {
+            dismissSearch()
+        }
     }
 
     private func createRule() {

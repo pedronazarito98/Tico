@@ -84,9 +84,7 @@ struct TrackpadLiveView: View {
 
             if let diagnostic = snapshot?.diagnostic {
                 HStack(alignment: .top, spacing: 12) {
-                    Image(systemName: diagnosticIcon(diagnostic.outcome))
-                        .foregroundStyle(diagnosticColor(diagnostic.outcome))
-                        .accessibilityHidden(true)
+                    DiagnosticStatusIcon(outcome: diagnostic.outcome)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(diagnostic.summary)
                             .font(.headline)
@@ -122,24 +120,6 @@ struct TrackpadLiveView: View {
         }
     }
 
-    private func diagnosticIcon(_ outcome: GestureDiagnosticOutcome) -> String {
-        switch outcome {
-        case .accepted: "checkmark.seal.fill"
-        case .rejected: "xmark.octagon.fill"
-        case .ignored: "minus.circle.fill"
-        case .cancelled: "stop.circle.fill"
-        case .inProgress: "ellipsis.circle.fill"
-        }
-    }
-
-    private func diagnosticColor(_ outcome: GestureDiagnosticOutcome) -> Color {
-        switch outcome {
-        case .accepted: .green
-        case .rejected: .orange
-        case .ignored, .inProgress: .secondary
-        case .cancelled: .red
-        }
-    }
 }
 
 struct TrackpadCanvasView: View {

@@ -117,11 +117,11 @@ struct CaptureGlassControl: View {
     }
 
     private var state: CaptureGlassState {
-        if !permissionsAreReady && !captureIsRunning {
-            return .permissionRequired
-        }
-        guard captureIsRunning else { return .paused }
-        return captureMode == .systemGestureFallback ? .limited : .active
+        CaptureGlassState.resolve(
+            captureIsRunning: captureIsRunning,
+            permissionsAreReady: permissionsAreReady,
+            captureMode: captureMode
+        )
     }
 
     private func performPrimaryAction() {
@@ -130,6 +130,20 @@ struct CaptureGlassControl: View {
         } else {
             onToggleCapture()
         }
+    }
+}
+
+extension CaptureGlassState {
+    static func resolve(
+        captureIsRunning: Bool,
+        permissionsAreReady: Bool,
+        captureMode: TrackpadCaptureMode
+    ) -> Self {
+        if !permissionsAreReady && !captureIsRunning {
+            return .permissionRequired
+        }
+        guard captureIsRunning else { return .paused }
+        return captureMode == .systemGestureFallback ? .limited : .active
     }
 }
 
