@@ -6,20 +6,39 @@ struct TrackpadLiveView: View {
     @Binding var highlightedRegion: TrackpadRegion
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack(alignment: .top, spacing: 18) {
-                    TrackpadCanvasView(
-                        snapshot: snapshot,
-                        highlightedRegion: highlightedRegion
-                    )
-                    .frame(minWidth: 420, minHeight: 310)
-                    metrics
-                        .frame(width: 300)
+        ZStack {
+            TrackpadCanvasView(
+                snapshot: snapshot,
+                highlightedRegion: highlightedRegion,
+                presentation: .immersive
+            )
+
+            GlassEffectContainer(spacing: 18) {
+                VStack(spacing: 18) {
+                    HStack {
+                        Spacer(minLength: 320)
+
+                        metrics
+                            .frame(width: 286)
+                            .glassEffect(
+                                .regular,
+                                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            )
+                    }
+
+                    Spacer(minLength: 0)
+
+                    diagnosticPanel
+                        .frame(maxWidth: 760)
+                        .glassEffect(
+                            .regular,
+                            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        )
                 }
-                diagnosticPanel
+                .padding(.horizontal, 22)
+                .padding(.top, 94)
+                .padding(.bottom, 18)
             }
-            .padding(8)
         }
     }
 
@@ -31,7 +50,10 @@ struct TrackpadLiveView: View {
                 }
             }
 
-            GroupBox("Características") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Características")
+                    .font(.headline)
+
                 if let features = snapshot?.features {
                     Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
                         metricRow("Fase", features.phase.displayName)
@@ -52,14 +74,19 @@ struct TrackpadLiveView: View {
                 }
             }
         }
+        .padding(16)
     }
 
     private var diagnosticPanel: some View {
-        GroupBox("Diagnóstico") {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Diagnóstico")
+                .font(.headline)
+
             if let diagnostic = snapshot?.diagnostic {
                 HStack(alignment: .top, spacing: 12) {
                     Image(systemName: diagnosticIcon(diagnostic.outcome))
                         .foregroundStyle(diagnosticColor(diagnostic.outcome))
+                        .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(diagnostic.summary)
                             .font(.headline)
@@ -83,6 +110,7 @@ struct TrackpadLiveView: View {
                 .foregroundStyle(.secondary)
             }
         }
+        .padding(16)
     }
 
     private func metricRow(_ label: String, _ value: String) -> some View {
@@ -117,19 +145,45 @@ struct TrackpadLiveView: View {
 struct TrackpadCanvasView: View {
     let snapshot: TrackpadLaboratorySnapshot?
     let highlightedRegion: TrackpadRegion
+    var presentation = TrackpadCanvasPresentation.contained
 
+    @ViewBuilder
     var body: some View {
-        GroupBox("Superfície normalizada") {
-            Canvas { context, size in
-                let bounds = CGRect(origin: .zero, size: size).insetBy(dx: 12, dy: 12)
+        switch presentation {
+        case .contained:
+            GroupBox("Superfície normalizada") {
+                canvas
+                    .padding(6)
+            }
+        case .immersive:
+            canvas
+                .background(immersiveBackground)
+                .overlay(alignment: .bottomLeading) {
+                    Label("Superfície normalizada", systemImage: "rectangle.inset.filled")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(18)
+                }
+        }
+    }
+
+    private var canvas: some View {
+        Canvas { context, size in
+                let inset: CGFloat = presentation == .immersive ? 28 : 12
+                let bounds = CGRect(origin: .zero, size: size).insetBy(dx: inset, dy: inset)
                 let background = Path(roundedRect: bounds, cornerRadius: 18)
-                context.fill(background, with: .color(.secondary.opacity(0.08)))
-                context.stroke(background, with: .color(.secondary.opacity(0.35)), lineWidth: 1)
+                context.fill(
+                    background,
+                    with: .color(.secondary.opacity(presentation == .immersive ? 0.05 : 0.08))
+                )
+                context.stroke(background, with: .color(.secondary.opacity(0.28)), lineWidth: 1)
                 drawRegion(highlightedRegion, in: bounds, context: &context)
                 drawGrid(in: bounds, context: &context)
 
                 guard let snapshot else { return }
+                drawCentroidPath(snapshot.features.centroidPath, in: bounds, context: &context)
                 for contact in snapshot.contacts {
+                    drawContactTrail(contact, in: bounds, context: &context)
                     let point = CGPoint(
                         x: bounds.minX + bounds.width * contact.position.x,
                         y: bounds.maxY - bounds.height * contact.position.y
@@ -163,8 +217,28 @@ struct TrackpadCanvasView: View {
                     .allowsHitTesting(false)
                 }
             }
-            .padding(6)
+    }
+
+    private var immersiveBackground: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    TicoBrand.Palette.background.opacity(0.72),
+                    TicoBrand.Palette.primary.opacity(0.08),
+                    TicoBrand.Palette.accent.opacity(0.05)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [TicoBrand.Palette.primary.opacity(0.12), .clear],
+                center: .center,
+                startRadius: 30,
+                endRadius: 420
+            )
         }
+        .accessibilityHidden(true)
     }
 
     private func drawGrid(in bounds: CGRect, context: inout GraphicsContext) {
@@ -209,6 +283,56 @@ struct TrackpadCanvasView: View {
         }
     }
 
+    private func drawCentroidPath(
+        _ points: [TrackpadPoint],
+        in bounds: CGRect,
+        context: inout GraphicsContext
+    ) {
+        guard points.count > 1 else { return }
+        var path = Path()
+        for (index, point) in points.enumerated() {
+            let canvasPoint = CGPoint(
+                x: bounds.minX + bounds.width * point.x,
+                y: bounds.maxY - bounds.height * point.y
+            )
+            if index == 0 {
+                path.move(to: canvasPoint)
+            } else {
+                path.addLine(to: canvasPoint)
+            }
+        }
+        context.stroke(
+            path,
+            with: .color(TicoBrand.Palette.primary.opacity(0.72)),
+            style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round)
+        )
+    }
+
+    private func drawContactTrail(
+        _ contact: ContactState,
+        in bounds: CGRect,
+        context: inout GraphicsContext
+    ) {
+        var path = Path()
+        path.move(
+            to: CGPoint(
+                x: bounds.minX + bounds.width * contact.startPosition.x,
+                y: bounds.maxY - bounds.height * contact.startPosition.y
+            )
+        )
+        path.addLine(
+            to: CGPoint(
+                x: bounds.minX + bounds.width * contact.position.x,
+                y: bounds.maxY - bounds.height * contact.position.y
+            )
+        )
+        context.stroke(
+            path,
+            with: .color(color(for: contact.transition).opacity(0.30)),
+            style: StrokeStyle(lineWidth: 2, lineCap: .round)
+        )
+    }
+
     private func color(for transition: ContactTransition) -> Color {
         switch transition {
         case .down: .green
@@ -217,6 +341,11 @@ struct TrackpadCanvasView: View {
         case .cancel: .red
         }
     }
+}
+
+enum TrackpadCanvasPresentation {
+    case contained
+    case immersive
 }
 
 private extension GesturePhase {

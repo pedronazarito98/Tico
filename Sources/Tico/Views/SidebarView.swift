@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum SidebarDestination: Hashable {
+    case section(TicoSection)
+    case rule(ShortcutRule.ID)
+}
+
 struct SidebarView: View {
     @Binding var selection: TicoSection?
     @Binding var selectedRuleID: ShortcutRule.ID?
@@ -7,6 +12,7 @@ struct SidebarView: View {
     let enabledRuleCount: Int
     let totalRuleCount: Int
     let captureIsRunning: Bool
+    let searchText: String
     let onSetRuleEnabled: (ShortcutRule.ID, Bool) throws -> Void
     let onDeleteRule: (ShortcutRule.ID) throws -> Void
 
@@ -24,30 +30,42 @@ struct SidebarView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(primarySections) { section in
-                        navigationRow(for: section)
-                    }
-
-                    Text("Ferramentas")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(TicoBrand.Palette.secondaryText)
-                        .padding(.horizontal, 10)
-                        .padding(.top, 16)
-                        .padding(.bottom, 4)
-
-                    ForEach(toolSections) { section in
+        List(selection: destinationBinding) {
+            if !filteredPrimarySections.isEmpty {
+                Section {
+                    ForEach(filteredPrimarySections) { section in
                         navigationRow(for: section)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 10)
             }
 
-            Divider()
+            if shouldShowRuleResults {
+                RuleSidebarSection(
+                    items: filteredRuleItems,
+                    onSetRuleEnabled: onSetRuleEnabled,
+                    onDeleteRule: onDeleteRule,
+                    onSelect: { destinationBinding.wrappedValue = .rule($0) }
+                )
+            }
 
+            if !filteredToolSections.isEmpty {
+                Section("Ferramentas") {
+                    ForEach(filteredToolSections) { section in
+                        navigationRow(for: section)
+                    }
+                }
+            }
+
+            if hasNoSearchResults {
+                Section {
+                    Label("Nenhum resultado", systemImage: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Divider()
             SidebarStatusRow(
                 captureIsRunning: captureIsRunning,
                 enabledRuleCount: enabledRuleCount,
@@ -60,50 +78,87 @@ struct SidebarView: View {
         .navigationSplitViewColumnWidth(min: 200, ideal: 240, max: 320)
     }
 
-    @ViewBuilder
     private func navigationRow(for section: TicoSection) -> some View {
-        if section == .rules {
-            RuleSidebarSection(
-                selection: $selection,
-                selectedRuleID: $selectedRuleID,
-                items: ruleItems,
-                onSetRuleEnabled: onSetRuleEnabled,
-                onDeleteRule: onDeleteRule
-            )
-        } else {
-            Button {
-                selection = section
-            } label: {
-                HStack(spacing: 8) {
-                    Label(section.title, systemImage: section.systemImage)
-                    Spacer(minLength: 0)
+        Button {
+            destinationBinding.wrappedValue = .section(section)
+        } label: {
+            HStack(spacing: 8) {
+                Label(section.title, systemImage: section.systemImage)
+
+                Spacer(minLength: 0)
+
+                if section == .rules {
+                    Text("\(totalRuleCount)")
+                        .font(.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("\(totalRuleCount) regras")
                 }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .foregroundStyle(
-                    selection == section
-                        ? TicoBrand.Palette.primary
-                        : TicoBrand.Palette.text
-                )
-                .background {
-                    if selection == section {
-                        RoundedRectangle(cornerRadius: 7, style: .continuous)
-                            .fill(TicoBrand.Palette.primary.opacity(0.10))
-                    }
-                }
-                .overlay(alignment: .leading) {
-                    if selection == section {
-                        Capsule()
-                            .fill(TicoBrand.Palette.primary)
-                            .frame(width: 2, height: 20)
-                            .offset(x: -3)
-                    }
-                }
-                .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .tag(SidebarDestination.section(section))
+    }
+
+    private var destinationBinding: Binding<SidebarDestination?> {
+        Binding(
+            get: {
+                guard let selection else { return nil }
+                if selection == .rules, let selectedRuleID {
+                    return .rule(selectedRuleID)
+                }
+                return .section(selection)
+            },
+            set: { destination in
+                switch destination {
+                case let .section(section):
+                    selection = section
+                case let .rule(id):
+                    selectedRuleID = id
+                    selection = .rules
+                case nil:
+                    break
+                }
+            }
+        )
+    }
+
+    private var filteredPrimarySections: [TicoSection] {
+        primarySections.filter(matchesSearch)
+    }
+
+    private var filteredToolSections: [TicoSection] {
+        toolSections.filter(matchesSearch)
+    }
+
+    private var filteredRuleItems: [RuleSidebarItem] {
+        guard !normalizedSearchText.isEmpty else { return ruleItems }
+        return ruleItems.filter {
+            $0.name.localizedCaseInsensitiveContains(normalizedSearchText)
+                || $0.detail.localizedCaseInsensitiveContains(normalizedSearchText)
+        }
+    }
+
+    private var shouldShowRuleResults: Bool {
+        !filteredRuleItems.isEmpty
+            && (selection == .rules || !normalizedSearchText.isEmpty)
+    }
+
+    private var hasNoSearchResults: Bool {
+        !normalizedSearchText.isEmpty
+            && filteredPrimarySections.isEmpty
+            && filteredToolSections.isEmpty
+            && filteredRuleItems.isEmpty
+    }
+
+    private var normalizedSearchText: String {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func matchesSearch(_ section: TicoSection) -> Bool {
+        normalizedSearchText.isEmpty
+            || section.title.localizedCaseInsensitiveContains(normalizedSearchText)
     }
 }
 

@@ -27,91 +27,123 @@ struct TrackpadLaboratoryView: View {
     @State private var highlightedRegion = TrackpadRegion.any
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-                .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+        ZStack(alignment: .top) {
+            laboratoryBackground
 
-            Divider()
-
-            TabView(selection: $selectedTab) {
-                Tab("Ao vivo", systemImage: "waveform.path.ecg", value: LaboratoryTab.live) {
-                    TrackpadLiveView(
-                        snapshot: snapshot,
-                        startupError: startupError,
-                        highlightedRegion: $highlightedRegion
-                    )
-                }
-
-                Tab("Calibração", systemImage: "slider.horizontal.3", value: LaboratoryTab.calibration) {
-                    TrackpadCalibrationView(
-                        store: calibrationStore,
-                        highlightedRegion: $highlightedRegion
-                    )
-                }
-
-                Tab("Sessões", systemImage: "record.circle", value: LaboratoryTab.sessions) {
-                    TrackpadSessionView(
-                        isRecording: isRecording,
-                        recordedFrameCount: recordedFrameCount,
-                        lastRecording: lastRecording,
-                        isReplaying: isReplaying,
-                        replayProgress: replayProgress,
-                        onStartRecording: onStartRecording,
-                        onStopRecording: onStopRecording,
-                        onCancelRecording: onCancelRecording,
-                        onReplay: onReplay,
-                        onCancelReplay: onCancelReplay
-                    )
-                }
-
-                Tab("Validação", systemImage: "checklist", value: LaboratoryTab.validation) {
-                    TrackpadValidationView(
-                        store: validationStore,
-                        captureMode: captureMode,
-                        detectedTrackpads: detectedTrackpads,
-                        onActivateFallback: onActivateFallback,
-                        onRestoreAdvanced: onRestoreAdvanced,
-                        onRefreshHardware: onRefreshHardware
-                    )
-                }
+            laboratoryLayer(for: .live) {
+                TrackpadLiveView(
+                    snapshot: snapshot,
+                    startupError: startupError,
+                    highlightedRegion: $highlightedRegion
+                )
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 16)
+
+            laboratoryLayer(for: .calibration) {
+                TrackpadCalibrationView(
+                    store: calibrationStore,
+                    highlightedRegion: $highlightedRegion
+                )
+                .padding(.top, 92)
+            }
+
+            laboratoryLayer(for: .sessions) {
+                TrackpadSessionView(
+                    isRecording: isRecording,
+                    recordedFrameCount: recordedFrameCount,
+                    lastRecording: lastRecording,
+                    isReplaying: isReplaying,
+                    replayProgress: replayProgress,
+                    onStartRecording: onStartRecording,
+                    onStopRecording: onStopRecording,
+                    onCancelRecording: onCancelRecording,
+                    onReplay: onReplay,
+                    onCancelReplay: onCancelReplay
+                )
+                .padding(.top, 92)
+            }
+
+            laboratoryLayer(for: .validation) {
+                TrackpadValidationView(
+                    store: validationStore,
+                    captureMode: captureMode,
+                    detectedTrackpads: detectedTrackpads,
+                    onActivateFallback: onActivateFallback,
+                    onRestoreAdvanced: onRestoreAdvanced,
+                    onRefreshHardware: onRefreshHardware
+                )
+                .padding(.top, 92)
+            }
+
+            TrackpadLaboratoryHUD(
+                selectedTab: $selectedTab,
+                captureMode: captureMode,
+                isRecording: isRecording,
+                recordedFrameCount: recordedFrameCount,
+                isReplaying: isReplaying,
+                replayProgress: replayProgress,
+                onStartRecording: onStartRecording,
+                onStopRecording: onStopRecording,
+                onCancelRecording: onCancelRecording,
+                onCancelReplay: onCancelReplay
+            )
+            .padding(.horizontal, 20)
+            .padding(.top, 14)
         }
         .navigationTitle("Laboratório do Trackpad")
         .onAppear(perform: onStartObservation)
         .onDisappear(perform: onStopObservation)
     }
 
-    private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Laboratório do Trackpad")
-                    .font(.title2.weight(.semibold))
-                Text("Observe, calibre e reproduza gestos sem executar regras.")
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Label(captureMode.displayName, systemImage: captureModeIcon)
-                .foregroundStyle(captureMode == .advancedGlobal ? .green : .secondary)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-        }
+    private func laboratoryLayer<Content: View>(
+        for tab: LaboratoryTab,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        content()
+            .opacity(selectedTab == tab ? 1 : 0)
+            .allowsHitTesting(selectedTab == tab)
+            .accessibilityHidden(selectedTab != tab)
+            .zIndex(selectedTab == tab ? 1 : 0)
     }
 
-    private var captureModeIcon: String {
-        switch captureMode {
-        case .stopped: "stop.circle"
-        case .advancedGlobal: "dot.radiowaves.left.and.right"
-        case .systemGestureFallback: "arrow.triangle.2.circlepath"
-        }
+    private var laboratoryBackground: some View {
+        LinearGradient(
+            colors: [
+                TicoBrand.Palette.primary.opacity(0.10),
+                TicoBrand.Palette.accent.opacity(0.04),
+                Color.clear
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .backgroundExtensionEffect()
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
     }
 }
 
-private enum LaboratoryTab: Hashable {
+enum LaboratoryTab: Hashable, CaseIterable, Identifiable {
     case live
     case calibration
     case sessions
     case validation
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .live: "Ao vivo"
+        case .calibration: "Calibração"
+        case .sessions: "Sessões"
+        case .validation: "Validação"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .live: "waveform.path.ecg"
+        case .calibration: "slider.horizontal.3"
+        case .sessions: "record.circle"
+        case .validation: "checklist"
+        }
+    }
 }
