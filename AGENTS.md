@@ -37,6 +37,20 @@ Estas regras valem para todo o repositório. Um `AGENTS.md` mais próximo do arq
 - Não migre em massa para `@Observable` ou Swift 6 estrito sem uma spec e um gate próprios.
 - Integração AppKit deve ser estreita e ficar fora das views sempre que possível.
 
+## Aprendizado Swift e paralelo com React
+
+- O usuário está aprendendo Swift e SwiftUI e possui experiência com Web, JavaScript, TypeScript e React.
+- Ao propor, explicar ou implementar uma solução, apresente o conceito Swift e, quando existir uma comparação segura, o equivalente mais próximo em React.
+- Explique também as diferenças importantes entre os modelos. Os paralelos são pedagógicos e não autorizam transportar padrões de React artificialmente para SwiftUI.
+- Quando não houver equivalente direto em React, informe isso claramente em vez de forçar uma comparação.
+- Todo tipo, fluxo ou trecho não trivial criado ou substancialmente alterado deve receber documentação em pt-BR quando a intenção, responsabilidade ou restrição não estiver evidente no código.
+- Prefira comentários que expliquem responsabilidade, fluxo de dados, ownership, concorrência, ciclo de vida, integração com o macOS e o motivo de uma decisão.
+- Quando útil, use uma frase curta no formato `Paralelo com React:` na documentação do tipo ou da principal fronteira envolvida.
+- Não comente cada linha, sintaxe óbvia, atribuições simples ou código autoexplicativo.
+- Preserve nomes de APIs, tipos, propriedades e convenções do ecossistema Swift. Não traduza identificadores técnicos artificialmente.
+- Comentários existentes em inglês não precisam ser traduzidos em massa. Ao modificar substancialmente um trecho, atualize também sua documentação para pt-BR.
+- Ao entregar uma alteração, inclua uma seção `Paralelo com React` explicando de forma simples o que foi implementado.
+
 ## Segurança e privacidade
 
 - Não leia, copie, persista ou exponha credenciais, tokens, sessões, cookies, bancos SQLite de autenticação, logs brutos, paste cache ou históricos pessoais.
@@ -75,7 +89,9 @@ Responda em pt-BR com:
 1. resumo do que foi alterado;
 2. arquivos modificados/criados;
 3. decisões técnicas;
-4. pontos de atenção;
-5. o que validar manualmente.
+4. paralelo com React;
+5. pontos de atenção;
+6. o que validar manualmente;
+7. testes, build e verificações realmente executados.
 
 Separe fatos verificados de inferências e recomendações.
