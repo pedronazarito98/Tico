@@ -18,6 +18,7 @@ final class ShortcutStoreTests: XCTestCase {
         let store = ShortcutStore(fileURL: fileURL, seedExamples: true)
 
         XCTAssertEqual(store.rules.count, 2)
+        XCTAssertTrue(store.rules.allSatisfy { !$0.isEnabled })
         XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
 
         let json = try XCTUnwrap(

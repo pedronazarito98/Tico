@@ -449,6 +449,7 @@ final class ShortcutStore: ObservableObject {
         [
             ShortcutRule(
                 name: "Open Safari",
+                isEnabled: false,
                 trigger: .keyboard(keyCode: 1, modifiers: [.command, .shift]),
                 action: .openApplication(bundleIdentifier: "com.apple.Safari"),
                 notes: "Example shortcut. Edit or delete it at any time.",
@@ -457,6 +458,7 @@ final class ShortcutStore: ObservableObject {
             ),
             ShortcutRule(
                 name: "Abrir site de exemplo do \(TicoBrand.displayName)",
+                isEnabled: false,
                 trigger: .mouseButton(button: 3, modifiers: []),
                 action: .openURL(url: URL(string: "https://www.apple.com/macos/")!),
                 notes: "Example for an extra mouse button.",

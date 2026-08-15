@@ -16,6 +16,15 @@ posterior compatível. O deployment target do aplicativo é macOS 26.
    ./script/ci_verify.sh --package
    ```
 
+   O gate inclui o fluxo E2E nativo em `XCUITest`. Para executá-lo isoladamente:
+
+   ```sh
+   ./script/run_ui_tests.sh
+   ```
+
+   O teste abre uma cópia do app com dados e preferências temporários, sem
+   solicitar permissões, iniciar captura global ou executar regras reais.
+
 3. Adicione ou atualize testes quando o comportamento mudar.
 4. Não enfraqueça nem remova uma asserção somente para fazer a suíte passar.
 5. Explique o que mudou, o impacto e como verificar.

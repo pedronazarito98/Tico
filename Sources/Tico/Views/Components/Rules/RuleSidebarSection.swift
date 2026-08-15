@@ -27,16 +27,18 @@ struct RuleSidebarSection: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                    .tag(SidebarDestination.rule(item.id))
-                    .contextMenu {
-                        Button(item.isEnabled ? "Desativar" : "Ativar") {
-                            setEnabled(!item.isEnabled, for: item.id)
-                        }
-                        Divider()
-                        Button("Excluir", role: .destructive) {
-                            itemPendingDeletion = item
-                        }
+                .tag(SidebarDestination.rule(item.id))
+                .accessibilityLabel(item.name)
+                .accessibilityValue("\(item.detail), \(statusDescription(for: item))")
+                .contextMenu {
+                    Button(item.isEnabled ? "Desativar" : "Ativar") {
+                        setEnabled(!item.isEnabled, for: item.id)
                     }
+                    Divider()
+                    Button("Excluir", role: .destructive) {
+                        itemPendingDeletion = item
+                    }
+                }
             }
         }
         .alert("Não foi possível atualizar a regra", isPresented: errorIsPresented) {
@@ -90,8 +92,6 @@ struct RuleSidebarSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .accessibilityLabel(item.name)
-        .accessibilityValue("\(item.detail), \(statusDescription(for: item))")
     }
 
     private func statusColor(for item: RuleSidebarItem) -> Color {

@@ -10,13 +10,26 @@
 		000000000000000000000001 /* TicoXcodeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000011 /* TicoXcodeApp.swift */; };
 		000000000000000000000002 /* Tico.icns in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000012 /* Tico.icns */; };
 		000000000000000000000003 /* TicoApplication in Frameworks */ = {isa = PBXBuildFile; productRef = 000000000000000000000072 /* TicoApplication */; };
+		000000000000000000000004 /* FirstShortcutUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000000015 /* FirstShortcutUITests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		000000000000000000000044 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 000000000000000000000042 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 000000000000000000000041;
+			remoteInfo = TicoApp;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		000000000000000000000011 /* TicoXcodeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Xcode/TicoApp/TicoXcodeApp.swift; sourceTree = SOURCE_ROOT; };
 		000000000000000000000012 /* Tico.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = Sources/Tico/Resources/Brand/Tico.icns; sourceTree = SOURCE_ROOT; };
 		000000000000000000000013 /* Tico.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tico.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		000000000000000000000014 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Xcode/Config/Base.xcconfig; sourceTree = SOURCE_ROOT; };
+		000000000000000000000015 /* FirstShortcutUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstShortcutUITests.swift; sourceTree = "<group>"; };
+		000000000000000000000016 /* TicoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = TicoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -25,6 +38,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				000000000000000000000003 /* TicoApplication in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000034 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,6 +65,7 @@
 				000000000000000000000011 /* TicoXcodeApp.swift */,
 				000000000000000000000012 /* Tico.icns */,
 				000000000000000000000023 /* Config */,
+				000000000000000000000025 /* TicoUITests */,
 			);
 			name = Xcode;
 			sourceTree = "<group>";
@@ -61,9 +82,18 @@
 			isa = PBXGroup;
 			children = (
 				000000000000000000000013 /* Tico.app */,
+				000000000000000000000016 /* TicoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
+		};
+		000000000000000000000025 /* TicoUITests */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000000015 /* FirstShortcutUITests.swift */,
+			);
+			path = Xcode/TicoUITests;
+			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */
 
@@ -88,6 +118,24 @@
 			productReference = 000000000000000000000013 /* Tico.app */;
 			productType = "com.apple.product-type.application";
 		};
+		000000000000000000000043 /* TicoUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000000063 /* Build configuration list for PBXNativeTarget "TicoUITests" */;
+			buildPhases = (
+				000000000000000000000036 /* Sources */,
+				000000000000000000000034 /* Frameworks */,
+				000000000000000000000035 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				000000000000000000000045 /* PBXTargetDependency */,
+			);
+			name = TicoUITests;
+			productName = TicoUITests;
+			productReference = 000000000000000000000016 /* TicoUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -100,6 +148,10 @@
 				TargetAttributes = {
 					000000000000000000000041 = {
 						CreatedOnToolsVersion = 26.6;
+					};
+					000000000000000000000043 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 000000000000000000000041;
 					};
 				};
 			};
@@ -120,6 +172,7 @@
 			projectRoot = "";
 			targets = (
 				000000000000000000000041 /* TicoApp */,
+				000000000000000000000043 /* TicoUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -130,6 +183,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				000000000000000000000002 /* Tico.icns in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		000000000000000000000035 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -144,7 +204,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		000000000000000000000036 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000000004 /* FirstShortcutUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		000000000000000000000045 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 000000000000000000000041 /* TicoApp */;
+			targetProxy = 000000000000000000000044 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		000000000000000000000051 /* Debug */ = {
@@ -200,6 +276,44 @@
 			};
 			name = Release;
 		};
+		000000000000000000000055 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_TESTABILITY = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pedronazarito.TicoUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRIP_INSTALLED_PRODUCT = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = TicoApp;
+			};
+			name = Debug;
+		};
+		000000000000000000000056 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pedronazarito.TicoUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRIP_INSTALLED_PRODUCT = NO;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = TicoApp;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -217,6 +331,15 @@
 			buildConfigurations = (
 				000000000000000000000053 /* Debug */,
 				000000000000000000000054 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000000063 /* Build configuration list for PBXNativeTarget "TicoUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000000055 /* Debug */,
+				000000000000000000000056 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

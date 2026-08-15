@@ -11,6 +11,7 @@ struct RuleEditorHeaderView: View {
                 TextField("Nome da regra", text: $name)
                     .textFieldStyle(.plain)
                     .font(.title2.weight(.semibold))
+                    .accessibilityIdentifier("tico.rule.name")
                 Text(hasUnsavedChanges ? "Alterações não salvas" : "Regra atualizada")
                     .font(.caption)
                     .foregroundStyle(hasUnsavedChanges ? .orange : .secondary)
@@ -18,6 +19,7 @@ struct RuleEditorHeaderView: View {
             Spacer()
             Toggle("Ativa", isOn: $isEnabled)
                 .toggleStyle(.switch)
+                .accessibilityIdentifier("tico.rule.enabled")
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 16)

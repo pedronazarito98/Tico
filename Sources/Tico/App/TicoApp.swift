@@ -15,12 +15,22 @@ public struct TicoApp: App {
     private let lifecycle: any ApplicationLifecycleControlling
 
     public init() {
-        let shortcutStore: ShortcutStore = ShortcutStore()
-        let settings: AppSettingsStore = AppSettingsStore()
-        let eventLogStore: EventLogStore = EventLogStore()
-        let permissions: PermissionCoordinator = PermissionCoordinator()
-        let calibrationStore: TrackpadCalibrationStore = TrackpadCalibrationStore()
-        let validationStore: TrackpadValidationStore = TrackpadValidationStore()
+        let launchConfiguration = TicoLaunchConfiguration.current()
+        let shortcutStore = ShortcutStore(
+            fileURL: launchConfiguration.fileURL(named: "shortcuts.json")
+        )
+        let settings = AppSettingsStore(defaults: launchConfiguration.defaults)
+        let eventLogStore = EventLogStore(
+            fileURL: launchConfiguration.fileURL(named: "execution-log.json")
+        )
+        let permissions = launchConfiguration.makePermissionCoordinator()
+        let calibrationStore = TrackpadCalibrationStore(defaults: launchConfiguration.defaults)
+        let validationStore = TrackpadValidationStore(defaults: launchConfiguration.defaults)
+        let metricsStore = MetricsStore(
+            fileURL: launchConfiguration.fileURL(named: "metrics.json")
+        )
+        let capabilityStore = TrackpadCapabilityStore(defaults: launchConfiguration.defaults)
+        let approvalStore = AutomationApprovalStore(defaults: launchConfiguration.defaults)
         let commandRouter: AppCommandRouter = AppCommandRouter()
         let lifecycle: any ApplicationLifecycleControlling = ApplicationLifecycleService()
         _shortcutStore = StateObject(wrappedValue: shortcutStore)
@@ -36,7 +46,11 @@ public struct TicoApp: App {
                 eventLogStore: eventLogStore,
                 permissions: permissions,
                 calibrationStore: calibrationStore,
-                validationStore: validationStore
+                validationStore: validationStore,
+                metricsStore: metricsStore,
+                capabilityStore: capabilityStore,
+                approvalStore: approvalStore,
+                macOSShortcutCatalog: launchConfiguration.makeMacOSShortcutCatalog()
             )
         )
         _commandRouter = StateObject(wrappedValue: commandRouter)

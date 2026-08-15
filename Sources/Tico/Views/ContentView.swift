@@ -9,6 +9,7 @@ struct ContentView: View {
 
     @Environment(\.dismissSearch) private var dismissSearch
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.scenePhase) private var scenePhase
     @SceneStorage("mainSection") private var storedSection = TicoSection.overview.rawValue
     @State private var navigationVisibility = NavigationSplitViewVisibility.all
     @State private var selectedSection = TicoSection.overview
@@ -50,6 +51,7 @@ struct ContentView: View {
                 } label: {
                     Label("Nova regra", systemImage: "plus")
                 }
+                .accessibilityIdentifier("tico.toolbar.new-rule")
             }
 
             ToolbarSpacer(.fixed, placement: .primaryAction)
@@ -93,6 +95,10 @@ struct ContentView: View {
         .onReceive(commandRouter.$pendingCommand.compactMap { $0 }) { envelope in
             guard let command = commandRouter.consume(envelope) else { return }
             handle(command)
+        }
+        .onChange(of: scenePhase) {
+            guard scenePhase == .active else { return }
+            permissions.refresh()
         }
         .alert(TicoBrand.displayName, isPresented: presentedErrorBinding) {
             Button("OK", role: .cancel) { controller.presentedError = nil }
@@ -348,6 +354,7 @@ struct ContentView: View {
         do {
             let rule = try shortcutStore.create(
                 name: "Nova regra",
+                isEnabled: false,
                 trigger: .keyboard(keyCode: 49, modifiers: [.command]),
                 action: .notification(title: TicoBrand.displayName, body: "Regra executada")
             )

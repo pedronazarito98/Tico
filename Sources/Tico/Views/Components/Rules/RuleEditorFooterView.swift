@@ -33,6 +33,7 @@ struct RuleEditorFooterView: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(!canSave || !hasUnsavedChanges)
                 .keyboardShortcut("s", modifiers: [.command])
+                .accessibilityIdentifier("tico.rule.save")
         }
         .padding(.horizontal, 22)
         .padding(.vertical, 14)

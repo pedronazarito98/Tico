@@ -55,6 +55,7 @@ bash -n script/ci_verify.sh
 bash -n script/release_preflight.sh
 bash -n script/verify_xcode_app.sh
 bash -n script/notarize_release.sh
+bash -n script/run_ui_tests.sh
 bash -n script/validate_hardware_report.sh
 
 step "Building Tico (SwiftPM product Tico)"
@@ -62,6 +63,9 @@ swift build ${SWIFT_ARGS[@]+"${SWIFT_ARGS[@]}"} --product "$PRODUCT_NAME"
 
 step "Building and verifying thin Xcode app target"
 ./script/verify_xcode_app.sh
+
+step "Running isolated XCUITest end-to-end flow"
+./script/run_ui_tests.sh
 
 step "Running complete Swift test suite"
 swift test ${SWIFT_ARGS[@]+"${SWIFT_ARGS[@]}"} 2>&1 | /usr/bin/tee "$TEST_LOG"
@@ -123,6 +127,7 @@ fi
 step "Automated verification summary"
 echo "Swift tests: $TEST_COUNT"
 echo "Xcode app target: verified"
+echo "XCUITest end-to-end flow: verified"
 echo "Local app path: $ROOT_DIR/dist/$PUBLIC_APP_NAME.app"
 if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   echo "Verified ad hoc archive: $ARCHIVE_PATH"

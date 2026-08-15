@@ -99,6 +99,7 @@ struct SidebarView: View {
         }
         .buttonStyle(.plain)
         .tag(SidebarDestination.section(section))
+        .accessibilityIdentifier("tico.section.\(section.rawValue)")
     }
 
     private var destinationBinding: Binding<SidebarDestination?> {
@@ -189,5 +190,6 @@ private struct SidebarStatusRow: View {
             "\(captureIsRunning ? "Captura ativa" : "Captura pausada"), "
                 + "\(enabledRuleCount) de \(totalRuleCount) regras ativas"
         )
+        .accessibilityIdentifier("tico.sidebar.status")
     }
 }
