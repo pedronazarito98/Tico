@@ -57,19 +57,16 @@ struct ContentView: View {
             ToolbarSpacer(.fixed, placement: .primaryAction)
 
             ToolbarItem(id: "capture", placement: .primaryAction) {
-                Button(action: controller.toggleCapture) {
+                Button(action: performCaptureToolbarAction) {
                     Label(
-                        controller.captureIsRunning ? "Pausar captura" : "Iniciar captura",
-                        systemImage: controller.captureIsRunning ? "pause.fill" : "play.fill"
+                        captureToolbarTitle,
+                        systemImage: captureToolbarSystemImage
                     )
                 }
                 .buttonStyle(.glassProminent)
-                .tint(
-                    controller.captureIsRunning
-                        ? Color.orange
-                        : TicoBrand.Palette.primary
-                )
-                .help(controller.captureIsRunning ? "Pausar captura global" : "Iniciar captura global")
+                .tint(captureToolbarTint)
+                .help(captureToolbarHelp)
+                .accessibilityIdentifier("tico.toolbar.capture")
             }
         }
         .onAppear {
@@ -80,7 +77,7 @@ struct ContentView: View {
             if arguments.contains("--open-laboratory") {
                 select(.laboratory)
             }
-            permissions.refresh()
+            controller.reconcilePermissions()
             if selectedRuleID == nil {
                 selectedRuleID = shortcutStore.rules.first?.id
             }
@@ -98,7 +95,7 @@ struct ContentView: View {
         }
         .onChange(of: scenePhase) {
             guard scenePhase == .active else { return }
-            permissions.refresh()
+            controller.reconcilePermissions()
         }
         .alert(TicoBrand.displayName, isPresented: presentedErrorBinding) {
             Button("OK", role: .cancel) { controller.presentedError = nil }
@@ -177,7 +174,7 @@ struct ContentView: View {
                         openSettings: permissions.openInputMonitoringSettings
                     )
                 ],
-                onRefresh: { permissions.refresh() }
+                onRefresh: { controller.reconcilePermissions() }
             )
 
         case .rules:
@@ -293,6 +290,42 @@ struct ContentView: View {
         case .exportRules:
             exportRules()
         }
+    }
+
+    private var captureToolbarTitle: String {
+        guard permissions.status.canCaptureGlobalInput else {
+            return "Configurar permissões"
+        }
+        return controller.captureIsRunning ? "Pausar captura" : "Iniciar captura"
+    }
+
+    private var captureToolbarSystemImage: String {
+        guard permissions.status.canCaptureGlobalInput else {
+            return "lock.trianglebadge.exclamationmark"
+        }
+        return controller.captureIsRunning ? "pause.fill" : "play.fill"
+    }
+
+    private var captureToolbarTint: Color {
+        guard permissions.status.canCaptureGlobalInput else { return .orange }
+        return controller.captureIsRunning ? .orange : TicoBrand.Palette.primary
+    }
+
+    private var captureToolbarHelp: String {
+        guard permissions.status.canCaptureGlobalInput else {
+            return "Abrir permissões necessárias para a captura global"
+        }
+        return controller.captureIsRunning
+            ? "Pausar captura global"
+            : "Iniciar captura global"
+    }
+
+    private func performCaptureToolbarAction() {
+        guard permissions.status.canCaptureGlobalInput else {
+            select(.permissions)
+            return
+        }
+        controller.toggleCapture()
     }
 
     private var inputMonitoringStatusText: String {
