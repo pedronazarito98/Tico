@@ -67,6 +67,41 @@ final class CaptureCoordinatorTests: XCTestCase {
         XCTAssertEqual(received, [event])
     }
 
+    func testReconcilePermissionsStopsCaptureAfterAuthorizationIsRevoked() {
+        var inputMonitoring = InputMonitoringAuthorizationState.granted
+        let eventTap = FakeGlobalEventTap(stopLeavesRunning: false)
+        let permissions = PermissionCoordinator(
+            accessibilityCheck: { false },
+            accessibilityRequest: { false },
+            inputMonitoringCheck: { inputMonitoring },
+            inputMonitoringRequest: { false },
+            settingsOpener: { _ in }
+        )
+        let trackpadGestures = TrackpadGestureService(
+            providerFactory: { IdleTrackpadFrameProvider() }
+        )
+        let coordinator = CaptureCoordinator(
+            globalEventTap: eventTap,
+            trackpadGestures: trackpadGestures,
+            permissions: permissions,
+            hardwareDetector: TrackpadHardwareDetector(),
+            detectHardware: { [] }
+        )
+
+        XCTAssertEqual(coordinator.startCapture(), .started)
+        XCTAssertTrue(coordinator.isRunning)
+        XCTAssertTrue(trackpadGestures.isRunning)
+
+        inputMonitoring = .denied
+        let status = coordinator.reconcilePermissions()
+
+        XCTAssertEqual(status.inputMonitoring, .denied)
+        XCTAssertFalse(status.canCaptureGlobalInput)
+        XCTAssertFalse(coordinator.isRunning)
+        XCTAssertFalse(trackpadGestures.isRunning)
+        XCTAssertEqual(eventTap.stopCount, 1)
+    }
+
     private func makeCoordinator(eventTap: FakeGlobalEventTap) -> CaptureCoordinator {
         let permissions = PermissionCoordinator(
             accessibilityCheck: { true },
@@ -94,6 +129,7 @@ private final class FakeGlobalEventTap: GlobalEventTapping {
 
     private(set) var isRunning = false
     private(set) var startCount = 0
+    private(set) var stopCount = 0
 
     init(stopLeavesRunning: Bool = true) {
         self.stopLeavesRunning = stopLeavesRunning
@@ -111,6 +147,7 @@ private final class FakeGlobalEventTap: GlobalEventTapping {
     }
 
     func stop() {
+        stopCount += 1
         if !stopLeavesRunning {
             isRunning = false
         }
