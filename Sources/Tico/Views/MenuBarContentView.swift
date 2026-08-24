@@ -9,46 +9,48 @@ struct MenuBarContentView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("Abrir \(TicoBrand.displayName)") {
-            lifecycle.activateAndOpenMainWindow {
-                openWindow(id: "main")
+        Group {
+            Button("Abrir \(TicoBrand.displayName)") {
+                lifecycle.activateAndOpenMainWindow {
+                    openWindow(id: "main")
+                }
             }
-        }
 
-        Divider()
+            Divider()
 
-        Button(captureActionTitle, action: performCaptureAction)
-            .accessibilityIdentifier("tico.menu.capture")
+            Button(captureActionTitle, action: performCaptureAction)
+                .accessibilityIdentifier("tico.menu.capture")
 
-        Text("\(shortcutStore.rules.filter(\.isEnabled).count) regras ativas")
+            Text("\(shortcutStore.rules.filter(\.isEnabled).count) regras ativas")
 
-        if !shortcutStore.profiles.isEmpty {
-            Menu("Perfis") {
-                ForEach(shortcutStore.profiles) { profile in
-                    Button {
-                        try? shortcutStore.setProfileEnabled(!profile.isEnabled, id: profile.id)
-                    } label: {
-                        Label(
-                            shortMenuTitle(profile.name),
-                            systemImage: profile.isEnabled ? "checkmark.circle.fill" : "circle"
-                        )
+            if !shortcutStore.profiles.isEmpty {
+                Menu("Perfis") {
+                    ForEach(shortcutStore.profiles) { profile in
+                        Button {
+                            try? shortcutStore.setProfileEnabled(!profile.isEnabled, id: profile.id)
+                        } label: {
+                            Label(
+                                shortMenuTitle(profile.name),
+                                systemImage: profile.isEnabled ? "checkmark.circle.fill" : "circle"
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        if let event = controller.lastEvent {
-            Text(shortMenuTitle("Último: \(event.displayName)"))
-        }
+            if let event = controller.lastEvent {
+                Text(shortMenuTitle("Último: \(event.displayName)"))
+            }
 
-        Divider()
+            Divider()
 
-        SettingsLink {
-            Text("Ajustes…")
-        }
+            SettingsLink {
+                Text("Ajustes…")
+            }
 
-        Button("Encerrar \(TicoBrand.displayName)") {
-            lifecycle.terminate()
+            Button("Encerrar \(TicoBrand.displayName)") {
+                lifecycle.terminate()
+            }
         }
         .onAppear {
             controller.reconcilePermissions()
