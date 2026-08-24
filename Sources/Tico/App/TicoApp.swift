@@ -82,6 +82,8 @@ public struct TicoApp: App {
             MenuBarContentView(
                 controller: controller,
                 shortcutStore: shortcutStore,
+                permissions: permissions,
+                commandRouter: commandRouter,
                 lifecycle: lifecycle
             )
         } label: {
