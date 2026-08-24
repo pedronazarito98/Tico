@@ -122,15 +122,15 @@
 ## Handoff
 
 - **Feature**: `.specs/features/release-readiness/`
-- **Phase / Task**: Fechamento da prontidão local e preparação da próxima sessão física.
-- **Completed**: Reconciliação de permissões, encerramento de captura após revogação, toolbar e barra de menus conscientes de autorização, estado simulado isolado no XCUITest, cobertura unitária/E2E e validação automática da matriz manual.
-- **In-progress**: Verificação remota do HEAD do PR e consolidação final da documentação de evidência.
-- **Next step**: Usar um único `Tico.app` identificado por hash para executar a matriz manual de trackpad interno, TCC real, acessibilidade, sleep/wake e persistência.
-- **Blockers**: Nenhum bloqueio estrutural conhecido para desenvolvimento ou pacote ad hoc após gate verde. Compatibilidade física e estabilidade diária continuam limitadas pelos cenários `NOT-RUN`; distribuição pública permanece fora do escopo conforme AD-013.
+- **Phase / Task**: Implementação automatizada concluída; próxima fase é a sessão física com um único artefato.
+- **Completed**: Reconciliação de permissões, encerramento de captura e automação após revogação, toolbar e barra de menus conscientes de autorização, estado simulado isolado no XCUITest, cobertura unitária/E2E, diagnóstico `.xcresult`, consistência automática da matriz e documentação de beta interna.
+- **In-progress**: Nenhum item de código conhecido. O workflow do HEAD final do PR permanece a fonte de verdade antes de merge.
+- **Next step**: Gerar um único `Tico.app`, registrar o SHA-256 do ZIP e executar a matriz manual de trackpad interno, TCC real, acessibilidade, sleep/wake, falsos positivos e persistência.
+- **Blockers**: Compatibilidade física e estabilidade diária continuam limitadas pelos `20 NOT-RUN`. A proteção obrigatória da `main` está `BLOCKED` porque a conexão GitHub disponível não expõe mutação de branch protection/rulesets. Distribuição pública permanece fora do escopo conforme AD-013.
 - **Change set atual**: Prontidão local sem Developer ID, preservando SwiftUI, SwiftPM, macOS 26+ e os hosts compartilhados.
 - **Branch**: `feat/complete-local-release-readiness`.
 - **Remote**: `origin/feat/complete-local-release-readiness`.
-- **Pull request**: [#8](https://github.com/pedronazarito98/Tico/pull/8), aberto como draft durante a validação.
-- **Validação automatizada**: O workflow `macOS verification` do HEAD do PR é a fonte de verdade. Ele cobre SwiftPM, Xcode Debug, Archive Release, XCUITest isolado, suíte Swift, regressões de segurança, consistência da matriz e ZIP/DMG ad hoc.
-- **Validação manual**: A matriz permanece em `11 PASS`, `0 FAIL` e `20 NOT-RUN` até uma nova sessão humana; CI não altera esses resultados.
+- **Pull request**: [#8](https://github.com/pedronazarito98/Tico/pull/8), aberto como draft; merge não autorizado nesta tarefa.
+- **Validação automatizada observada**: `PASS` no run [32762550398](https://github.com/pedronazarito98/Tico/actions/runs/32762550398), commit `b393a400`: job `Build, test, and package (macOS 26)` e todos os seus steps concluídos com sucesso. O gate cobre SwiftPM, Xcode Debug, Archive Release, XCUITest isolado, suíte Swift, regressões de segurança, consistência da matriz e ZIP/DMG ad hoc.
+- **Validação manual**: A matriz permanece em `11 PASS`, `0 FAIL` e `20 NOT-RUN`; CI e permissões simuladas não alteram esses resultados.
 - **Release candidate local**: `dist/Tico.zip` e `dist/Tico.dmg`, versão `0.1.0 (1)`, assinatura ad hoc/development. Não existe reivindicação de notarização ou Gatekeeper.
