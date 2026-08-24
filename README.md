@@ -31,18 +31,35 @@ Tudo fica no Mac: regras, calibrações e histórico são locais.
 
 ## Estado atual
 
-O Tico é um **preview técnico open source exclusivo para macOS 26+**. A forma
-recomendada de testar por enquanto é clonar o repositório e rodar o app
-localmente. Não há binário público assinado com Developer ID.
+O Tico é um **preview técnico open source exclusivo para macOS 26+**. O código,
+o App Target Xcode, o pacote SwiftPM e o fluxo de QA local estão preparados para
+desenvolvimento e beta interna controlada.
+
+A prontidão avaliada neste estágio não depende de Developer ID. É possível
+compilar, executar e validar o Tico localmente com assinatura ad hoc. Developer
+ID, notarização, staple, Gatekeeper e máquina limpa continuam sendo requisitos
+somente para uma futura distribuição binária pública.
 
 Para compilar localmente, use macOS 26 e Xcode 26 ou uma versão posterior
 compatível. O aplicativo não oferece suporte a macOS 14–25.
 
-Há validações manuais anteriores no trackpad interno, mas elas não substituem
-uma nova rodada após mudanças de sistema ou de captura. Build, testes,
-regressões de segurança, replay e pacote local são verificados
-automaticamente; trackpad físico, TCC e recursos de acessibilidade permanecem
-registrados separadamente na matriz manual.
+### O que o gate automatizado comprova
+
+- build dos hosts SwiftPM e Xcode;
+- Archive Release universal e deployment target `26.0`;
+- testes Swift e regressões de segurança;
+- fluxo XCUITest isolado para criar e persistir uma regra;
+- navegação para permissões e concessão/revogação simuladas sem tocar no TCC;
+- consistência entre os cenários e o resumo da matriz manual;
+- ZIP e DMG ad hoc, incluindo assinatura estrita e preflight estrutural.
+
+### O que continua manual
+
+Build, replay e XCUITest não comprovam contato físico no trackpad, TCC real,
+sleep/wake, VoiceOver, falsos positivos em uso cotidiano nem reconexão de
+hardware externo. Esses itens permanecem separados na
+[matriz manual](outputs/macos-26-manual-matrix.md) e só mudam de `NOT-RUN`
+quando o mesmo artefato é exercitado em uma sessão humana.
 
 Magic Trackpad e outros dispositivos externos ainda não têm compatibilidade
 garantida. Quando houver um, o procedimento curto está no
@@ -67,24 +84,33 @@ Para desenvolver e empacotar pelo fluxo SwiftPM existente, rode:
 Para executar o gate completo:
 
 ```sh
-./script/ci_verify.sh --package
+TICO_DISABLE_SWIFTPM_SANDBOX=1 ./script/ci_verify.sh --package
 ```
 
-Esse gate compila os hosts SwiftPM e Xcode, executa a suíte e valida os
-artefatos ad hoc. O target Xcode também pode ser verificado isoladamente com
+Esse gate compila os hosts SwiftPM e Xcode, executa a suíte, roda o XCUITest
+isolado, confere a matriz manual e valida os artefatos ad hoc. O target Xcode
+também pode ser verificado isoladamente com
 `./script/verify_xcode_app.sh`.
 
-Na primeira execução, o macOS pode pedir Monitoramento de Entrada e, dependendo
-da automação, Acessibilidade.
+Na primeira execução real, o macOS pode pedir Monitoramento de Entrada e,
+dependendo da automação, Acessibilidade. O modo XCUITest não solicita essas
+permissões e não inicia regras reais.
+
+Para uma rodada física reproduzível, gere o pacote uma única vez, registre o
+hash do ZIP e use o mesmo `Tico.app` durante toda a
+[sessão manual](outputs/qa-checklist.md#sessão-manual-com-um-único-artefato).
+Não recompile entre os cenários de TCC e trackpad.
 
 O projeto também gera `dist/Tico.zip` e `dist/Tico.dmg`. O DMG oferece o fluxo
 convencional de arrastar o Tico para Aplicativos, mas usa a mesma assinatura do
 app: ad hoc quando não há Developer ID instalado. ZIP e DMG servem para preview
 técnico, desenvolvimento e QA local; não são releases públicas notarizadas.
+
 Por segurança, a identidade ad hoc é específica de cada build e o macOS pode
 pedir novamente permissões de privacidade após uma recompilação. Quem precisar
-de continuidade local deve configurar explicitamente uma identidade de assinatura
-própria; não existe requisito ad hoc compartilhado apenas pelo bundle identifier.
+de continuidade local deve configurar explicitamente uma identidade de
+assinatura própria; não existe requisito ad hoc compartilhado apenas pelo
+bundle identifier.
 
 A versão do pacote fica em `version.env`. Antes de preparar uma nova versão,
 atualize `MARKETING_VERSION` e incremente `BUILD_NUMBER`.
