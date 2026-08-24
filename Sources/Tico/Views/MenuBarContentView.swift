@@ -3,52 +3,76 @@ import SwiftUI
 struct MenuBarContentView: View {
     @ObservedObject var controller: AppController
     @ObservedObject var shortcutStore: ShortcutStore
+    @ObservedObject var permissions: PermissionCoordinator
+    @ObservedObject var commandRouter: AppCommandRouter
     let lifecycle: any ApplicationLifecycleControlling
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("Abrir \(TicoBrand.displayName)") {
-            lifecycle.activateAndOpenMainWindow {
-                openWindow(id: "main")
+        Group {
+            Button("Abrir \(TicoBrand.displayName)") {
+                lifecycle.activateAndOpenMainWindow {
+                    openWindow(id: "main")
+                }
             }
-        }
 
-        Divider()
+            Divider()
 
-        Button(controller.captureIsRunning ? "Pausar captura" : "Iniciar captura") {
-            controller.toggleCapture()
-        }
+            Button(captureActionTitle, action: performCaptureAction)
+                .accessibilityIdentifier("tico.menu.capture")
 
-        Text("\(shortcutStore.rules.filter(\.isEnabled).count) regras ativas")
+            Text("\(shortcutStore.rules.filter(\.isEnabled).count) regras ativas")
 
-        if !shortcutStore.profiles.isEmpty {
-            Menu("Perfis") {
-                ForEach(shortcutStore.profiles) { profile in
-                    Button {
-                        try? shortcutStore.setProfileEnabled(!profile.isEnabled, id: profile.id)
-                    } label: {
-                        Label(
-                            shortMenuTitle(profile.name),
-                            systemImage: profile.isEnabled ? "checkmark.circle.fill" : "circle"
-                        )
+            if !shortcutStore.profiles.isEmpty {
+                Menu("Perfis") {
+                    ForEach(shortcutStore.profiles) { profile in
+                        Button {
+                            try? shortcutStore.setProfileEnabled(!profile.isEnabled, id: profile.id)
+                        } label: {
+                            Label(
+                                shortMenuTitle(profile.name),
+                                systemImage: profile.isEnabled ? "checkmark.circle.fill" : "circle"
+                            )
+                        }
                     }
                 }
             }
-        }
 
-        if let event = controller.lastEvent {
-            Text(shortMenuTitle("Último: \(event.displayName)"))
-        }
+            if let event = controller.lastEvent {
+                Text(shortMenuTitle("Último: \(event.displayName)"))
+            }
 
-        Divider()
+            Divider()
 
-        SettingsLink {
-            Text("Ajustes…")
-        }
+            SettingsLink {
+                Text("Ajustes…")
+            }
 
-        Button("Encerrar \(TicoBrand.displayName)") {
-            lifecycle.terminate()
+            Button("Encerrar \(TicoBrand.displayName)") {
+                lifecycle.terminate()
+            }
         }
+        .onAppear {
+            controller.reconcilePermissions()
+        }
+    }
+
+    private var captureActionTitle: String {
+        guard permissions.status.canCaptureGlobalInput else {
+            return "Configurar permissões…"
+        }
+        return controller.captureIsRunning ? "Pausar captura" : "Iniciar captura"
+    }
+
+    private func performCaptureAction() {
+        guard permissions.status.canCaptureGlobalInput else {
+            commandRouter.send(.selectSection(.permissions))
+            lifecycle.activateAndOpenMainWindow {
+                openWindow(id: "main")
+            }
+            return
+        }
+        controller.toggleCapture()
     }
 
     private func shortMenuTitle(_ title: String) -> String {

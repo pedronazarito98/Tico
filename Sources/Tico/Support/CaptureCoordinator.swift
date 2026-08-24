@@ -118,6 +118,25 @@ final class CaptureCoordinator: ObservableObject {
         detectedTrackpads = detectHardware()
     }
 
+    /// Revalida o TCC observado e encerra imediatamente qualquer captura que
+    /// tenha perdido autorização enquanto o aplicativo estava em segundo plano.
+    ///
+    /// A transição é idempotente e reutiliza o mesmo caminho de encerramento da
+    /// captura manual, invalidando callbacks antigos e a observação do trackpad.
+    ///
+    /// Paralelo com React: lembra reconciliar um store externo ao recuperar o
+    /// foco da janela, mas aqui a reconciliação também libera recursos nativos.
+    @discardableResult
+    func reconcilePermissions() -> PermissionStatus {
+        let status = permissions.refresh()
+        guard !status.canCaptureGlobalInput else { return status }
+
+        if isRunning || trackpadGestures.isRunning {
+            stopCapture()
+        }
+        return status
+    }
+
     @discardableResult
     func startCapture() -> CaptureStartOutcome {
         if isRunning {

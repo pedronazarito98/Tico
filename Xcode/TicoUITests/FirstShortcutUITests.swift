@@ -76,6 +76,71 @@ final class FirstShortcutUITests: XCTestCase {
         assertSwitchIsOff(persistedToggle)
     }
 
+    func testCaptureControlRoutesToPermissionsWithoutRequestingSystemTCC() {
+        openSection("overview")
+        let captureControl = app.descendants(matching: .any)["tico.capture.control"]
+        XCTAssertTrue(
+            captureControl.waitForExistence(timeout: 5),
+            app.debugDescription
+        )
+        assertAccessibleTextContains(captureControl, "Permissão necessária")
+
+        captureControl.click()
+
+        let title = app.descendants(matching: .any)["tico.permissions.title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5), app.debugDescription)
+        assertPermissionStatus(id: "accessibility", contains: "Pendente")
+        assertPermissionStatus(id: "input-monitoring", contains: "Não solicitada")
+    }
+
+    func testPermissionStateRefreshesAfterIsolatedGrantAndRevocation() throws {
+        openSection("overview")
+        let captureControl = app.descendants(matching: .any)["tico.capture.control"]
+        XCTAssertTrue(captureControl.waitForExistence(timeout: 5), app.debugDescription)
+        captureControl.click()
+
+        let refreshButton = app.buttons["tico.permissions.refresh"]
+        XCTAssertTrue(refreshButton.waitForExistence(timeout: 5), app.debugDescription)
+
+        try writePermissionState(
+            accessibilityGranted: true,
+            inputMonitoring: "granted"
+        )
+        refreshButton.click()
+
+        assertPermissionStatus(id: "accessibility", contains: "Concedida")
+        assertPermissionStatus(id: "input-monitoring", contains: "Concedida")
+        let captureToolbarButton = app.descendants(matching: .any)["tico.toolbar.capture"]
+        XCTAssertTrue(captureToolbarButton.waitForExistence(timeout: 5), app.debugDescription)
+        assertAccessibleTextContains(captureToolbarButton, "Iniciar captura")
+
+        openSection("overview")
+        let pausedControl = app.descendants(matching: .any)["tico.capture.control"]
+        XCTAssertTrue(pausedControl.waitForExistence(timeout: 5), app.debugDescription)
+        assertAccessibleTextContains(pausedControl, "Captura pausada")
+
+        openSection("permissions")
+        try writePermissionState(
+            accessibilityGranted: false,
+            inputMonitoring: "denied"
+        )
+        let refreshedButton = app.buttons["tico.permissions.refresh"]
+        XCTAssertTrue(refreshedButton.waitForExistence(timeout: 5), app.debugDescription)
+        refreshedButton.click()
+
+        assertPermissionStatus(id: "accessibility", contains: "Pendente")
+        assertPermissionStatus(id: "input-monitoring", contains: "Negada")
+        assertAccessibleTextContains(captureToolbarButton, "Configurar permissões")
+
+        openSection("overview")
+        let permissionRequiredControl = app.descendants(matching: .any)["tico.capture.control"]
+        XCTAssertTrue(
+            permissionRequiredControl.waitForExistence(timeout: 5),
+            app.debugDescription
+        )
+        assertAccessibleTextContains(permissionRequiredControl, "Permissão necessária")
+    }
+
     private func configuredApplication() -> XCUIApplication {
         let application = XCUIApplication()
         application.launchArguments = [
@@ -116,6 +181,21 @@ final class FirstShortcutUITests: XCTestCase {
         )
     }
 
+    private func openSection(
+        _ rawValue: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let section = app.buttons["tico.section.\(rawValue)"]
+        XCTAssertTrue(
+            section.waitForExistence(timeout: 5),
+            app.debugDescription,
+            file: file,
+            line: line
+        )
+        section.click()
+    }
+
     private func assertSidebarStatusContains(
         _ expectedText: String,
         file: StaticString = #filePath,
@@ -123,15 +203,57 @@ final class FirstShortcutUITests: XCTestCase {
     ) {
         let status = app.descendants(matching: .any)["tico.sidebar.status"]
         XCTAssertTrue(status.waitForExistence(timeout: 5), file: file, line: line)
-        let accessibleText = [status.label, status.value as? String]
+        assertAccessibleTextContains(status, expectedText, file: file, line: line)
+    }
+
+    private func assertPermissionStatus(
+        id: String,
+        contains expectedText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let status = app.descendants(matching: .any)["tico.permission.\(id).status"]
+        XCTAssertTrue(
+            status.waitForExistence(timeout: 5),
+            app.debugDescription,
+            file: file,
+            line: line
+        )
+        assertAccessibleTextContains(status, expectedText, file: file, line: line)
+    }
+
+    private func assertAccessibleTextContains(
+        _ element: XCUIElement,
+        _ expectedText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let accessibleText = [element.label, element.value as? String]
             .compactMap { $0 }
             .joined(separator: " ")
         XCTAssertTrue(
             accessibleText.contains(expectedText),
-            "Status atual: \(accessibleText)",
+            "Texto acessível atual: \(accessibleText)",
             file: file,
             line: line
         )
+    }
+
+    private func writePermissionState(
+        accessibilityGranted: Bool,
+        inputMonitoring: String
+    ) throws {
+        let json = """
+        {
+          "accessibilityGranted": \(accessibilityGranted),
+          "inputMonitoring": "\(inputMonitoring)"
+        }
+        """
+        let stateURL = dataDirectory.appendingPathComponent(
+            "ui-test-permissions.json",
+            isDirectory: false
+        )
+        try Data(json.utf8).write(to: stateURL, options: .atomic)
     }
 
     private func assertSwitchIsOff(

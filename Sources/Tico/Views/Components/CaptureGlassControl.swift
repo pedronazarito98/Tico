@@ -69,6 +69,7 @@ struct CaptureGlassControl: View {
         .accessibilityLabel(state.title)
         .accessibilityValue(state.detail)
         .accessibilityHint(state.actionHint)
+        .accessibilityIdentifier("tico.capture.control")
     }
 
     private var inactiveControl: some View {
@@ -105,6 +106,7 @@ struct CaptureGlassControl: View {
         .accessibilityLabel(state.title)
         .accessibilityValue(state.detail)
         .accessibilityHint(state.actionHint)
+        .accessibilityIdentifier("tico.capture.control")
     }
 
     private var stateIcon: some View {

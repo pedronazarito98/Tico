@@ -23,6 +23,7 @@ struct PermissionsView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Permissões do sistema")
                         .font(.title2.weight(.semibold))
+                        .accessibilityIdentifier("tico.permissions.title")
                     Text("O \(TicoBrand.displayName) solicita apenas o necessário para reconhecer e executar suas regras.")
                         .foregroundStyle(.secondary)
                 }
@@ -33,6 +34,7 @@ struct PermissionsView: View {
 
                 HStack {
                     Button("Atualizar estados", action: onRefresh)
+                        .accessibilityIdentifier("tico.permissions.refresh")
                     Text("Depois de conceder uma permissão, atualize. Se a captura ainda não iniciar, encerre e reabra o \(TicoBrand.displayName).")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -55,6 +57,7 @@ private struct PermissionCard: View {
                     .font(.title2)
                     .foregroundStyle(permission.isGranted ? .green : .orange)
                     .frame(width: 32)
+                    .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 5) {
                     HStack {
@@ -68,6 +71,7 @@ private struct PermissionCard: View {
                                 permission.isGranted ? Color.green.opacity(0.14) : Color.orange.opacity(0.14),
                                 in: Capsule()
                             )
+                            .accessibilityIdentifier("tico.permission.\(permission.id).status")
                     }
                     Text(permission.explanation)
                         .foregroundStyle(.secondary)
@@ -85,15 +89,18 @@ private struct PermissionCard: View {
                     VStack(alignment: .trailing, spacing: 8) {
                         Button(permission.requestTitle, action: permission.request)
                             .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("tico.permission.\(permission.id).request")
                         if let settingsTitle = permission.settingsTitle,
                            let openSettings = permission.openSettings {
                             Button(settingsTitle, action: openSettings)
                                 .buttonStyle(.link)
+                                .accessibilityIdentifier("tico.permission.\(permission.id).settings")
                         }
                     }
                 }
             }
             .padding(.vertical, 6)
         }
+        .accessibilityIdentifier("tico.permission.\(permission.id)")
     }
 }

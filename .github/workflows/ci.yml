@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: macos-verification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     name: Build, test, and package (macOS 26)
@@ -36,7 +40,7 @@ jobs:
             echo
             echo "- Runner: macos-26."
             echo "- Minimum supported system: macOS 26."
-            echo "- Automated coverage: SwiftPM build, thin Xcode Debug build and universal Release archive, Swift tests, isolated XCUITest end-to-end flow, security regressions, and ad hoc ZIP/DMG package verification."
+            echo "- Automated coverage: SwiftPM build, thin Xcode Debug build and universal Release archive, Swift tests, isolated XCUITest end-to-end flow, security regressions, manual-matrix consistency, and ad hoc ZIP/DMG package verification."
             echo "- Physical coverage: not exercised in CI; use the manual trackpad QA matrix."
             echo "- Distribution coverage: ad hoc only; notarization and Gatekeeper acceptance are not claimed."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -7,6 +7,7 @@ PRODUCT_NAME="Tico"
 PUBLIC_APP_NAME="Tico"
 BUNDLE_ID="com.pedronazarito.Tico"
 MIN_SYSTEM_VERSION="26.0"
+MANUAL_MATRIX="$ROOT_DIR/outputs/macos-26-manual-matrix.md"
 source "$ROOT_DIR/script/load_version.sh" "$ROOT_DIR"
 ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.zip"
 DMG_ARCHIVE_PATH="$ROOT_DIR/dist/$PUBLIC_APP_NAME.dmg"
@@ -45,6 +46,88 @@ step() {
   printf '\n==> %s\n' "$1"
 }
 
+count_manual_status() {
+  local expected="$1"
+  /usr/bin/awk -F'|' -v expected="$expected" '
+    /^\| (UI26|TCC26|TP26|UP26)-[0-9][0-9]* \|/ {
+      status = $5
+      gsub(/[`[:space:]]/, "", status)
+      if (status == expected) {
+        count += 1
+      }
+    }
+    END { print count + 0 }
+  ' "$MANUAL_MATRIX"
+}
+
+read_summary_status() {
+  local expected="$1"
+  /usr/bin/awk -F'|' -v expected="$expected" '
+    {
+      label = $2
+      value = $3
+      gsub(/[`[:space:]]/, "", label)
+      gsub(/[^0-9]/, "", value)
+      if (label == expected) {
+        print value
+        found = 1
+      }
+    }
+    END {
+      if (!found) {
+        exit 1
+      }
+    }
+  ' "$MANUAL_MATRIX"
+}
+
+validate_manual_matrix() {
+  [[ -f "$MANUAL_MATRIX" ]] || {
+    echo "Manual matrix not found: $MANUAL_MATRIX" >&2
+    exit 1
+  }
+
+  local invalid_statuses
+  invalid_statuses="$(/usr/bin/awk -F'|' '
+    /^\| (UI26|TCC26|TP26|UP26)-[0-9][0-9]* \|/ {
+      id = $2
+      status = $5
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", id)
+      gsub(/[`[:space:]]/, "", status)
+      if (status != "PASS" && status != "FAIL" && status != "NOT-RUN") {
+        print id ": " status
+      }
+    }
+  ' "$MANUAL_MATRIX")"
+  if [[ -n "$invalid_statuses" ]]; then
+    echo "Invalid manual matrix statuses:" >&2
+    echo "$invalid_statuses" >&2
+    exit 1
+  fi
+
+  local total_rows
+  total_rows="$(/usr/bin/awk -F'|' '
+    /^\| (UI26|TCC26|TP26|UP26)-[0-9][0-9]* \|/ { count += 1 }
+    END { print count + 0 }
+  ' "$MANUAL_MATRIX")"
+  if [[ "$total_rows" -ne 31 ]]; then
+    echo "Manual matrix must contain 31 scenario rows; found $total_rows." >&2
+    exit 1
+  fi
+
+  local status actual summary
+  for status in PASS FAIL NOT-RUN; do
+    actual="$(count_manual_status "$status")"
+    summary="$(read_summary_status "$status")"
+    if [[ "$actual" -ne "$summary" ]]; then
+      echo "Manual matrix summary mismatch for $status: rows=$actual summary=$summary." >&2
+      exit 1
+    fi
+  done
+
+  echo "Manual matrix: $(count_manual_status PASS) PASS, $(count_manual_status FAIL) FAIL, $(count_manual_status NOT-RUN) NOT-RUN"
+}
+
 cd "$ROOT_DIR"
 
 step "Validating shell scripts"
@@ -57,6 +140,9 @@ bash -n script/verify_xcode_app.sh
 bash -n script/notarize_release.sh
 bash -n script/run_ui_tests.sh
 bash -n script/validate_hardware_report.sh
+
+step "Validating manual QA matrix consistency"
+validate_manual_matrix
 
 step "Building Tico (SwiftPM product Tico)"
 swift build ${SWIFT_ARGS[@]+"${SWIFT_ARGS[@]}"} --product "$PRODUCT_NAME"
@@ -128,6 +214,7 @@ step "Automated verification summary"
 echo "Swift tests: $TEST_COUNT"
 echo "Xcode app target: verified"
 echo "XCUITest end-to-end flow: verified"
+echo "Manual QA matrix consistency: verified"
 echo "Local app path: $ROOT_DIR/dist/$PUBLIC_APP_NAME.app"
 if [[ "$PACKAGE_MODE" -eq 1 ]]; then
   echo "Verified ad hoc archive: $ARCHIVE_PATH"

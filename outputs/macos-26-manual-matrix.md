@@ -12,10 +12,12 @@ executado na mesma sessão para `PASS` ou `FAIL`.
 - Não registre usuário, serial do Mac ou do trackpad, caminhos pessoais,
   conteúdo de regras, frames brutos, logs completos ou dados internos do TCC.
 - Registre apenas versão do macOS, tipo geral do Mac, trackpad interno/externo,
-  resultado e uma observação sanitizada.
+  hash sanitizado do artefato, resultado e uma observação sanitizada.
 - CI verde não altera nenhum item manual para `PASS`.
+- Cobertura simulada de permissões valida o comportamento do Tico, mas não
+  comprova o banco TCC nem os painéis reais dos Ajustes do Sistema.
 
-## Ambiente
+## Ambiente da última rodada manual registrada
 
 | Campo | Valor |
 | --- | --- |
@@ -27,44 +29,42 @@ executado na mesma sessão para `PASS` ou `FAIL`.
 | Versão do Tico | `0.1.0 (1)` |
 | Assinatura | `ad hoc`, cópia isolada com bundle identifier exclusivo da auditoria |
 
-## Evidência automatizada da atualização
+## Evidência automatizada acumulada
 
 | Verificação | Status | Evidência sanitizada |
 | --- | --- | --- |
 | Plataforma declarada pelo SwiftPM | `PASS` | `macos 26.0` em `swift package dump-package` |
-| Deployment target do executável | `PASS` | `LC_BUILD_VERSION minos 26.0`, SDK `26.5` |
+| Deployment target do executável | `PASS` | `LC_BUILD_VERSION minos 26.0` |
 | Deployment target do bundle | `PASS` | `LSMinimumSystemVersion = 26.0` |
 | App Target Xcode Debug | `PASS` | bundle, identidade, versão, ícone, resources, categoria e assinatura estrita verificados |
 | Archive Xcode Release | `PASS` | universal `arm64` + `x86_64`, `minos 26.0` e Hardened Runtime |
-| Runtime isolado do host Xcode | `PASS` | processo abriu janela `Visão geral` com bundle e home temporários |
-| Build, suíte e regressões de segurança | `PASS` | 125 testes e 8 regressões de segurança, zero falhas |
-| ZIP e DMG ad hoc | `PASS` | assinatura estrita, Info.plist e DMG verificados |
-| Workflow do GitHub Actions da AD-011 | `PASS` | run `31729757980` no `macos-26`: macOS 26.5.2, Xcode 26.6, 125 testes, ZIP e DMG aprovados |
-| Workflow do GitHub Actions da AD-012 | `PASS` | run `31741121816` no commit `7b57e4f`: gate Xcode completo aprovado em 2m36s |
+| Runtime isolado do host Xcode | `PASS` | processo abriu a janela principal com bundle e home temporários |
+| Suíte Swift e regressões de segurança | `PASS` | gate completo concluiu sem falhas no workflow macOS 26 |
+| ZIP e DMG ad hoc | `PASS` | assinatura estrita, Info.plist, archive e DMG verificados |
+| XCUITest de regra | `PASS` | cria regra desativada, relança o app e confirma persistência no diretório temporário |
+| XCUITest de permissões | `PASS` | navega para Permissões e valida concessão/revogação simuladas sem solicitar TCC real |
+| Reconciliação após revogação | `PASS` | testes comprovam parada de event tap, observação do trackpad e automação quando a autorização desaparece |
+| Consistência desta matriz | `PASS` | CI exige 31 cenários, estados válidos e resumo igual às linhas |
+| Workflow de prontidão local | `PASS` | run `32762550398`, commit `b393a400`, job macOS 26 concluído com sucesso em `2026-08-24` |
 
-A inspeção visual usou uma cópia temporária e isolada do app, sem reutilizar a
-identidade, os dados ou as permissões do Tico instalado. A aparência escura foi
-aplicada somente ao processo isolado, sem alterar o sistema inteiro.
-
-A rodada do shell Liquid Glass usou o `Tico.app` final gerado pelo gate. O app
-foi relançado após a autorização de Monitoramento de Entrada e permaneceu com a
-captura pausada ao encerrar a sessão. Nenhum contato físico ou dado interno de
-TCC foi registrado nesta matriz.
+A cobertura automatizada de 2026-08-24 usa home, arquivos e preferências
+exclusivos do XCUITest. Ela não altera permissões reais, não inicia captura de
+hardware e não executa regras do usuário.
 
 ## Interface no macOS 26
 
 | ID | Cenário | Resultado esperado | Status | Observação sanitizada |
 | --- | --- | --- | --- | --- |
-| UI26-01 | Abrir a janela principal no tamanho padrão e no mínimo | Sidebar, detalhe e toolbar permanecem legíveis, sem sobreposição ou corte | `PASS` | Janela principal e Laboratório inspecionados; calibração agora alterna entre duas e uma coluna sem overflow |
+| UI26-01 | Abrir a janela principal no tamanho padrão e no mínimo | Sidebar, detalhe e toolbar permanecem legíveis, sem sobreposição ou corte | `PASS` | Janela principal e Laboratório inspecionados; calibração alternou entre duas e uma coluna sem overflow |
 | UI26-02 | Alternar aparência clara e escura | Texto, ícones, seleção e estados mantêm contraste | `PASS` | Visão geral, Ajustes e Laboratório inspecionados nas duas aparências |
 | UI26-03 | Ativar Reduzir Transparência | Sidebar e superfícies continuam distinguíveis e legíveis | `NOT-RUN` | — |
 | UI26-04 | Ativar Reduzir Movimento e Aumentar Contraste | Fluxos continuam utilizáveis sem depender apenas de animação ou cor | `NOT-RUN` | — |
 | UI26-05 | Abrir Ajustes com `⌘,` e alternar Geral/Segurança | Abas, formulários e mensagens não cortam nem deslocam controles | `PASS` | `⌘,`, Geral e Segurança inspecionados sem corte |
 | UI26-06 | Abrir e usar o item da barra de menus | Ícone adapta-se ao tema e as ações continuam acessíveis | `PASS` | Item template e menu com ações legíveis foram abertos na cópia isolada |
 | UI26-07 | Navegar por teclado e VoiceOver pelos fluxos principais | Foco, rótulos e ordem de leitura permanecem coerentes | `NOT-RUN` | — |
-| UI26-08 | Buscar e reabrir a seção ou regra já selecionada | Busca é encerrada, sidebar completa reaparece e seleção permanece correta | `PASS` | Re-seleção de Laboratório e de regra, além da troca para Visão geral, restauraram a sidebar no app final |
-| UI26-09 | Alternar os estados do controle principal de captura | Permissão necessária, pausa e atividade apresentam ação e feedback coerentes | `PASS` | Estados de permissão, pausa e atividade foram observados; iniciar e pausar atualizaram Overview, sidebar e toolbar |
-| UI26-10 | Inspecionar HUD e árvore de acessibilidade do Laboratório | HUD não duplica títulos e ícones decorativos não anunciam ações falsas | `PASS` | HUD permaneceu compacto e o diagnóstico não expôs o ícone decorativo como “Remover” |
+| UI26-08 | Buscar e reabrir a seção ou regra já selecionada | Busca é encerrada, sidebar completa reaparece e seleção permanece correta | `PASS` | Re-seleção de Laboratório e de regra, além da troca para Visão geral, restauraram a sidebar |
+| UI26-09 | Alternar os estados do controle principal de captura | Permissão necessária, pausa e atividade apresentam ação e feedback coerentes | `PASS` | Estados de permissão, pausa e atividade foram observados; XCUITest também protege o roteamento bloqueado |
+| UI26-10 | Inspecionar HUD e árvore de acessibilidade do Laboratório | HUD não duplica títulos e ícones decorativos não anunciam ações falsas | `PASS` | HUD permaneceu compacto e o diagnóstico não expôs o ícone decorativo como ação |
 
 ## TCC e captura global
 
@@ -75,9 +75,9 @@ Sistema. Não automatize `tccutil reset` nesta matriz.
 | --- | --- | --- | --- | --- |
 | TCC26-01 | Abrir o app sem Monitoramento de Entrada nem Acessibilidade | A tela mostra o estado real e o app permanece utilizável | `PASS` | Cópia isolada mostrou Acessibilidade pendente e Monitoramento de Entrada negado; navegação permaneceu utilizável |
 | TCC26-02 | Tentar iniciar captura com ambas as permissões negadas | A captura não inicia e o motivo é apresentado | `PASS` | Captura permaneceu pausada e a tela de permissões apresentou os dois requisitos |
-| TCC26-03 | Solicitar Monitoramento de Entrada e concluir a autorização | Após o relançamento exigido pelo sistema, o estado aparece como concedido | `PASS` | O bundle final foi adicionado nos Ajustes do Sistema; após relançar, o Tico exibiu “Concedida” e habilitou a captura avançada |
+| TCC26-03 | Solicitar Monitoramento de Entrada e concluir a autorização | Após o relançamento exigido pelo sistema, o estado aparece como concedido | `PASS` | O bundle final foi adicionado nos Ajustes; após relançar, o Tico exibiu “Concedida” e habilitou a captura avançada |
 | TCC26-04 | Abrir os painéis de Monitoramento de Entrada e Acessibilidade | Cada ação abre o painel correto nos Ajustes do Sistema | `NOT-RUN` | — |
-| TCC26-05 | Revogar uma permissão concedida e atualizar o estado no Tico | O estado é atualizado e uma nova captura não usa autorização revogada | `NOT-RUN` | — |
+| TCC26-05 | Revogar uma permissão concedida e atualizar o estado no Tico | O estado é atualizado e uma nova captura não usa autorização revogada | `NOT-RUN` | Comportamento interno e interface passaram com estado simulado; revogação no TCC real ainda não foi executada |
 | TCC26-06 | Usar teclado e mouse enquanto a captura está ativa | Eventos continuam chegando ao aplicativo de destino, sem supressão inesperada | `NOT-RUN` | — |
 | TCC26-07 | Substituir o app por uma nova build ad hoc | Se o macOS pedir permissão novamente, o Tico explica o estado sem crash ou falso `PASS` | `NOT-RUN` | — |
 
@@ -105,9 +105,9 @@ identificável, não sucesso silencioso.
 
 | ID | Cenário | Resultado esperado | Status | Observação sanitizada |
 | --- | --- | --- | --- | --- |
-| UP26-01 | Criar uma regra desativada, fechar e abrir o mesmo app | Regra e estado permanecem íntegros | `NOT-RUN` | — |
+| UP26-01 | Criar uma regra desativada, fechar e abrir o mesmo app | Regra e estado permanecem íntegros | `NOT-RUN` | XCUITest passou com diretório isolado; a sessão manual sobre o artefato real ainda não foi executada |
 | UP26-02 | Atualizar para uma nova build preservando o diretório de dados | Regras, perfis e preferências continuam legíveis | `NOT-RUN` | — |
-| UP26-03 | Gravar, exportar, importar e reproduzir uma sessão | Replay funciona em 0,5×, 1× e 2× sem executar ações reais | `NOT-RUN` | — |
+| UP26-03 | Gravar, exportar, importar e reproduzir uma sessão | Replay funciona em 0,5×, 1× e 2× sem executar ações reais | `NOT-RUN` | Replay tem cobertura automatizada; o fluxo manual completo ainda não foi executado |
 
 ## Fechamento
 
@@ -118,5 +118,6 @@ identificável, não sucesso silencioso.
 | `NOT-RUN` | 20 |
 
 Qualquer `FAIL` em TCC, captura avançada, sleep/wake ou persistência bloqueia a
-declaração de compatibilidade com macOS 26. `NOT-RUN` para Magic Trackpad limita
-somente a afirmação sobre hardware externo.
+declaração de compatibilidade operacional. `NOT-RUN` para Magic Trackpad limita
+somente a afirmação sobre hardware externo. O gate de desenvolvimento e pacote
+ad hoc pode permanecer verde sem promover nenhum desses cenários manuais.
