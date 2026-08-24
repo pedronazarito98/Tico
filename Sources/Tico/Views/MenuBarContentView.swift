@@ -3,6 +3,8 @@ import SwiftUI
 struct MenuBarContentView: View {
     @ObservedObject var controller: AppController
     @ObservedObject var shortcutStore: ShortcutStore
+    @ObservedObject var permissions: PermissionCoordinator
+    @ObservedObject var commandRouter: AppCommandRouter
     let lifecycle: any ApplicationLifecycleControlling
     @Environment(\.openWindow) private var openWindow
 
@@ -15,9 +17,8 @@ struct MenuBarContentView: View {
 
         Divider()
 
-        Button(controller.captureIsRunning ? "Pausar captura" : "Iniciar captura") {
-            controller.toggleCapture()
-        }
+        Button(captureActionTitle, action: performCaptureAction)
+            .accessibilityIdentifier("tico.menu.capture")
 
         Text("\(shortcutStore.rules.filter(\.isEnabled).count) regras ativas")
 
@@ -49,6 +50,27 @@ struct MenuBarContentView: View {
         Button("Encerrar \(TicoBrand.displayName)") {
             lifecycle.terminate()
         }
+        .onAppear {
+            controller.reconcilePermissions()
+        }
+    }
+
+    private var captureActionTitle: String {
+        guard permissions.status.canCaptureGlobalInput else {
+            return "Configurar permissões…"
+        }
+        return controller.captureIsRunning ? "Pausar captura" : "Iniciar captura"
+    }
+
+    private func performCaptureAction() {
+        guard permissions.status.canCaptureGlobalInput else {
+            commandRouter.send(.selectSection(.permissions))
+            lifecycle.activateAndOpenMainWindow {
+                openWindow(id: "main")
+            }
+            return
+        }
+        controller.toggleCapture()
     }
 
     private func shortMenuTitle(_ title: String) -> String {
