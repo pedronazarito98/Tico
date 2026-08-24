@@ -76,6 +76,49 @@ final class FirstShortcutUITests: XCTestCase {
         assertSwitchIsOff(persistedToggle)
     }
 
+    func testCaptureControlRoutesToPermissionsWithoutRequestingSystemTCC() {
+        let captureControl = app.buttons["tico.capture.control"]
+        XCTAssertTrue(captureControl.waitForExistence(timeout: 5))
+        XCTAssertEqual(captureControl.label, "Permissão necessária")
+
+        captureControl.click()
+
+        let title = app.staticTexts["tico.permissions.title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 5), app.debugDescription)
+        assertPermissionStatus(id: "accessibility", equals: "Pendente")
+        assertPermissionStatus(id: "input-monitoring", equals: "Não solicitada")
+    }
+
+    func testPermissionStateRefreshesAfterIsolatedGrantAndRevocation() throws {
+        let captureToolbarButton = app.buttons["tico.toolbar.capture"]
+        XCTAssertTrue(captureToolbarButton.waitForExistence(timeout: 5))
+        XCTAssertEqual(captureToolbarButton.label, "Configurar permissões")
+        captureToolbarButton.click()
+
+        let refreshButton = app.buttons["tico.permissions.refresh"]
+        XCTAssertTrue(refreshButton.waitForExistence(timeout: 5), app.debugDescription)
+
+        try writePermissionState(
+            accessibilityGranted: true,
+            inputMonitoring: "granted"
+        )
+        refreshButton.click()
+
+        assertPermissionStatus(id: "accessibility", equals: "Concedida")
+        assertPermissionStatus(id: "input-monitoring", equals: "Concedida")
+        XCTAssertEqual(captureToolbarButton.label, "Iniciar captura")
+
+        try writePermissionState(
+            accessibilityGranted: false,
+            inputMonitoring: "denied"
+        )
+        refreshButton.click()
+
+        assertPermissionStatus(id: "accessibility", equals: "Pendente")
+        assertPermissionStatus(id: "input-monitoring", equals: "Negada")
+        XCTAssertEqual(captureToolbarButton.label, "Configurar permissões")
+    }
+
     private func configuredApplication() -> XCUIApplication {
         let application = XCUIApplication()
         application.launchArguments = [
@@ -132,6 +175,39 @@ final class FirstShortcutUITests: XCTestCase {
             file: file,
             line: line
         )
+    }
+
+    private func assertPermissionStatus(
+        id: String,
+        equals expectedText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let status = app.staticTexts["tico.permission.\(id).status"]
+        XCTAssertTrue(
+            status.waitForExistence(timeout: 5),
+            app.debugDescription,
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(status.label, expectedText, file: file, line: line)
+    }
+
+    private func writePermissionState(
+        accessibilityGranted: Bool,
+        inputMonitoring: String
+    ) throws {
+        let json = """
+        {
+          "accessibilityGranted": \(accessibilityGranted),
+          "inputMonitoring": "\(inputMonitoring)"
+        }
+        """
+        let stateURL = dataDirectory.appendingPathComponent(
+            "ui-test-permissions.json",
+            isDirectory: false
+        )
+        try Data(json.utf8).write(to: stateURL, options: .atomic)
     }
 
     private func assertSwitchIsOff(
