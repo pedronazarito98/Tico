@@ -220,6 +220,24 @@ final class AppController: ObservableObject {
         }
     }
 
+    /// Revalida o estado observado do TCC e encerra captura e automação quando
+    /// a autorização foi revogada fora do aplicativo.
+    ///
+    /// O `CaptureCoordinator` continua sendo o owner dos event taps e da
+    /// observação do trackpad; este controller coordena também o motor de ações.
+    ///
+    /// Paralelo com React: é semelhante a reconciliar um store externo ao
+    /// recuperar o foco, com a diferença de que recursos nativos precisam ser
+    /// encerrados explicitamente.
+    @discardableResult
+    func reconcilePermissions() -> PermissionStatus {
+        let status = captureCoordinator.reconcilePermissions()
+        if !status.canCaptureGlobalInput {
+            automationCoordinator.stop()
+        }
+        return status
+    }
+
     func stopTrackpadObservationIfIdle() {
         guard !captureCoordinator.isRunning,
               !recordingIsActive,
