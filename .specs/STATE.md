@@ -27,7 +27,7 @@
 - **Trade-off**: A publicação exige identidade Apple, Hardened Runtime e validação adicional em máquina limpa.
 - **Scope**: Scripts de release, documentação e checklist de distribuição.
 - **Date**: 2026-07-26
-- **Status**: active
+- **Status**: active para distribuição binária pública; não compõe o gate local conforme AD-013
 
 ### AD-004
 
@@ -110,18 +110,27 @@
 - **Date**: 2026-08-13
 - **Status**: active
 
+### AD-013
+
+- **Decision**: A prontidão atual avalia desenvolvimento, uso local e beta interna com pacote ad hoc; Developer ID, notarização, staple, Gatekeeper e máquina limpa ficam fora desse gate e permanecem requisitos exclusivos de uma futura distribuição binária pública.
+- **Reason**: O usuário decidiu avançar sem tratar a ausência de Developer ID como bloqueador, enquanto os riscos funcionais restantes estão em permissões, hardware e uso real.
+- **Trade-off**: O projeto pode declarar prontidão local somente com evidência automatizada e manual correspondente, mas não pode apresentar o artefato ad hoc como release pública instalável sem atrito.
+- **Scope**: Iniciativa `release-readiness`, README, roadmap, QA, CI e classificação do preview.
+- **Date**: 2026-08-24
+- **Status**: active
+
 ## Handoff
 
-- **Feature**: `.specs/features/architecture-modernization/`
-- **Phase / Task**: Pós-merge de T01–T22; App Target Xcode fino implementado conforme AD-012.
-- **Completed**: Spec, modernização, exclusividade macOS 26, módulo compartilhado, launchers SwiftPM/Xcode, projeto e scheme compartilhados, configuração centralizada, gate do bundle e documentação.
-- **In-progress**: Nenhum.
-- **Next step**: Revisar o change set e solicitar autorização separada antes de commit, push ou PR.
-- **Blockers**: A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN` e por Developer ID/notarização/staple/Gatekeeper/máquina limpa.
-- **Change set atual**: App Target Xcode fino preservando o código SwiftPM existente.
-- **Branch**: `feat/xcode-thin-app-target`
-- **Remote**: `origin/feat/xcode-thin-app-target`.
-- **Pull request**: [#6](https://github.com/pedronazarito98/Tico/pull/6), aberto como draft.
-- **Validação local**: `PASS` no gate canônico: builds SwiftPM e Xcode Debug, Archive Release universal com Hardened Runtime, 125 testes, 8 regressões de segurança, ZIP e DMG verificados.
-- **CI remoto**: O primeiro run do PR #6, [31741121816](https://github.com/pedronazarito98/Tico/actions/runs/31741121816), passou no commit `7b57e4f`, incluindo o App Target Xcode. O status requerido do HEAD atual permanece como fonte de verdade antes do merge.
-- **Release candidate**: `dist/Tico.zip` e `dist/Tico.dmg` com mínimo `26.0` validados localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.
+- **Feature**: `.specs/features/release-readiness/`
+- **Phase / Task**: Fechamento da prontidão local e preparação da próxima sessão física.
+- **Completed**: Reconciliação de permissões, encerramento de captura após revogação, toolbar e barra de menus conscientes de autorização, estado simulado isolado no XCUITest, cobertura unitária/E2E e validação automática da matriz manual.
+- **In-progress**: Verificação remota do HEAD do PR e consolidação final da documentação de evidência.
+- **Next step**: Usar um único `Tico.app` identificado por hash para executar a matriz manual de trackpad interno, TCC real, acessibilidade, sleep/wake e persistência.
+- **Blockers**: Nenhum bloqueio estrutural conhecido para desenvolvimento ou pacote ad hoc após gate verde. Compatibilidade física e estabilidade diária continuam limitadas pelos cenários `NOT-RUN`; distribuição pública permanece fora do escopo conforme AD-013.
+- **Change set atual**: Prontidão local sem Developer ID, preservando SwiftUI, SwiftPM, macOS 26+ e os hosts compartilhados.
+- **Branch**: `feat/complete-local-release-readiness`.
+- **Remote**: `origin/feat/complete-local-release-readiness`.
+- **Pull request**: [#8](https://github.com/pedronazarito98/Tico/pull/8), aberto como draft durante a validação.
+- **Validação automatizada**: O workflow `macOS verification` do HEAD do PR é a fonte de verdade. Ele cobre SwiftPM, Xcode Debug, Archive Release, XCUITest isolado, suíte Swift, regressões de segurança, consistência da matriz e ZIP/DMG ad hoc.
+- **Validação manual**: A matriz permanece em `11 PASS`, `0 FAIL` e `20 NOT-RUN` até uma nova sessão humana; CI não altera esses resultados.
+- **Release candidate local**: `dist/Tico.zip` e `dist/Tico.dmg`, versão `0.1.0 (1)`, assinatura ad hoc/development. Não existe reivindicação de notarização ou Gatekeeper.
