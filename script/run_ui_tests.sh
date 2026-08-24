@@ -30,6 +30,11 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
+# O Xcode recusa sobrescrever um result bundle existente. A remoção é segura
+# porque o caminho permanece dentro do DerivedData temporário ou explicitamente
+# fornecido para esta execução do teste.
+/bin/rm -rf -- "$RESULT_BUNDLE_PATH"
+
 set +e
 /usr/bin/xcodebuild \
   -project "$PROJECT_PATH" \
