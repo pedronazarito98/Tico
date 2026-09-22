@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var controller: AppController
+    @ObservedObject var companion: CompanionCoordinator
     @ObservedObject var shortcutStore: ShortcutStore
     @ObservedObject var eventLogStore: EventLogStore
     @ObservedObject var permissions: PermissionCoordinator
@@ -10,47 +11,57 @@ struct ContentView: View {
     @Environment(\.dismissSearch) private var dismissSearch
     @Environment(\.openWindow) private var openWindow
     @Environment(\.scenePhase) private var scenePhase
-    @SceneStorage("mainSection") private var storedSection = TicoSection.overview.rawValue
+    @SceneStorage("mainSection") private var storedSection = TicoSection.rules.rawValue
+    @StateObject private var ruleWorkspace = RuleWorkspaceSession()
+    @State private var applicationFilter: String?
     @State private var navigationVisibility = NavigationSplitViewVisibility.all
     @State private var selectedSection = TicoSection.overview
     @State private var selectedRuleID: ShortcutRule.ID?
     @State private var searchText = ""
     @State private var didPerformInitialSetup = false
+    @State private var practicePresentation: PracticePresentation?
+    @State private var showsDescription = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: $navigationVisibility) {
             SidebarView(
                 selection: sectionBinding,
                 selectedRuleID: $selectedRuleID,
-                ruleItems: sidebarRuleItems,
+                applicationFilter: $applicationFilter,
+                scopedApplications: scopedApplications,
                 enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
                 totalRuleCount: shortcutStore.rules.count,
-                captureIsRunning: controller.captureIsRunning,
-                searchText: searchText,
-                onSetRuleEnabled: { id, isEnabled in
-                    try shortcutStore.setEnabled(isEnabled, for: id)
-                },
-                onDeleteRule: deleteRule
+                captureIsRunning: controller.captureIsRunning
             )
         } detail: {
             detail
                 .scrollEdgeEffectStyle(.soft, for: .top)
         }
-        .frame(minWidth: 860, minHeight: 560)
+        .navigationSplitViewStyle(.balanced)
+        .frame(minWidth: 1_040, minHeight: 620)
         .searchable(
             text: $searchText,
             placement: .toolbar,
-            prompt: "Buscar seções e regras"
+            prompt: "Buscar atalhos"
         )
         .searchToolbarBehavior(.automatic)
+        .onChange(of: searchText) {
+            guard !searchText.isEmpty, selectedSection != .rules else { return }
+            selectedSection = .rules
+            storedSection = TicoSection.rules.rawValue
+        }
         .toolbar(id: "main-toolbar") {
+            ToolbarItem(id: "describe-rule", placement: .primaryAction) {
+                Button("Descrever automação", systemImage: "text.bubble") { showsDescription = true }
+            }
             ToolbarItem(id: "new-rule", placement: .primaryAction) {
                 Button {
                     select(.rules)
                     createRule()
                 } label: {
-                    Label("Nova regra", systemImage: "plus")
+                    Label("Novo atalho", systemImage: "plus")
                 }
+                .labelStyle(.titleAndIcon)
                 .accessibilityIdentifier("tico.toolbar.new-rule")
             }
 
@@ -92,13 +103,51 @@ struct ContentView: View {
                 controller.startCapture()
             }
         }
-        .onReceive(commandRouter.$pendingCommand.compactMap { $0 }) { envelope in
+        // @Published emite em willSet; consuma no próximo ciclo para o roteador
+        // já possuir o envelope e garantir consumo único entre várias janelas.
+        .onReceive(commandRouter.$pendingCommand.compactMap { $0 }.receive(on: RunLoop.main)) { envelope in
             guard let command = commandRouter.consume(envelope) else { return }
             handle(command)
         }
         .onChange(of: scenePhase) {
             guard scenePhase == .active else { return }
             permissions.refresh()
+        }
+        .sheet(item: $practicePresentation) { presentation in
+            GesturePracticeView(session: controller.practiceSession, isRecording: controller.recordingIsActive,
+                startupError: controller.trackpadStartupError,
+                onFinish: {
+                    controller.endPractice(sessionID: presentation.id)
+                    practicePresentation = nil
+                })
+                .onDisappear { controller.endPractice(sessionID: presentation.id) }
+        }
+        .sheet(isPresented: $showsDescription) {
+            DescribeAutomationView(applications: controller.availableApplications,
+                latestEvent: controller.recordedEvent, recordingIsActive: controller.recordingIsActive,
+                captureMode: controller.trackpadCaptureMode, startupError: controller.trackpadStartupError,
+                snapshot: controller.laboratorySnapshot, onStartRecording: controller.beginRecording,
+                onStopRecording: controller.endRecording, onCreate: installDraft)
+        }
+        .sheet(item: $ruleWorkspace.presentedEditor) { session in
+            ShortcutComposerView(session: session, practiceSession: controller.practiceSession,
+                applications: controller.availableApplications, macOSShortcuts: controller.availableMacOSShortcuts,
+                profiles: shortcutStore.profiles, reusableWorkflows: shortcutStore.reusableWorkflows,
+                presets: shortcutStore.presets, displays: controller.availableDisplays,
+                latestEvent: controller.recordedEvent, recordingIsActive: controller.recordingIsActive,
+                captureMode: controller.trackpadCaptureMode, startupError: controller.trackpadStartupError,
+                snapshot: controller.laboratorySnapshot, detectedTrackpads: controller.detectedTrackpads,
+                deviceCapabilities: controller.capabilityStore.devices,
+                onStartRecording: controller.beginRecording, onStopRecording: controller.endRecording,
+                onStartPreview: { controller.beginPractice($0, repetitionLimit: nil) },
+                onStopPreview: controller.endPractice,
+                onSaveReusableWorkflow: shortcutStore.saveReusableWorkflow, onSavePreset: shortcutStore.savePreset,
+                conflictsForRule: shortcutStore.conflicts,
+                onSave: { try saveComposedRule($0, replacingConflicts: $1, session: session) },
+                onCancel: { ruleWorkspace.presentedEditor = nil })
+        }
+        .onChange(of: companion.message) {
+            if let message = companion.message { controller.presentedError = message }
         }
         .alert(TicoBrand.displayName, isPresented: presentedErrorBinding) {
             Button("OK", role: .cancel) { controller.presentedError = nil }
@@ -122,8 +171,24 @@ struct ContentView: View {
     @ViewBuilder
     private var detail: some View {
         switch currentSection {
+        case .explore:
+            ExploreView(applications: controller.availableApplications, onChoose: installDraft,
+                onPractice: practice, onDescribe: { showsDescription = true }, onOpenLibrary: { select(.library) })
+        case .gestureMap:
+            GestureMapView(rules: shortcutStore.rules, profiles: shortcutStore.profiles,
+                applications: controller.availableApplications, context: companion.context,
+                onPractice: practice, onEdit: editRule)
+        case .scenes:
+            ScenesView(workflows: shortcutStore.reusableWorkflows, applications: controller.availableApplications,
+                macOSShortcuts: controller.availableMacOSShortcuts, runningIDs: companion.runningIDs,
+                lastReport: companion.lastReport, onSave: shortcutStore.saveReusableWorkflow,
+                onDelete: shortcutStore.deleteReusableWorkflow, onRun: companion.runScene,
+                onCancel: companion.cancel, onCreateRule: installSceneRule)
         case .overview:
-            OverviewView(
+            VStack(spacing: 0) {
+                ExecutionInsightView(explanation: companion.explanation, report: companion.lastReport,
+                    onEdit: editRule, onExplore: { select(.explore) })
+                OverviewView(
                 enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
                 totalRuleCount: shortcutStore.rules.count,
                 captureIsRunning: controller.captureIsRunning,
@@ -139,7 +204,8 @@ struct ContentView: View {
                     createRule()
                 },
                 onOpenPermissions: { select(.permissions) }
-            )
+                )
+            }
 
         case .permissions:
             PermissionsView(
@@ -183,7 +249,10 @@ struct ContentView: View {
         case .rules:
             RulesView(
                 store: shortcutStore,
+                workspace: ruleWorkspace,
                 selectedRuleID: $selectedRuleID,
+                searchText: searchText,
+                applicationFilter: applicationFilter,
                 latestRecordedEvent: controller.recordedEvent,
                 recordingIsActive: controller.recordingIsActive,
                 trackpadCaptureMode: controller.trackpadCaptureMode,
@@ -200,7 +269,8 @@ struct ContentView: View {
                 onStartRecording: controller.beginRecording,
                 onStopRecording: controller.endRecording,
                 onSaveReusableWorkflow: shortcutStore.saveReusableWorkflow,
-                onSavePreset: shortcutStore.savePreset
+                onSavePreset: shortcutStore.savePreset,
+                onPractice: practice
             )
 
         case .profiles:
@@ -261,20 +331,22 @@ struct ContentView: View {
         selectedSection
     }
 
-    private var sidebarRuleItems: [RuleSidebarItem] {
-        shortcutStore.rules.map { rule in
-            RuleSidebarItem(
-                id: rule.id,
-                name: rule.name,
-                detail: "\(rule.trigger.displayName) · \(contextName(for: rule))",
-                isEnabled: rule.isEnabled,
-                hasConflict: !shortcutStore.conflicts(for: rule).isEmpty
-            )
-        }
+    private var scopedApplications: [ApplicationChoice] {
+        let ids = Set(shortcutStore.rules.flatMap { $0.scope.bundleIdentifiers })
+        return ids.map { id in
+            controller.availableApplications.first { $0.bundleIdentifier == id }
+                ?? ApplicationChoice(bundleIdentifier: id, name: id, isRunning: false)
+        }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     private func handle(_ command: AppCommand) {
         switch command {
+        case .showContextualActions:
+            companion.showActions()
+        case .showGestureMap:
+            select(.gestureMap)
+        case .describeAutomation:
+            showsDescription = true
         case .openMainWindow:
             openWindow(id: "main")
         case .createRule:
@@ -350,18 +422,58 @@ struct ContentView: View {
         }
     }
 
-    private func createRule() {
+    private func practice(_ rule: ShortcutRule) {
+        guard let id = controller.beginPractice(rule) else { return }
+        practicePresentation = PracticePresentation(id: id)
+    }
+
+    private func editRule(_ id: UUID) {
+        guard shortcutStore.rules.contains(where: { $0.id == id }) else { return }
+        applicationFilter = nil
+        selectedRuleID = id
+        select(.rules)
+    }
+
+    private func installDraft(_ draft: ShortcutRule) {
+        applicationFilter = nil
         do {
-            let rule = try shortcutStore.create(
-                name: "Nova regra",
-                isEnabled: false,
-                trigger: .keyboard(keyCode: 49, modifiers: [.command]),
-                action: .notification(title: TicoBrand.displayName, body: "Regra executada")
-            )
+            var disabled = draft
+            disabled.isEnabled = false
+            let rule = try shortcutStore.add(disabled)
             selectedRuleID = rule.id
-        } catch {
-            controller.presentedError = error.localizedDescription
+            select(.rules)
+        } catch { controller.presentedError = error.localizedDescription }
+    }
+
+    private func installSceneRule(_ workflow: ActionWorkflow) {
+        installDraft(ShortcutRule(name: workflow.name, isEnabled: false,
+            trigger: .keyboard(keyCode: 49, modifiers: [.command, .option, .shift]),
+            action: workflow.steps.first?.action ?? .notification(title: "Tico", body: "Cena vazia"),
+            workflow: workflow, notes: "Escolha um gatilho e associe um perfil em Escopo, se desejar."))
+    }
+
+    private func createRule() {
+        applicationFilter = nil
+        ruleWorkspace.create()
+    }
+
+    /// Persiste uma única vez; fechar o criador antes de salvar não cria uma regra.
+    /// O store conserva sua escrita atômica tanto na criação quanto na substituição.
+    private func saveComposedRule(_ rule: ShortcutRule, replacingConflicts: Bool, session: RuleEditingSession) throws {
+        if session.isNew {
+            if replacingConflicts { try shortcutStore.addReplacingConflictingRules(rule) }
+            else { try shortcutStore.add(rule) }
+            ruleWorkspace.recentlyCreatedID = rule.id
+        } else {
+            if replacingConflicts { try shortcutStore.replaceConflictingRules(with: rule) }
+            else { try shortcutStore.update(rule) }
         }
+        session.markSaved(rule)
+        ruleWorkspace.presentedEditor = nil
+        applicationFilter = nil
+        searchText = ""
+        selectedRuleID = rule.id
+        select(.rules)
     }
 
     private func deleteSelectedRule() {
@@ -371,14 +483,6 @@ struct ContentView: View {
         } catch {
             controller.presentedError = error.localizedDescription
         }
-    }
-
-    private func contextName(for rule: ShortcutRule) -> String {
-        if let profileID = rule.profileID,
-           let profile = shortcutStore.profiles.first(where: { $0.id == profileID }) {
-            return profile.name
-        }
-        return rule.scope.displayName(applications: controller.availableApplications)
     }
 
     private func deleteRule(_ id: ShortcutRule.ID) throws {
@@ -407,4 +511,8 @@ struct ContentView: View {
             controller.presentedError = error.localizedDescription
         }
     }
+}
+
+private struct PracticePresentation: Identifiable {
+    let id: UUID
 }

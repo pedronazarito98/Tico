@@ -7,6 +7,7 @@ struct RuleContextEditorView: View {
     let profiles: [ShortcutProfile]
     let applications: [ApplicationChoice]
     let currentContext: ContextSnapshot?
+    var showsScopePicker = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -17,7 +18,7 @@ struct RuleContextEditorView: View {
                 }
             }
 
-            RuleScopePicker(scope: $scope, applications: applications)
+            if showsScopePicker { RuleScopePicker(scope: $scope, applications: applications) }
 
             Divider()
 

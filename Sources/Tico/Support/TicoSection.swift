@@ -1,6 +1,9 @@
 import Foundation
 
 enum TicoSection: String, CaseIterable, Identifiable {
+    case explore
+    case scenes
+    case gestureMap
     case overview
     case permissions
     case rules
@@ -14,9 +17,12 @@ enum TicoSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .explore: "Explorar"
+        case .scenes: "Cenas"
+        case .gestureMap: "Mapa de gestos"
         case .overview: "Visão geral"
         case .permissions: "Permissões"
-        case .rules: "Regras"
+        case .rules: "Meus atalhos"
         case .profiles: "Perfis"
         case .library: "Biblioteca"
         case .laboratory: "Laboratório"
@@ -27,6 +33,9 @@ enum TicoSection: String, CaseIterable, Identifiable {
 
     var systemImage: String {
         switch self {
+        case .explore: "sparkles"
+        case .scenes: "rectangle.3.group"
+        case .gestureMap: "hand.draw"
         case .overview: "rectangle.grid.2x2"
         case .permissions: "lock.shield"
         case .rules: "bolt.badge.clock"

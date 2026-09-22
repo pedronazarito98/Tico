@@ -50,7 +50,8 @@ public struct TicoApp: App {
                 metricsStore: metricsStore,
                 capabilityStore: capabilityStore,
                 approvalStore: approvalStore,
-                macOSShortcutCatalog: launchConfiguration.makeMacOSShortcutCatalog()
+                macOSShortcutCatalog: launchConfiguration.makeMacOSShortcutCatalog(),
+                allowsAutomationExecution: !launchConfiguration.isUITesting
             )
         )
         _commandRouter = StateObject(wrappedValue: commandRouter)
@@ -61,6 +62,7 @@ public struct TicoApp: App {
         WindowGroup(TicoBrand.displayName, id: "main") {
             ContentView(
                 controller: controller,
+                companion: controller.companion,
                 shortcutStore: shortcutStore,
                 eventLogStore: eventLogStore,
                 permissions: permissions,
@@ -68,7 +70,7 @@ public struct TicoApp: App {
             )
             .tint(TicoBrand.Palette.primary)
         }
-        .defaultSize(width: 1_080, height: 700)
+        .defaultSize(width: 1_240, height: 780)
         .commands {
             TicoCommands(commandRouter: commandRouter)
         }
@@ -81,6 +83,7 @@ public struct TicoApp: App {
         MenuBarExtra(isInserted: menuBarExtraIsInserted) {
             MenuBarContentView(
                 controller: controller,
+                companion: controller.companion,
                 shortcutStore: shortcutStore,
                 lifecycle: lifecycle
             )

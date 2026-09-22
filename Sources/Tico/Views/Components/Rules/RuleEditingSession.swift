@@ -1,24 +1,65 @@
 import Combine
 import Foundation
 
-/// Owns the transient state and valid transitions of a rule editor.
-///
-/// Persistence and platform effects remain outside the session. The view uses
-/// this object as the single source of truth for the draft, dirty state,
-/// validation feedback, conflict confirmation, presets, and recording mode.
+/// Rascunho e transições do inspetor, sem persistência ou efeitos de plataforma.
+/// A sessão sobrevive à troca de linha; os filhos editam o mesmo valor via Binding.
 @MainActor
-final class RuleEditingSession: ObservableObject {
+final class RuleEditingSession: ObservableObject, Identifiable {
+    let id: UUID
+    let isNew: Bool
     @Published var draft: ShortcutRule
+    @Published private(set) var hasChosenAction: Bool
+    @Published private(set) var hasChosenTrigger: Bool
     @Published var recordingMode: TriggerRecordingMode?
     @Published var advancedTrackpadOptionsAreExpanded = false
     @Published var saveError: String?
     @Published var pendingConflictSave: ShortcutRule?
 
     private var originalRule: ShortcutRule
+    private var suggestedName: String?
 
-    init(rule: ShortcutRule) {
+    init(rule: ShortcutRule, isNew: Bool = false) {
+        id = rule.id
+        self.isNew = isNew
         draft = rule
         originalRule = rule
+        hasChosenAction = !isNew
+        hasChosenTrigger = !isNew
+    }
+
+    /// Valores iniciais satisfazem o domínio, mas não contam como escolhas do usuário.
+    /// Paralelo com React: flags de formulário impedem enviar um campo ainda não preenchido.
+    var composerValidationMessage: String? {
+        if !hasChosenAction { return "Escolha o que você quer fazer." }
+        if !hasChosenTrigger { return "Grave um gesto ou escolha um acionamento." }
+        return validationMessage
+    }
+
+    func chooseAction(_ action: ShortcutAction, title: String) {
+        if !hasChosenAction || draft.name == suggestedName || draft.name == draft.action.displayName {
+            draft.name = title
+        }
+        suggestedName = title
+        draft.action = action
+        hasChosenAction = true
+    }
+
+    func chooseTrigger(_ trigger: TriggerDefinition) {
+        draft.trigger = trigger
+        hasChosenTrigger = true
+    }
+
+    /// Restaura apenas personalizações opcionais; ação e gesto continuam escolhidos.
+    func resetComposerOptions() {
+        draft.notes = ""
+        draft.scope = .global
+        draft.profileID = nil
+        draft.priority = 0
+        draft.conditions = []
+        draft.workflow.timeout = 60
+        if let index = draft.workflow.steps.firstIndex(where: \.isEnabled) {
+            draft.workflow.steps[index].delayBefore = 0
+        }
     }
 
     var hasUnsavedChanges: Bool {
@@ -34,21 +75,26 @@ final class RuleEditingSession: ObservableObject {
         return RuleURLValidator.isValidWebURL(url)
     }
 
-    var canSave: Bool {
-        let hasUsableTrigger: Bool
-        if case let .customTrackpad(template) = draft.trigger {
-            hasUsableTrigger = template.samplePaths.count >= CustomGestureTemplate.minimumSampleCount
-                && !template.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        } else if case let .sequence(sequence) = draft.trigger {
-            hasUsableTrigger = sequence.isValid
-        } else {
-            hasUsableTrigger = true
-        }
+    var canSave: Bool { validationMessage == nil }
 
-        return !draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && urlIsValid
-            && hasUsableTrigger
-            && draft.workflow.isValid
+    /// O mesmo diagnóstico alimenta o rodapé e os avisos visíveis; nenhuma seção
+    /// recolhida pode permitir que um rascunho incompleto seja salvo silenciosamente.
+    var validationMessage: String? {
+        if draft.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Dê um nome ao seu atalho."
+        }
+        if case let .customTrackpad(template) = draft.trigger,
+           template.samplePaths.count < CustomGestureTemplate.minimumSampleCount
+            || template.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Grave três amostras e dê um nome ao gesto personalizado."
+        }
+        if case let .sequence(sequence) = draft.trigger, !sequence.isValid {
+            return "Complete os movimentos da sequência."
+        }
+        if case let .applications(ids) = draft.scope, ids.isEmpty {
+            return "Em Disponível em, selecione um aplicativo ou escolha Todos os apps."
+        }
+        return WorkflowEditorValidation.issue(in: draft.workflow)
     }
 
     func markSaved(_ value: ShortcutRule) {
@@ -58,8 +104,21 @@ final class RuleEditingSession: ObservableObject {
         saveError = nil
     }
 
+    /// Atualizações do store não apagam texto ainda não salvo. A ativação feita na
+    /// tabela acompanha o rascunho apenas quando esse campo não foi editado nele.
+    func receivePersisted(_ value: ShortcutRule) {
+        guard value != originalRule else { return }
+        if !hasUnsavedChanges {
+            markSaved(value)
+        } else {
+            if draft.isEnabled == originalRule.isEnabled { draft.isEnabled = value.isEnabled }
+            originalRule = value
+        }
+    }
+
     func revert() {
         draft = originalRule
+        suggestedName = nil
         pendingConflictSave = nil
         saveError = nil
     }

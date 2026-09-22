@@ -1,5 +1,7 @@
 import SwiftUI
 
+/// Inspetor da seleção. Não cria outro rascunho: observa a sessão mantida pela janela.
+/// Paralelo com React: recebe estado controlado e encaminha ações aos owners existentes.
 struct RuleEditorView: View {
     let latestRecordedEvent: InputEventDescriptor?
     let recordingIsActive: Bool
@@ -14,64 +16,17 @@ struct RuleEditorView: View {
     let detectedTrackpads: [TrackpadHardwareInfo]
     let deviceCapabilities: [String: TrackpadDeviceCapability]
     let currentContext: ContextSnapshot?
-    let onStartRecording: () -> Void
+    let onStartRecording: () -> Bool
     let onStopRecording: () -> Void
     let onSaveReusableWorkflow: (ActionWorkflow) throws -> Void
     let onSavePreset: (GesturePreset) throws -> Void
+    let onPractice: (ShortcutRule) -> Void
     let conflictsForRule: (ShortcutRule) -> [RuleConflict]
     let onSave: (ShortcutRule) throws -> Void
     let onReplaceConflicts: (ShortcutRule) throws -> Void
     let onDelete: () -> Void
 
-    @StateObject private var session: RuleEditingSession
-
-    init(
-        rule: ShortcutRule,
-        latestRecordedEvent: InputEventDescriptor?,
-        recordingIsActive: Bool,
-        trackpadCaptureMode: TrackpadCaptureMode,
-        trackpadStartupError: String?,
-        trackpadSnapshot: TrackpadLaboratorySnapshot?,
-        applications: [ApplicationChoice],
-        macOSShortcuts: [String],
-        profiles: [ShortcutProfile],
-        reusableWorkflows: [ActionWorkflow],
-        presets: [GesturePreset],
-        detectedTrackpads: [TrackpadHardwareInfo],
-        deviceCapabilities: [String: TrackpadDeviceCapability],
-        currentContext: ContextSnapshot?,
-        onStartRecording: @escaping () -> Void,
-        onStopRecording: @escaping () -> Void,
-        onSaveReusableWorkflow: @escaping (ActionWorkflow) throws -> Void,
-        onSavePreset: @escaping (GesturePreset) throws -> Void,
-        conflictsForRule: @escaping (ShortcutRule) -> [RuleConflict],
-        onSave: @escaping (ShortcutRule) throws -> Void,
-        onReplaceConflicts: @escaping (ShortcutRule) throws -> Void,
-        onDelete: @escaping () -> Void
-    ) {
-        self.latestRecordedEvent = latestRecordedEvent
-        self.recordingIsActive = recordingIsActive
-        self.trackpadCaptureMode = trackpadCaptureMode
-        self.trackpadStartupError = trackpadStartupError
-        self.trackpadSnapshot = trackpadSnapshot
-        self.applications = applications
-        self.macOSShortcuts = macOSShortcuts
-        self.profiles = profiles
-        self.reusableWorkflows = reusableWorkflows
-        self.presets = presets
-        self.detectedTrackpads = detectedTrackpads
-        self.deviceCapabilities = deviceCapabilities
-        self.currentContext = currentContext
-        self.onStartRecording = onStartRecording
-        self.onStopRecording = onStopRecording
-        self.onSaveReusableWorkflow = onSaveReusableWorkflow
-        self.onSavePreset = onSavePreset
-        self.conflictsForRule = conflictsForRule
-        self.onSave = onSave
-        self.onReplaceConflicts = onReplaceConflicts
-        self.onDelete = onDelete
-        _session = StateObject(wrappedValue: RuleEditingSession(rule: rule))
-    }
+    @ObservedObject var session: RuleEditingSession
 
     var body: some View {
         VStack(spacing: 0) {
@@ -83,122 +38,49 @@ struct RuleEditorView: View {
             Divider()
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Escopo", systemImage: "app.badge.checkmark")
-                                .font(.headline)
-                            Divider()
-                            RuleContextEditorView(
-                                scope: $session.draft.scope,
-                                profileID: $session.draft.profileID,
-                                conditions: $session.draft.conditions,
-                                profiles: profiles,
-                                applications: applications,
-                                currentContext: currentContext
-                            )
-                            Stepper(
-                                "Prioridade: \(session.draft.priority)",
-                                value: $session.draft.priority,
-                                in: -10...10
-                            )
+                VStack(alignment: .leading, spacing: 14) {
+                    RuleInspectorTriggerView(trigger: $session.draft.trigger,
+                        advancedTrackpadOptionsAreExpanded: $session.advancedTrackpadOptionsAreExpanded,
+                        captureMode: trackpadCaptureMode, detectedTrackpads: detectedTrackpads,
+                        deviceCapabilities: deviceCapabilities, onRecord: startRecording)
+                    Divider()
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Ação").font(.headline)
+                        WorkflowEditorView(workflow: $session.draft.workflow, applications: applications,
+                            macOSShortcuts: macOSShortcuts, reusableWorkflows: reusableWorkflows,
+                            onSaveReusable: onSaveReusableWorkflow)
+                        if workflowUsesContinuousAction && trackpadCaptureMode != .advancedGlobal {
+                            Label("Ações contínuas exigem captura global avançada.", systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption).foregroundStyle(.orange)
                         }
-                        .padding(4)
+                    }
+                    Divider()
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Disponível em").font(.headline)
+                        RuleScopeComposerView(scope: $session.draft.scope, applications: applications)
+                    }
+                    Divider()
+
+                    if !draftConflicts.isEmpty { conflictSummary }
+                    if let issue = session.validationMessage {
+                        Label(issue, systemImage: "exclamationmark.circle")
+                            .font(.callout).foregroundStyle(.orange)
                     }
 
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack {
-                                Label("Quando", systemImage: "cursorarrow.rays")
-                                    .font(.headline)
-                                Spacer()
-                                Text(session.draft.trigger.displayName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-
-                            Divider()
-
-                            RuleTriggerEditorView(
-                                trigger: $session.draft.trigger,
-                                advancedTrackpadOptionsAreExpanded: $session.advancedTrackpadOptionsAreExpanded,
-                                captureMode: trackpadCaptureMode,
-                                detectedTrackpads: detectedTrackpads,
-                                deviceCapabilities: deviceCapabilities
-                            )
-
-                            if !draftConflicts.isEmpty {
-                                conflictSummary
-                            }
-
-                            HStack {
-                                Button {
-                                    startRecording(.standard)
-                                } label: {
-                                    Label("Gravar gatilho", systemImage: "record.circle")
-                                }
-
-                                Button {
-                                    startRecording(.customTrackpad)
-                                } label: {
-                                    Label("Ensinar gesto", systemImage: "scribble.variable")
-                                }
-                                .help("Crie um gesto de trajetória livre com três amostras")
-
-                                Spacer()
-
-                                if trackpadCaptureMode == .advancedGlobal {
-                                    Label("Trackpad pronto", systemImage: "checkmark.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(.green)
-                                }
-                            }
-                        }
-                        .padding(4)
+                    DisclosureGroup {
+                        VStack(alignment: .leading, spacing: 16) {
+                            RuleContextEditorView(scope: $session.draft.scope, profileID: $session.draft.profileID,
+                                conditions: $session.draft.conditions, profiles: profiles,
+                                applications: applications, currentContext: currentContext, showsScopePicker: false)
+                            Stepper("Prioridade: \(session.draft.priority)", value: $session.draft.priority, in: -10...10)
+                            TextField("Notas opcionais", text: $session.draft.notes, axis: .vertical).lineLimit(2...5)
+                        }.padding(.top, 14)
+                    } label: {
+                        Label(advancedSummary, systemImage: "slider.horizontal.3").foregroundStyle(.secondary)
                     }
-
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Label("Então", systemImage: "bolt.fill")
-                                .font(.headline)
-                            Divider()
-
-                            WorkflowEditorView(
-                                workflow: $session.draft.workflow,
-                                applications: applications,
-                                macOSShortcuts: macOSShortcuts,
-                                reusableWorkflows: reusableWorkflows,
-                                onSaveReusable: onSaveReusableWorkflow
-                            )
-
-                            if workflowUsesContinuousAction
-                                && trackpadCaptureMode != .advancedGlobal {
-                                Label(
-                                    "Ações contínuas exigem a captura global avançada. "
-                                        + "O fallback público não fornece fases de movimento.",
-                                    systemImage: "exclamationmark.triangle.fill"
-                                )
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                            }
-                        }
-                        .padding(4)
-                    }
-
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Label("Detalhes", systemImage: "text.alignleft")
-                                .font(.headline)
-                            TextField("Notas opcionais", text: $session.draft.notes, axis: .vertical)
-                                .lineLimit(2...5)
-                        }
-                        .padding(4)
-                    }
+                    .padding(.vertical, 4)
                 }
-                .padding(22)
-                .frame(maxWidth: 760)
-                .frame(maxWidth: .infinity)
+                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Divider()
@@ -207,12 +89,15 @@ struct RuleEditorView: View {
                 canSave: session.canSave,
                 presets: presets,
                 onDelete: onDelete,
+                onPractice: { onPractice(session.draft) },
                 onRevert: revert,
                 onSaveAsPreset: saveAsPreset,
                 onApplyPreset: applyPreset,
                 onSave: save
             )
         }
+        .controlSize(.small)
+        .textFieldStyle(.roundedBorder)
         .sheet(item: $session.recordingMode, onDismiss: onStopRecording) { mode in
             TriggerRecorderView(
                 mode: mode,
@@ -248,6 +133,11 @@ struct RuleEditorView: View {
         } message: {
             Text(blockingConflicts.map(\.message).joined(separator: "\n"))
         }
+    }
+
+    private var advancedSummary: String {
+        let count = session.draft.conditions.count
+        return count > 0 ? "Opções avançadas · \(count) \(count == 1 ? "condição aplicada" : "condições aplicadas")" : "Opções avançadas"
     }
 
     private var workflowUsesContinuousAction: Bool {
@@ -345,8 +235,8 @@ struct RuleEditorView: View {
     }
 
     private func startRecording(_ mode: TriggerRecordingMode) {
+        guard onStartRecording() else { return }
         session.beginRecording(mode)
-        onStartRecording()
     }
 
     private func finishRecording() {

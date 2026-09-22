@@ -6,13 +6,13 @@ struct RuleEditorHeaderView: View {
     let hasUnsavedChanges: Bool
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 4) {
                 TextField("Nome da regra", text: $name)
                     .textFieldStyle(.plain)
-                    .font(.title2.weight(.semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .accessibilityIdentifier("tico.rule.name")
-                Text(hasUnsavedChanges ? "Alterações não salvas" : "Regra atualizada")
+                Text(hasUnsavedChanges ? "Alterações não salvas" : "Atalho salvo")
                     .font(.caption)
                     .foregroundStyle(hasUnsavedChanges ? .orange : .secondary)
             }
@@ -21,7 +21,7 @@ struct RuleEditorHeaderView: View {
                 .toggleStyle(.switch)
                 .accessibilityIdentifier("tico.rule.enabled")
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, 16)
         .padding(.vertical, 16)
     }
 }

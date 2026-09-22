@@ -5,6 +5,7 @@ struct RuleEditorFooterView: View {
     let canSave: Bool
     let presets: [GesturePreset]
     let onDelete: () -> Void
+    let onPractice: () -> Void
     let onRevert: () -> Void
     let onSaveAsPreset: () -> Void
     let onApplyPreset: (GesturePreset) -> Void
@@ -12,30 +13,34 @@ struct RuleEditorFooterView: View {
 
     var body: some View {
         HStack {
-            Button("Excluir", role: .destructive, action: onDelete)
-            Spacer()
-            Button("Reverter", action: onRevert)
-                .disabled(!hasUnsavedChanges)
             Menu {
-                Button("Salvar regra como preset", action: onSaveAsPreset)
+                Button("Reverter alterações", action: onRevert).disabled(!hasUnsavedChanges)
+                Button("Salvar como modelo", action: onSaveAsPreset).disabled(!canSave)
                 if !presets.isEmpty {
-                    Divider()
-                    ForEach(presets) { preset in
-                        Button("Aplicar “\(preset.name)”") {
-                            onApplyPreset(preset)
+                    Section("Usar modelo") {
+                        ForEach(presets) { preset in
+                            Button("Aplicar “\(preset.name)”") { onApplyPreset(preset) }
                         }
                     }
                 }
+                Divider()
+                Button("Excluir atalho", role: .destructive, action: onDelete)
             } label: {
-                Label("Preset", systemImage: "square.stack.3d.up")
+                Image(systemName: "ellipsis.circle")
             }
+            .menuStyle(.borderlessButton).fixedSize()
+            .accessibilityLabel("Mais opções do atalho")
+            Button("Praticar", systemImage: "hand.draw", action: onPractice)
+                .help("Teste o reconhecimento sem executar as ações")
+            Spacer()
             Button("Salvar", action: onSave)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
                 .disabled(!canSave || !hasUnsavedChanges)
                 .keyboardShortcut("s", modifiers: [.command])
                 .accessibilityIdentifier("tico.rule.save")
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 14)
+        .controlSize(.small)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }

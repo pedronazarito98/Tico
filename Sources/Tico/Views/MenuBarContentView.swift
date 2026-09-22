@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarContentView: View {
     @ObservedObject var controller: AppController
+    @ObservedObject var companion: CompanionCoordinator
     @ObservedObject var shortcutStore: ShortcutStore
     let lifecycle: any ApplicationLifecycleControlling
     @Environment(\.openWindow) private var openWindow
@@ -14,6 +15,22 @@ struct MenuBarContentView: View {
         }
 
         Divider()
+        Button("Painel de ações ⌃⌥⌘Espaço", action: companion.showActions)
+        Button("Mapa de gestos", action: companion.showMap)
+        if !shortcutStore.reusableWorkflows.isEmpty {
+            Menu("Preparar cena") {
+                ForEach(shortcutStore.reusableWorkflows) { workflow in
+                    Button(workflow.name.isEmpty ? "Cena sem nome" : workflow.name) { companion.runScene(workflow) }
+                }
+            }
+        }
+        Divider()
+        if controller.captureIsRunning {
+            Button("Pausar por 15 minutos", action: controller.pauseCaptureTemporarily)
+        }
+        if let resumesAt = controller.captureResumesAt {
+            Text("Retoma às \(resumesAt.formatted(date: .omitted, time: .shortened))")
+        }
 
         Button(controller.captureIsRunning ? "Pausar captura" : "Iniciar captura") {
             controller.toggleCapture()

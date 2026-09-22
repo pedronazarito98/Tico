@@ -2,6 +2,9 @@ import Combine
 import Foundation
 
 enum AppCommand {
+    case showContextualActions
+    case showGestureMap
+    case describeAutomation
     case openMainWindow
     case createRule
     case deleteSelectedRule

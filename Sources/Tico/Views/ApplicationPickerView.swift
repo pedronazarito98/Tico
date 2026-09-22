@@ -55,40 +55,41 @@ struct RuleScopePicker: View {
     }
 }
 
+/// Define o alvo sem misturar o app atual com uma lista de aplicativos instalados.
+/// Uma seleção específica vazia permanece inválida até o usuário escolher um app.
 struct ApplicationTargetPicker: View {
     @Binding var target: ApplicationTarget
     let applications: [ApplicationChoice]
     var allowsFrontmost = true
 
     var body: some View {
-        Picker("Aplicativo", selection: selection) {
+        VStack(alignment: .leading, spacing: 10) {
             if allowsFrontmost {
-                Text("App em primeiro plano").tag(Self.frontmostTag)
-                Divider()
+                Picker("Aplicar a", selection: usesSpecificApplication) {
+                    Text("App em uso").tag(false)
+                    Text("Escolher app").tag(true)
+                }.pickerStyle(.segmented)
             }
-            ForEach(applications) { application in
-                Text(application.name).tag(application.bundleIdentifier)
+            if usesSpecificApplication.wrappedValue || !allowsFrontmost {
+                ApplicationSearchPicker(selection: selectedIdentifier, applications: applications)
+            } else {
+                Label("Usa o aplicativo que estiver em primeiro plano.", systemImage: "macwindow")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
     }
 
-    private static let frontmostTag = "__frontmost__"
+    private var usesSpecificApplication: Binding<Bool> {
+        Binding(get: {
+            if case .bundleIdentifier = target { return true }
+            return false
+        }, set: { target = $0 ? .bundleIdentifier("") : .frontmost })
+    }
 
-    private var selection: Binding<String> {
-        Binding(
-            get: {
-                switch target {
-                case .frontmost:
-                    Self.frontmostTag
-                case let .bundleIdentifier(identifier):
-                    identifier
-                }
-            },
-            set: { value in
-                target = value == Self.frontmostTag
-                    ? .frontmost
-                    : .bundleIdentifier(value)
-            }
-        )
+    private var selectedIdentifier: Binding<String> {
+        Binding(get: {
+            if case let .bundleIdentifier(id) = target { return id }
+            return ""
+        }, set: { target = .bundleIdentifier($0) })
     }
 }

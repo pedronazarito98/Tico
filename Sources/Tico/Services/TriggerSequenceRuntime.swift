@@ -21,6 +21,8 @@ struct TriggerSequenceRuntime {
     private var pendingMatches: [UUID: PendingMatch] = [:]
     private let matcher = TriggerMatcher()
 
+    var hasProgress: Bool { !progressByRuleID.isEmpty || !pendingMatches.isEmpty }
+
     mutating func process(
         event: InputEventDescriptor,
         rules: [ShortcutRule],

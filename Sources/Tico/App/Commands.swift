@@ -25,6 +25,13 @@ struct TicoCommands: Commands {
         }
 
         CommandMenu("Atalhos") {
+            Button("Painel de ações") { commandRouter.send(.showContextualActions) }
+                .keyboardShortcut(.space, modifiers: [.command, .option, .control])
+            Button("Mapa de gestos") { commandRouter.send(.showGestureMap) }
+                .keyboardShortcut("m", modifiers: [.command, .option])
+            Button("Descrever automação…") { commandRouter.send(.describeAutomation) }
+            Divider()
+
             Button("Iniciar captura") {
                 commandRouter.send(.startCapture)
             }

@@ -1,309 +1,115 @@
 import SwiftUI
 
+/// Editor sequencial compartilhado por regras e cenas. Identidade das ações é o UUID;
+/// expandir, recolher e reordenar não recria os dados nem executa o workflow.
 struct WorkflowEditorView: View {
     @Binding var workflow: ActionWorkflow
     let applications: [ApplicationChoice]
     let macOSShortcuts: [String]
     let reusableWorkflows: [ActionWorkflow]
     let onSaveReusable: (ActionWorkflow) throws -> Void
+    var showsLibraryControls = true
 
     @State private var selectedStepID: UUID?
+    @State private var showsActionPicker = false
     @State private var saveError: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Picker("Workflow reutilizável", selection: reusableSelection) {
-                    Text("Personalizado nesta regra").tag(UUID?.none)
-                    ForEach(reusableWorkflows) { reusable in
-                        Text(reusable.name.isEmpty ? "Workflow sem nome" : reusable.name)
-                            .tag(Optional(reusable.id))
-                    }
-                }
-
-                Button("Salvar na biblioteca") {
-                    saveReusable()
-                }
-                .disabled(!workflow.isValid)
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach($workflow.steps) { $step in
+                let index = workflow.steps.firstIndex { $0.id == step.id } ?? 0
+                WorkflowStepCard(step: $step, position: index + 1,
+                    isExpanded: selectedStepID == step.id,
+                    showsHeader: workflow.steps.count > 1,
+                    canDelete: workflow.steps.count > 1, canMoveUp: index > 0,
+                    canMoveDown: index < workflow.steps.count - 1,
+                    applications: applications, macOSShortcuts: macOSShortcuts,
+                    onToggle: { selectedStepID = selectedStepID == step.id ? nil : step.id },
+                    onDelete: { deleteStep(step.id) }, onMove: { moveStep(step.id, offset: $0) })
             }
-
             HStack {
-                Picker("Em caso de erro", selection: $workflow.failurePolicy) {
-                    ForEach(WorkflowFailurePolicy.allCases, id: \.self) {
-                        Text($0.displayName).tag($0)
-                    }
-                }
-                Stepper(
-                    "Timeout: \(workflow.timeout.safeWholeSeconds(default: 60, range: 1...600)) s",
-                    value: $workflow.timeout,
-                    in: 1...600,
-                    step: 5
-                )
-            }
-
-            HSplitView {
-                VStack(spacing: 8) {
-                    List(selection: $selectedStepID) {
-                        ForEach(Array(workflow.steps.enumerated()), id: \.element.id) { index, step in
-                            HStack(spacing: 8) {
-                                Text("\(index + 1)")
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 18)
-                                Image(systemName: step.isEnabled ? "bolt.fill" : "bolt.slash")
-                                    .foregroundStyle(step.isEnabled ? .blue : .secondary)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(step.displayName)
-                                        .lineLimit(1)
-                                    if step.delayBefore > 0 {
-                                        Text("Aguardar \(step.delayBefore, format: .number) s")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
+                Button("Adicionar ação", systemImage: "plus") { showsActionPicker = true }
+                    .disabled(workflow.steps.count >= 20)
+                    .accessibilityIdentifier("tico.workflow.add-action")
+                Spacer()
+                if showsLibraryControls {
+                    Menu {
+                        if !reusableWorkflows.isEmpty {
+                            Section("Usar sequência salva") {
+                                ForEach(reusableWorkflows) { reusable in
+                                    Button(reusable.name.isEmpty ? "Sequência sem nome" : reusable.name) { use(reusable) }
                                 }
                             }
-                            .tag(step.id)
                         }
-                    }
-                    .frame(minHeight: 170)
-
-                    HStack {
-                        Button {
-                            addStep()
-                        } label: {
-                            Label("Etapa", systemImage: "plus")
-                        }
-                        .disabled(workflow.steps.count >= 20)
-                        Button {
-                            deleteSelectedStep()
-                        } label: {
-                            Image(systemName: "minus")
-                        }
-                        .disabled(selectedStep == nil || workflow.steps.count <= 1)
-                        Spacer()
-                        Button {
-                            moveSelectedStep(offset: -1)
-                        } label: {
-                            Image(systemName: "chevron.up")
-                        }
-                        .disabled(!canMoveSelectedStep(offset: -1))
-                        Button {
-                            moveSelectedStep(offset: 1)
-                        } label: {
-                            Image(systemName: "chevron.down")
-                        }
-                        .disabled(!canMoveSelectedStep(offset: 1))
-                    }
+                        Button("Salvar sequência na biblioteca", action: saveReusable)
+                            .disabled(WorkflowEditorValidation.issue(in: workflow) != nil)
+                    } label: { Label("Biblioteca", systemImage: "books.vertical") }
+                        .menuStyle(.borderlessButton).fixedSize()
                 }
-                .frame(minWidth: 220, idealWidth: 250)
+            }.buttonStyle(.borderless).padding(.vertical, 4)
 
-                if let selectedStepBinding {
-                    WorkflowStepEditor(
-                        step: selectedStepBinding,
-                        applications: applications,
-                        macOSShortcuts: macOSShortcuts
-                    )
-                    .padding(.leading, 12)
-                    .frame(minWidth: 350)
-                } else {
-                    ContentUnavailableView(
-                        "Selecione uma etapa",
-                        systemImage: "point.topleft.down.to.point.bottomright.curvepath"
-                    )
-                    .frame(minWidth: 350)
-                }
+            DisclosureGroup("Opções da sequência") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker("Se uma ação falhar", selection: $workflow.failurePolicy) {
+                        ForEach(WorkflowFailurePolicy.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }.pickerStyle(.radioGroup)
+                    Stepper("Tempo limite total: \(workflow.timeout, format: .number) s", value: $workflow.timeout, in: 1...600, step: 5)
+                }.padding(.top, 10)
+            }.font(.callout)
+            if workflow.enabledSteps.isEmpty {
+                Label("Mantenha pelo menos uma ação ativa.", systemImage: "info.circle")
+                    .font(.caption).foregroundStyle(.orange)
             }
-            .frame(minHeight: 280)
         }
-        .onAppear {
-            selectedStepID = selectedStepID ?? workflow.steps.first?.id
-        }
-        .alert("Não foi possível salvar o workflow", isPresented: errorPresented) {
-            Button("OK", role: .cancel) { saveError = nil }
-        } message: {
-            Text(saveError ?? "Erro desconhecido")
-        }
-    }
-
-    private var selectedStep: WorkflowStep? {
-        guard let selectedStepID else { return nil }
-        return workflow.steps.first { $0.id == selectedStepID }
-    }
-
-    private var selectedStepBinding: Binding<WorkflowStep>? {
-        guard let selectedStepID,
-              let index = workflow.steps.firstIndex(where: { $0.id == selectedStepID }) else {
-            return nil
-        }
-        return $workflow.steps[index]
-    }
-
-    private var reusableSelection: Binding<UUID?> {
-        Binding(
-            get: {
-                reusableWorkflows.first(where: {
-                    $0.steps == workflow.steps
-                        && $0.failurePolicy == workflow.failurePolicy
-                        && $0.timeout == workflow.timeout
-                })?.id
-            },
-            set: { id in
-                guard let id,
-                      let reusable = reusableWorkflows.first(where: { $0.id == id }) else {
-                    return
-                }
-                workflow = ActionWorkflow(
-                    name: reusable.name,
-                    steps: reusable.steps.map {
-                        WorkflowStep(
-                            name: $0.name,
-                            action: $0.action,
-                            delayBefore: $0.delayBefore,
-                            timeout: $0.timeout,
-                            isEnabled: $0.isEnabled
-                        )
-                    },
-                    failurePolicy: reusable.failurePolicy,
-                    timeout: reusable.timeout
-                )
+        .onChange(of: workflow.steps.map(\.id), initial: true) {
+            if selectedStepID == nil || !workflow.steps.contains(where: { $0.id == selectedStepID }) {
                 selectedStepID = workflow.steps.first?.id
             }
-        )
+        }
+        .sheet(isPresented: $showsActionPicker) {
+            RuleActionPickerView(applications: applications) { action in
+                guard workflow.steps.count < 20 else { return }
+                let step = WorkflowStep(action: action)
+                workflow.steps.append(step)
+                selectedStepID = step.id
+            }
+        }
+        .alert("Não foi possível salvar a sequência", isPresented: errorPresented) {
+            Button("OK", role: .cancel) { saveError = nil }
+        } message: { Text(saveError ?? "Erro desconhecido") }
     }
 
     private var errorPresented: Binding<Bool> {
-        Binding(
-            get: { saveError != nil },
-            set: { if !$0 { saveError = nil } }
-        )
+        Binding(get: { saveError != nil }, set: { if !$0 { saveError = nil } })
     }
 
-    private func addStep() {
-        let step = WorkflowStep(
-            action: .notification(title: TicoBrand.displayName, body: "Etapa executada")
-        )
-        workflow.steps.append(step)
-        selectedStepID = step.id
+    private func use(_ reusable: ActionWorkflow) {
+        workflow = ActionWorkflow(name: reusable.name, steps: reusable.steps.map {
+            WorkflowStep(name: $0.name, action: $0.action, delayBefore: $0.delayBefore,
+                         timeout: $0.timeout, isEnabled: $0.isEnabled)
+        }, failurePolicy: reusable.failurePolicy, timeout: reusable.timeout)
+        selectedStepID = workflow.steps.first?.id
     }
 
-    private func deleteSelectedStep() {
-        guard let selectedStepID,
-              workflow.steps.count > 1,
-              let index = workflow.steps.firstIndex(where: { $0.id == selectedStepID }) else {
-            return
-        }
+    private func deleteStep(_ id: UUID) {
+        guard workflow.steps.count > 1, let index = workflow.steps.firstIndex(where: { $0.id == id }) else { return }
         workflow.steps.remove(at: index)
-        self.selectedStepID = workflow.steps.indices.contains(index)
-            ? workflow.steps[index].id
-            : workflow.steps.last?.id
+        if selectedStepID == id { selectedStepID = workflow.steps[min(index, workflow.steps.count - 1)].id }
     }
 
-    private func canMoveSelectedStep(offset: Int) -> Bool {
-        guard let selectedStepID,
-              let index = workflow.steps.firstIndex(where: { $0.id == selectedStepID }) else {
-            return false
-        }
-        return workflow.steps.indices.contains(index + offset)
-    }
-
-    private func moveSelectedStep(offset: Int) {
-        guard let selectedStepID,
-              let index = workflow.steps.firstIndex(where: { $0.id == selectedStepID }),
-              workflow.steps.indices.contains(index + offset) else {
-            return
-        }
+    private func moveStep(_ id: UUID, offset: Int) {
+        guard let index = workflow.steps.firstIndex(where: { $0.id == id }), workflow.steps.indices.contains(index + offset) else { return }
         workflow.steps.swapAt(index, index + offset)
     }
 
     private func saveReusable() {
         var reusable = workflow
         if reusable.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            reusable.name = "Workflow \(reusableWorkflows.count + 1)"
+            reusable.name = "Sequência \(reusableWorkflows.count + 1)"
         }
         do {
             try onSaveReusable(reusable)
             workflow.name = reusable.name
-        } catch {
-            saveError = error.localizedDescription
-        }
-    }
-}
-
-private struct WorkflowStepEditor: View {
-    @Binding var step: WorkflowStep
-    let applications: [ApplicationChoice]
-    let macOSShortcuts: [String]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                TextField("Nome opcional da etapa", text: $step.name)
-                Toggle("Ativa", isOn: $step.isEnabled)
-                    .toggleStyle(.switch)
-            }
-
-            HStack {
-                Stepper(
-                    "Atraso: \(step.delayBefore, format: .number.precision(.fractionLength(1))) s",
-                    value: $step.delayBefore,
-                    in: 0...300,
-                    step: 0.5
-                )
-                Toggle("Timeout próprio", isOn: timeoutEnabled)
-                if step.timeout != nil {
-                    Stepper(
-                        "\((step.timeout ?? 15).safeWholeSeconds(default: 15, range: 1...300)) s",
-                        value: timeoutValue,
-                        in: 1...300
-                    )
-                }
-            }
-            .font(.caption)
-
-            Divider()
-
-            RuleActionEditorView(
-                action: $step.action,
-                urlText: urlText,
-                applications: applications,
-                macOSShortcuts: macOSShortcuts
-            )
-        }
-    }
-
-    private var timeoutEnabled: Binding<Bool> {
-        Binding(
-            get: { step.timeout != nil },
-            set: { step.timeout = $0 ? (step.timeout ?? 15) : nil }
-        )
-    }
-
-    private var timeoutValue: Binding<Double> {
-        Binding(
-            get: { step.timeout ?? 15 },
-            set: { step.timeout = $0 }
-        )
-    }
-
-    private var urlText: Binding<String> {
-        Binding(
-            get: {
-                if case let .openURL(url) = step.action {
-                    return url.absoluteString
-                }
-                return "https://"
-            },
-            set: { value in
-                guard case .openURL = step.action, let url = URL(string: value) else { return }
-                step.action = .openURL(url: url)
-            }
-        )
-    }
-}
-
-private extension Double {
-    func safeWholeSeconds(default fallback: Double, range: ClosedRange<Double>) -> Int {
-        let value = isFinite ? min(max(self, range.lowerBound), range.upperBound) : fallback
-        return Int(value)
+        } catch { saveError = error.localizedDescription }
     }
 }

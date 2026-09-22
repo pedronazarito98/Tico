@@ -224,6 +224,20 @@ final class ShortcutStore: ObservableObject {
         }
     }
 
+    /// Criação e substituição compartilham uma única escrita com rollback do store.
+    /// Nunca persiste um rascunho provisório para depois tentar remover conflitos.
+    func addReplacingConflictingRules(_ rule: ShortcutRule) throws {
+        guard !rules.contains(where: { $0.id == rule.id }) else {
+            throw ShortcutStoreError.duplicateRule(rule.id)
+        }
+        let conflictIDs = Set(conflicts(for: rule)
+            .filter { $0.severity == .replacementRequired }.map(\.existingRuleID))
+        try commit { rules in
+            rules.removeAll { conflictIDs.contains($0.id) }
+            rules.append(rule)
+        }
+    }
+
     func delete(id: UUID) throws {
         guard let index = rules.firstIndex(where: { $0.id == id }) else {
             throw ShortcutStoreError.ruleNotFound(id)
@@ -310,6 +324,18 @@ final class ShortcutStore: ObservableObject {
         } else {
             reusableWorkflows.append(workflow)
         }
+        do {
+            try writeDocument(to: fileURL)
+        } catch {
+            reusableWorkflows = previous
+            throw error
+        }
+    }
+
+    /// Remove somente o item da biblioteca; regras possuem cópias independentes do workflow.
+    func deleteReusableWorkflow(id: UUID) throws {
+        let previous = reusableWorkflows
+        reusableWorkflows.removeAll { $0.id == id }
         do {
             try writeDocument(to: fileURL)
         } catch {

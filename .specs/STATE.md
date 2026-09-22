@@ -112,16 +112,15 @@
 
 ## Handoff
 
-- **Feature**: `.specs/features/architecture-modernization/`
-- **Phase / Task**: Pós-merge de T01–T22; App Target Xcode fino implementado conforme AD-012.
-- **Completed**: Spec, modernização, exclusividade macOS 26, módulo compartilhado, launchers SwiftPM/Xcode, projeto e scheme compartilhados, configuração centralizada, gate do bundle e documentação.
-- **In-progress**: Nenhum.
-- **Next step**: Revisar o change set e solicitar autorização separada antes de commit, push ou PR.
-- **Blockers**: A compatibilidade física e a release pública continuam `BLOCKED` pelos 22 cenários manuais `NOT-RUN` e por Developer ID/notarização/staple/Gatekeeper/máquina limpa.
-- **Change set atual**: App Target Xcode fino preservando o código SwiftPM existente.
-- **Branch**: `feat/xcode-thin-app-target`
-- **Remote**: `origin/feat/xcode-thin-app-target`.
-- **Pull request**: [#6](https://github.com/pedronazarito98/Tico/pull/6), aberto como draft.
-- **Validação local**: `PASS` no gate canônico: builds SwiftPM e Xcode Debug, Archive Release universal com Hardened Runtime, 125 testes, 8 regressões de segurança, ZIP e DMG verificados.
-- **CI remoto**: O primeiro run do PR #6, [31741121816](https://github.com/pedronazarito98/Tico/actions/runs/31741121816), passou no commit `7b57e4f`, incluindo o App Target Xcode. O status requerido do HEAD atual permanece como fonte de verdade antes do merge.
-- **Release candidate**: `dist/Tico.zip` e `dist/Tico.dmg` com mínimo `26.0` validados localmente; preflight estrutural PASS, assinatura `ad-hoc/development`, sem release pública notarizada.
+- **Feature**: `.specs/features/tico-v2/`
+- **Phase / Task**: Sete frentes implementadas; fechamento integral de validação pendente.
+- **Completed**: Painel contextual, mapa/prática, receitas, cenas, explicações, navegação e rascunhos por texto. Build e pacote ad hoc PASS, UAT isolado parcial executado, cinco achados da revisão independente corrigidos.
+- **In-progress**: Item 8 de tasks.md; validação física e suíte existente.
+- **Next step**: Após o usuário concluir a licença do Xcode, reexecutar suíte/gate; executar cenários manuais listados em validation.md.
+- **Blockers**: XCTest ausente no CLT; Xcode pede aceite da licença. Hardware, foco externo, VoiceOver, pausa completa e efeitos de cenas NOT-RUN.
+- **Change set atual**: V2 incremental, sem migração do schema v6 e sem dependências novas. Sem criação de testes por instrução do projeto.
+- **Branch observada**: `main...origin/main`; mudanças locais sem commit.
+- **Publicação**: Nenhum commit, push, PR ou release solicitado/executado nesta tarefa.
+- **Validação local**: PARTIAL; evidência e comandos em `.specs/features/tico-v2/validation.md` e revisão em `validation-review.md`.
+- **Artefatos locais**: `dist/Tico.app`, `dist/Tico.zip` e `dist/Tico.dmg`, ad hoc; não notarizados.
+- **Histórico**: O handoff anterior documentava o App Target fino da iniciativa architecture-modernization; seus resultados não substituem gates da V2.

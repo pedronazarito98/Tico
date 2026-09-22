@@ -29,6 +29,42 @@ companheiro para conectar trackpad, teclado e mouse a automações no macOS.
 
 Tudo fica no Mac: regras, calibrações e histórico são locais.
 
+## V2 em desenvolvimento
+
+- **Painel contextual:** quatro ações perto do cursor, acessíveis pelo menu
+  Atalhos → Painel de ações ou `⌃⌥⌘Espaço`. O atalho global exige captura ativa.
+- **Mapa e prática:** consulte seus atalhos e pratique três reconhecimentos sem
+  executar as ações. Com a captura ativa, segure `⌘⌥` para consultar a cola temporária.
+- **Explorar:** receitas locais por objetivo, ilustração do gesto, prática e revisão
+  no editor. A instalação cria uma regra desativada.
+- **Cenas:** sequências nomeadas de aplicativos, links e ações de janela, com
+  edição, prévia de etapas, execução, cancelamento e reutilização em regras.
+- **O que aconteceu?:** explicação do último reconhecimento e resultado por etapa,
+  na Visão geral, sem acrescentar um histórico de eventos brutos.
+- **Navegação:** Meus atalhos, Explorar, Cenas e Mapa em destaque; ferramentas
+  avançadas preservadas e pausa de captura por 15 minutos no menu de status.
+- **Descrever automação:** frases suportadas viram rascunhos locais revisáveis,
+  sempre desativados. Exemplo: “Quando eu fizer um swipe para a esquerda com
+  3 dedos no Safari, coloque a janela na metade esquerda”.
+
+O parser usa uma gramática restrita, sem serviço de IA externo. As cenas são
+sequências configuradas explicitamente; não capturam nem restauram qualquer layout
+automaticamente. A validação da V2 é parcial: build e pacote local passaram, mas
+testes estão bloqueados pelo ambiente Xcode e hardware depende de validação manual.
+Veja a [evidência da V2](.specs/features/tico-v2/validation.md).
+
+Meus atalhos usa uma **biblioteca com lista e prévia visual**. O criador segue o
+fluxo aprovado no Figma: escolher a ação, gravar ou configurar o acionamento,
+experimentar na prévia e criar. Cancelar a criação não persiste uma regra provisória.
+Apps e Mais ajustes são opcionais; horário, monitor, título da janela e modificadores
+ficam em Avançado. Rascunhos de edição permanecem na janela, e salvar é explícito,
+também por `⌘S`. O editor completo continua no menu contextual da biblioteca.
+Veja a [implementação e validação das dez telas aprovadas](.specs/features/tico-v2/figma-approved-flow.md).
+
+A escolha de ações usa uma galeria de resultados: aplicativos com ícones reais,
+posições de janela ilustradas e operações diretas. Busca e seleção de apps ficam
+no próprio inspetor. Veja a [validação dos seletores visuais](.specs/features/tico-v2/visual-selection.md).
+
 ## Estado atual
 
 O Tico é um **preview técnico open source exclusivo para macOS 26+**. A forma

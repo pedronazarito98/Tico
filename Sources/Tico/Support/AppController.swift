@@ -23,6 +23,11 @@ final class AppController: ObservableObject {
     @Published var presentedError: String?
     @Published private(set) var pendingScriptApproval: PendingScriptApproval?
 
+    let practiceSession = GesturePracticeSession()
+    let companion: CompanionCoordinator
+    @Published private(set) var captureResumesAt: Date?
+    private var captureResumeTask: Task<Void, Never>?
+
     let shortcutStore: ShortcutStore
     let settings: AppSettingsStore
     let eventLogStore: EventLogStore
@@ -60,7 +65,8 @@ final class AppController: ObservableObject {
         hardwareDetector: TrackpadHardwareDetector = TrackpadHardwareDetector(),
         contextSnapshotService: (any ContextSnapshotProviding)? = nil,
         applicationCatalogService: ApplicationCatalogService? = nil,
-        macOSShortcutCatalog: any MacOSShortcutRunning = MacOSShortcutRunner()
+        macOSShortcutCatalog: any MacOSShortcutRunning = MacOSShortcutRunner(),
+        allowsAutomationExecution: Bool = true
     ) {
         self.shortcutStore = shortcutStore
         self.settings = settings
@@ -97,6 +103,11 @@ final class AppController: ObservableObject {
             setContinuousPhasesEnabled: { [weak resolvedCaptureCoordinator] isEnabled in
                 resolvedCaptureCoordinator?.setContinuousPhasesEnabled(isEnabled)
             }
+        )
+        self.companion = CompanionCoordinator(
+            store: shortcutStore, automation: automationCoordinator,
+            contextProvider: contextSnapshotService ?? ContextSnapshotService(),
+            allowsExecution: allowsAutomationExecution
         )
         self.applicationCatalogService = applicationCatalogService ?? ApplicationCatalogService()
         self.macOSShortcutCatalog = macOSShortcutCatalog
@@ -174,6 +185,12 @@ final class AppController: ObservableObject {
                 self?.pendingScriptApproval = approval
             }
             .store(in: &cancellables)
+        // Uma atividade não pode liberar a execução enquanto outra ainda usa a captura.
+        Publishers.CombineLatest3($recordingIsActive, laboratoryCoordinator.$isRecording, laboratoryCoordinator.$isReplaying)
+            .map { $0 || $1 || $2 }
+            .removeDuplicates()
+            .sink { [weak companion] suspended in companion?.interactionIsSuspended = suspended }
+            .store(in: &cancellables)
         automationCoordinator.setErrorHandler { [weak self] message in
             self?.presentedError = message
         }
@@ -230,6 +247,11 @@ final class AppController: ObservableObject {
     }
 
     func startLaboratoryRecording(name: String) {
+        guard !recordingIsActive, !laboratoryCoordinator.isReplaying else {
+            presentedError = "Encerre a prática, gravação de gatilho ou replay antes de gravar uma sessão."
+            return
+        }
+        automationCoordinator.stop()
         guard laboratoryCoordinator.startRecording(name: name) else {
             presentTrackpadObservationError()
             return
@@ -238,7 +260,7 @@ final class AppController: ObservableObject {
 
     @discardableResult
     func stopLaboratoryRecording() -> TrackpadReplayDocument? {
-        laboratoryCoordinator.stopRecording()
+        return laboratoryCoordinator.stopRecording()
     }
 
     func cancelLaboratoryRecording() {
@@ -246,6 +268,11 @@ final class AppController: ObservableObject {
     }
 
     func replayLaboratoryDocument(_ document: TrackpadReplayDocument, speed: Double = 1) {
+        guard !recordingIsActive, !laboratoryCoordinator.isRecording else {
+            presentedError = "Encerre a prática ou gravação antes de iniciar o replay."
+            return
+        }
+        automationCoordinator.stop()
         laboratoryCoordinator.replay(document, speed: speed)
     }
 
@@ -265,6 +292,8 @@ final class AppController: ObservableObject {
     }
 
     func startCapture() {
+        captureResumeTask?.cancel()
+        captureResumesAt = nil
         switch captureCoordinator.startCapture() {
         case .started:
             presentedError = nil
@@ -274,26 +303,51 @@ final class AppController: ObservableObject {
     }
 
     func stopCapture() {
+        captureResumeTask?.cancel()
+        captureResumesAt = nil
+        companion.closePanel()
         captureCoordinator.stopCapture()
         automationCoordinator.stop()
+    }
+
+    func pauseCaptureTemporarily() {
+        guard captureIsRunning else { return }
+        stopCapture()
+        captureResumesAt = Date().addingTimeInterval(900)
+        captureResumeTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(900))
+            guard !Task.isCancelled, let self else { return }
+            startCapture()
+        }
     }
 
     func toggleCapture() {
         captureCoordinator.isRunning ? stopCapture() : startCapture()
     }
 
-    func beginRecording() {
+    @discardableResult
+    func beginRecording() -> Bool {
+        guard !recordingIsActive, practiceSession.sessionID == nil else {
+            presentedError = "Já existe uma prática ou gravação em outra janela. Encerre-a antes de começar."
+            return false
+        }
+        guard !laboratoryCoordinator.isRecording, !laboratoryCoordinator.isReplaying else {
+            presentedError = "Encerre a gravação ou replay no Laboratório antes de praticar ou gravar um gatilho."
+            return false
+        }
+        automationCoordinator.stop()
         recordedEvent = nil
         recordingIsActive = true
         captureWasRunningBeforeRecording = captureCoordinator.isRunning
         trackpadWasRunningBeforeRecording = captureCoordinator.isTrackpadObservationRunning
         guard startTrackpadObservation() else {
             recordingIsActive = false
-            return
+            return false
         }
         if permissions.status.canCaptureGlobalInput {
             startCapture()
         }
+        return true
     }
 
     func endRecording() {
@@ -307,6 +361,22 @@ final class AppController: ObservableObject {
         }
         captureWasRunningBeforeRecording = false
         trackpadWasRunningBeforeRecording = false
+    }
+
+    func beginPractice(_ rule: ShortcutRule, repetitionLimit: Int? = 3) -> UUID? {
+        guard beginRecording() else { return nil }
+        return practiceSession.begin(rule, repetitionLimit: repetitionLimit)
+    }
+
+    var availableDisplays: [DisplayCatalogService.Choice] {
+        DisplayCatalogService.availableDisplays()
+    }
+
+    /// O token impede que o fechamento tardio de outra janela encerre uma nova prática.
+    func endPractice(sessionID: UUID) {
+        guard practiceSession.sessionID == sessionID else { return }
+        endRecording()
+        practiceSession.end()
     }
 
     func clearLog() {
@@ -347,7 +417,11 @@ final class AppController: ObservableObject {
         }
         if recordingIsActive {
             recordedEvent = event
+            practiceSession.receive(event)
+            return
         }
+        guard !laboratoryCoordinator.isReplaying, !laboratoryCoordinator.isRecording else { return }
+        if captureCoordinator.isRunning, companion.handle(event) { return }
         guard captureCoordinator.isRunning || recordingIsActive else { return }
         lastEvent = event
         guard captureCoordinator.isRunning else { return }

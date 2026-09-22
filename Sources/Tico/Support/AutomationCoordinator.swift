@@ -17,6 +17,9 @@ struct PendingScriptApproval: Identifiable {
 /// boundary; it remains the owner of raw trackpad processing.
 @MainActor
 final class AutomationCoordinator: ObservableObject {
+    @Published private(set) var explanation: AutomationExplanation?
+    @Published private(set) var lastWorkflowReport: WorkflowExecutionReport?
+    @Published private(set) var runningRuleIDs: Set<UUID> = []
     @Published private(set) var currentContextSnapshot: ContextSnapshot?
     @Published private(set) var pendingScriptApproval: PendingScriptApproval?
 
@@ -117,6 +120,11 @@ final class AutomationCoordinator: ObservableObject {
             context: context,
             profiles: shortcutStore.profiles
         )
+        explanation = AutomationExplanation.evaluate(
+            event: event, context: context, rules: shortcutStore.rules,
+            profiles: shortcutStore.profiles, matchedRules: evaluation.matchedRules,
+            isWaiting: evaluation.nextDeadline != nil || sequenceRuntime.hasProgress
+        )
         scheduleSequenceDeadline(evaluation.nextDeadline)
         execute(evaluation.matchedRules, event: event)
     }
@@ -143,7 +151,8 @@ final class AutomationCoordinator: ObservableObject {
             resolveScriptApproval(approved: false)
         }
         workflowTasks[ruleID]?.task.cancel()
-        workflowTasks[ruleID] = nil
+        // Mantém a identidade até o executor publicar o relatório de cancelamento.
+        // Se outra execução começar, o executionID antigo será descartado normalmente.
     }
 
     func resolveScriptApproval(approved: Bool) {
@@ -157,6 +166,13 @@ final class AutomationCoordinator: ObservableObject {
         pendingScriptApproval = nil
         approvalRequest = nil
         request.continuation.resume(returning: approved)
+    }
+
+    /// A execução manual passa pela mesma aprovação e pelo mesmo executor das regras.
+    func runManually(_ rule: ShortcutRule) {
+        guard rule.workflow.isValid else { return }
+        explanation = AutomationExplanation(title: "Execução solicitada", detail: rule.name, ruleIDs: [rule.id])
+        execute([rule])
     }
 
     private func execute(
@@ -185,6 +201,7 @@ final class AutomationCoordinator: ObservableObject {
                 guard !Task.isCancelled || report.wasCancelled else { return }
                 guard isCurrentWorkflow(executionID, ruleID: rule.id) else { return }
 
+                lastWorkflowReport = report
                 do {
                     try eventLogStore.record(
                         rule: rule,
@@ -207,7 +224,9 @@ final class AutomationCoordinator: ObservableObject {
                     latency: report.finishedAt.timeIntervalSince(report.startedAt)
                 ))
                 workflowTasks[rule.id] = nil
+                runningRuleIDs.remove(rule.id)
             }
+            runningRuleIDs.insert(rule.id)
             workflowTasks[rule.id] = RunningWorkflow(
                 executionID: executionID,
                 task: task
@@ -222,6 +241,7 @@ final class AutomationCoordinator: ObservableObject {
     private func cancelAllWorkflows() {
         workflowTasks.values.forEach { $0.task.cancel() }
         workflowTasks.removeAll()
+        runningRuleIDs.removeAll()
     }
 
     private func handleContinuousAction(
@@ -339,6 +359,11 @@ final class AutomationCoordinator: ObservableObject {
                 at: Date(),
                 profiles: shortcutStore.profiles
             )
+            if !rules.isEmpty {
+                explanation = AutomationExplanation(title: "Atalho reconhecido",
+                    detail: rules.map(\.name).joined(separator: ", ") + ". O intervalo de reconhecimento terminou.",
+                    ruleIDs: rules.map(\.id))
+            }
             execute(rules)
             sequenceDeadlineTask = nil
         }
