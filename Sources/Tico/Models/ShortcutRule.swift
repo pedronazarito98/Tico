@@ -7,7 +7,6 @@ struct ShortcutRule: Identifiable, Codable, Hashable, Sendable {
     var trigger: TriggerDefinition
     var workflow: ActionWorkflow
     var scope: RuleScope
-    var profileID: UUID?
     var conditions: [RuleCondition]
     var priority: Int
     var notes: String
@@ -22,7 +21,6 @@ struct ShortcutRule: Identifiable, Codable, Hashable, Sendable {
         action: ShortcutAction,
         workflow: ActionWorkflow? = nil,
         scope: RuleScope = .global,
-        profileID: UUID? = nil,
         conditions: [RuleCondition] = [],
         priority: Int = 0,
         notes: String = "",
@@ -35,7 +33,6 @@ struct ShortcutRule: Identifiable, Codable, Hashable, Sendable {
         self.trigger = trigger
         self.workflow = workflow ?? ActionWorkflow(action: action)
         self.scope = scope
-        self.profileID = profileID
         self.conditions = conditions
         self.priority = priority
         self.notes = notes
@@ -75,7 +72,11 @@ struct ShortcutRule: Identifiable, Codable, Hashable, Sendable {
             )
         }
         scope = try container.decodeIfPresent(RuleScope.self, forKey: .scope) ?? .global
-        profileID = try container.decodeIfPresent(UUID.self, forKey: .profileID)
+        // Uma regra antiga isolada não pode perder uma restrição e ficar ativa.
+        // O codec incorpora as condições herdadas; leituras avulsas ficam pausadas.
+        if try container.decodeIfPresent(UUID.self, forKey: .profileID) != nil {
+            isEnabled = false
+        }
         conditions = try container.decodeIfPresent([RuleCondition].self, forKey: .conditions) ?? []
         priority = try container.decodeIfPresent(Int.self, forKey: .priority) ?? 0
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
@@ -93,7 +94,6 @@ struct ShortcutRule: Identifiable, Codable, Hashable, Sendable {
         try container.encode(action, forKey: .action)
         try container.encode(workflow, forKey: .workflow)
         try container.encode(scope, forKey: .scope)
-        try container.encodeIfPresent(profileID, forKey: .profileID)
         try container.encode(conditions, forKey: .conditions)
         try container.encode(priority, forKey: .priority)
         try container.encode(notes, forKey: .notes)
@@ -115,29 +115,9 @@ struct ShortcutRule: Identifiable, Codable, Hashable, Sendable {
         }
     }
 
-    func matches(
-        _ context: ContextSnapshot,
-        profiles: [ShortcutProfile]
-    ) -> Bool {
-        guard isEnabled, scope.matches(context),
-              conditions.allSatisfy({ $0.matches(context) }) else {
-            return false
-        }
-        guard let profileID else { return true }
-        return profiles.first { $0.id == profileID }?.matches(context) == true
+    func matches(_ context: ContextSnapshot) -> Bool {
+        isEnabled && scope.matches(context) && conditions.allSatisfy { $0.matches(context) }
     }
 
-    func effectiveSpecificity(profiles: [ShortcutProfile]) -> Int {
-        let profile = profileID.flatMap { id in profiles.first { $0.id == id } }
-        return scope.specificity + conditions.count + (profile?.specificity ?? 0)
-    }
-
-    func effectivePriority(profiles: [ShortcutProfile]) -> Int {
-        let profilePriority = profileID.flatMap { id in
-            profiles.first { $0.id == id }?.priority
-        } ?? 0
-        let (result, overflow) = priority.addingReportingOverflow(profilePriority)
-        guard !overflow else { return priority >= 0 ? .max : .min }
-        return result
-    }
+    var effectiveSpecificity: Int { scope.specificity + conditions.count }
 }

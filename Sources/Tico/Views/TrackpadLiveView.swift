@@ -6,38 +6,42 @@ struct TrackpadLiveView: View {
     @Binding var highlightedRegion: TrackpadRegion
 
     var body: some View {
-        ZStack {
-            TrackpadCanvasView(
-                snapshot: snapshot,
-                highlightedRegion: highlightedRegion,
-                presentation: .immersive
-            )
+        GeometryReader { geometry in
+            ZStack {
+                TrackpadCanvasView(
+                    snapshot: snapshot,
+                    highlightedRegion: highlightedRegion,
+                    presentation: .immersive
+                )
+                ScrollView {
+                    GlassEffectContainer(spacing: 18) {
+                        VStack(spacing: 18) {
+                            HStack {
+                                Spacer(minLength: 0)
 
-            GlassEffectContainer(spacing: 18) {
-                VStack(spacing: 18) {
-                    HStack {
-                        Spacer(minLength: 320)
+                                metrics
+                                    .frame(maxWidth: 286)
+                                    .glassEffect(
+                                        .regular,
+                                        in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+                                    )
+                            }
 
-                        metrics
-                            .frame(width: 286)
-                            .glassEffect(
-                                .regular,
-                                in: RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            )
+                            Spacer(minLength: 0)
+
+                            diagnosticPanel
+                                .frame(maxWidth: 760)
+                                .glassEffect(
+                                    .regular,
+                                    in: RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                )
+                        }
+                        .padding(.horizontal, 22)
+                        .padding(.top, 14)
+                        .padding(.bottom, 18)
+                        .frame(minHeight: geometry.size.height)
                     }
-
-                    Spacer(minLength: 0)
-
-                    diagnosticPanel
-                        .frame(maxWidth: 760)
-                        .glassEffect(
-                            .regular,
-                            in: RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        )
                 }
-                .padding(.horizontal, 22)
-                .padding(.top, 94)
-                .padding(.bottom, 18)
             }
         }
     }

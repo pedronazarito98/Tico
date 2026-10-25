@@ -10,7 +10,7 @@ struct RuleEditorView: View {
     let trackpadSnapshot: TrackpadLaboratorySnapshot?
     let applications: [ApplicationChoice]
     let macOSShortcuts: [String]
-    let profiles: [ShortcutProfile]
+
     let reusableWorkflows: [ActionWorkflow]
     let presets: [GesturePreset]
     let detectedTrackpads: [TrackpadHardwareInfo]
@@ -69,10 +69,10 @@ struct RuleEditorView: View {
 
                     DisclosureGroup {
                         VStack(alignment: .leading, spacing: 16) {
-                            RuleContextEditorView(scope: $session.draft.scope, profileID: $session.draft.profileID,
-                                conditions: $session.draft.conditions, profiles: profiles,
+                            RuleContextEditorView(scope: $session.draft.scope,
+                                conditions: $session.draft.conditions,
                                 applications: applications, currentContext: currentContext, showsScopePicker: false)
-                            Stepper("Prioridade: \(session.draft.priority)", value: $session.draft.priority, in: -10...10)
+                            Stepper("Prioridade: \(session.draft.priority)", value: $session.draft.priority, in: -20...20)
                             TextField("Notas opcionais", text: $session.draft.notes, axis: .vertical).lineLimit(2...5)
                         }.padding(.top, 14)
                     } label: {

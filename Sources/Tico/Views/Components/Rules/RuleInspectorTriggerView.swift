@@ -50,7 +50,7 @@ struct RuleInspectorTriggerView: View {
                     }.padding(2)
                 }
             }
-            .padding(16).frame(width: 450, height: 440)
+            .padding(16).adaptiveSheetFrame(idealWidth: 450, idealHeight: 440)
             .controlSize(.small)
         }
     }

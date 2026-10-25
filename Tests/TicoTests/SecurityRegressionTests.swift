@@ -198,15 +198,16 @@ final class SecurityRegressionTests: XCTestCase {
         XCTAssertTrue(csv.contains("\"'+cmd\""))
     }
 
-    func testEffectivePrioritySaturatesInsteadOfOverflowing() {
-        let profile = ShortcutProfile(name: "Unsafe")
+    func testIndependentPriorityRejectsUnboundedValues() {
         var rule = makeRule(name: "Unsafe")
         rule.priority = .max
-        rule.profileID = profile.id
-        var unsafeProfile = profile
-        unsafeProfile.priority = 1
-
-        XCTAssertEqual(rule.effectivePriority(profiles: [unsafeProfile]), .max)
+        XCTAssertThrowsError(try DocumentSecurityPolicy.validate(rule))
+        rule.priority = .min
+        XCTAssertThrowsError(try DocumentSecurityPolicy.validate(rule))
+        rule.priority = 20
+        XCTAssertNoThrow(try DocumentSecurityPolicy.validate(rule))
+        rule.priority = -20
+        XCTAssertNoThrow(try DocumentSecurityPolicy.validate(rule))
     }
 
     @MainActor

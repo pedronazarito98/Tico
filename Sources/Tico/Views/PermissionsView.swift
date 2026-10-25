@@ -31,7 +31,7 @@ struct PermissionsView: View {
                     PermissionCard(permission: permission)
                 }
 
-                HStack {
+                VStack(alignment: .leading, spacing: 8) {
                     Button("Atualizar estados", action: onRefresh)
                     Text("Depois de conceder uma permissão, atualize. Se a captura ainda não iniciar, encerre e reabra o \(TicoBrand.displayName).")
                         .font(.caption)
@@ -47,10 +47,17 @@ struct PermissionsView: View {
 
 private struct PermissionCard: View {
     let permission: PermissionPresentation
+    @State private var availableWidth: CGFloat = 0
+
+    private var layout: AnyLayout {
+        availableWidth < 560
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 14))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 14))
+    }
 
     var body: some View {
         GroupBox {
-            HStack(alignment: .top, spacing: 14) {
+            layout {
                 Image(systemName: permission.systemImage)
                     .font(.title2)
                     .foregroundStyle(permission.isGranted ? .green : .orange)
@@ -79,10 +86,8 @@ private struct PermissionCard: View {
                     }
                 }
 
-                Spacer()
-
                 if !permission.isGranted {
-                    VStack(alignment: .trailing, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Button(permission.requestTitle, action: permission.request)
                             .buttonStyle(.borderedProminent)
                         if let settingsTitle = permission.settingsTitle,
@@ -95,5 +100,6 @@ private struct PermissionCard: View {
             }
             .padding(.vertical, 6)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
 }

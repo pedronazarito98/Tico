@@ -44,11 +44,7 @@ final class TicoIdentityTests: XCTestCase {
         let metricsURL = ticoDirectory.appendingPathComponent("metrics.json")
 
         let shortcutStore = ShortcutStore(fileURL: shortcutsURL, seedExamples: false)
-        let profile = ShortcutProfile(
-            name: "Perfil Tico",
-            applicationBundleIdentifiers: ["com.apple.Preview"],
-            priority: 4
-        )
+        let conditions: [RuleCondition] = [.application(bundleIdentifiers: ["com.apple.Preview"])]
         let workflow = ActionWorkflow(
             name: "Workflow Tico",
             steps: [
@@ -61,7 +57,7 @@ final class TicoIdentityTests: XCTestCase {
             name: "Preset Tico",
             trigger: .customTrackpad(template: template),
             workflow: workflow,
-            profileID: profile.id,
+            conditions: conditions, priority: 4,
             createdAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
         let rule = ShortcutRule(
@@ -69,12 +65,11 @@ final class TicoIdentityTests: XCTestCase {
             trigger: .customTrackpad(template: template),
             action: .setClipboard(text: "compatível"),
             workflow: workflow,
-            profileID: profile.id,
+            conditions: conditions, priority: 4,
             createdAt: Date(timeIntervalSince1970: 1_800_000_000),
             updatedAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
 
-        try shortcutStore.addProfile(profile)
         try shortcutStore.saveReusableWorkflow(workflow)
         try shortcutStore.saveCustomGestureTemplate(template)
         try shortcutStore.savePreset(preset)
@@ -98,7 +93,7 @@ final class TicoIdentityTests: XCTestCase {
         let ticoMetricsStore = MetricsStore(fileURL: metricsURL)
 
         XCTAssertEqual(ticoShortcutStore.rules, [rule])
-        XCTAssertEqual(ticoShortcutStore.profiles, [profile])
+        XCTAssertEqual(ticoShortcutStore.rules.first?.conditions, conditions)
         XCTAssertEqual(ticoShortcutStore.reusableWorkflows, [workflow])
         XCTAssertEqual(ticoShortcutStore.customGestureTemplates, [template])
         XCTAssertEqual(ticoShortcutStore.presets, [preset])

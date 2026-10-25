@@ -23,9 +23,29 @@ final class AutomationCoordinator: ObservableObject {
     @Published private(set) var currentContextSnapshot: ContextSnapshot?
     @Published private(set) var pendingScriptApproval: PendingScriptApproval?
 
+    /// O composition root conecta aprendizado e feedback sem consultar histórico.
+    /// A conclusão é emitida uma vez, somente para a execução ainda pertencente
+    /// a este coordenador. Cancelamentos e falhas continuam explicitamente tipados.
+    var onExecutionFinished: ((ShortcutRule, WorkflowExecutionReport, AutomationExecutionOrigin) -> Void)?
+    var onContentRequested: ((ShortcutRule) -> Void)?
+
     private struct RunningWorkflow {
         let executionID: UUID
-        let task: Task<Void, Never>
+        let task: Task<WorkflowExecutionReport, Never>
+    }
+
+    /// O gesto mantém o mesmo owner até terminar: não rematcheamos uma curva ou
+    /// regra diferente no meio do movimento. Contexto e revisão são transitórios.
+    /// Uma falha fica marcada até a fase terminal para não reiniciar e dar crédito
+    /// ao mesmo gesto após um erro de Acessibilidade.
+    private struct ContinuousSession {
+        let rule: ShortcutRule
+        let context: ContextSnapshot
+        let step: WorkflowStep
+        let curve: ContinuousResponseCurve
+        let startedAt: Date
+        var appliedUpdate = false
+        var failed = false
     }
 
     private struct ApprovalRequest {
@@ -43,11 +63,12 @@ final class AutomationCoordinator: ObservableObject {
     private let eventLogStore: EventLogStore
     private let metricsStore: MetricsStore
     private let setContinuousPhasesEnabled: (Bool) -> Void
+    private let allowsExecution: Bool
 
     private var sequenceRuntime = TriggerSequenceRuntime()
     private var sequenceDeadlineTask: Task<Void, Never>?
     private var workflowTasks: [UUID: RunningWorkflow] = [:]
-    private var activeContinuousSessions: Set<UUID> = []
+    private var activeContinuousSessions: [UUID: ContinuousSession] = [:]
     private var approvalRequest: ApprovalRequest?
     private var cancellables = Set<AnyCancellable>()
     private var errorHandler: ((String) -> Void)?
@@ -61,18 +82,21 @@ final class AutomationCoordinator: ObservableObject {
         continuousWindowController: (any ContinuousWindowActionControlling)? = nil,
         approvalStore: AutomationApprovalStore? = nil,
         contextSnapshotService: (any ContextSnapshotProviding)? = nil,
+        sceneLayouts: SceneLayoutSession? = nil,
+        allowsExecution: Bool = true,
         setContinuousPhasesEnabled: @escaping (Bool) -> Void
     ) {
         self.shortcutStore = shortcutStore
         self.eventLogStore = eventLogStore
         self.metricsStore = metricsStore
         self.matcher = matcher
-        self.workflowExecutor = WorkflowExecutor(actionRunner: actionRunner)
+        self.workflowExecutor = WorkflowExecutor(actionRunner: actionRunner, sceneLayouts: sceneLayouts)
         self.continuousWindowController = continuousWindowController
             ?? ContinuousWindowActionService()
         self.approvalStore = approvalStore ?? AutomationApprovalStore()
         self.contextSnapshotService = contextSnapshotService ?? ContextSnapshotService()
         self.setContinuousPhasesEnabled = setContinuousPhasesEnabled
+        self.allowsExecution = allowsExecution
 
         shortcutStore.$rules
             .map { rules in
@@ -100,6 +124,7 @@ final class AutomationCoordinator: ObservableObject {
         event: InputEventDescriptor,
         modifiers: Set<InputModifier>
     ) {
+        guard allowsExecution else { return }
         let context = contextSnapshotService.snapshot(
             modifiers: modifiers,
             at: event.timestamp
@@ -117,12 +142,10 @@ final class AutomationCoordinator: ObservableObject {
         let evaluation = sequenceRuntime.process(
             event: event,
             rules: shortcutStore.rules,
-            context: context,
-            profiles: shortcutStore.profiles
+            context: context
         )
         explanation = AutomationExplanation.evaluate(
-            event: event, context: context, rules: shortcutStore.rules,
-            profiles: shortcutStore.profiles, matchedRules: evaluation.matchedRules,
+            event: event, context: context, rules: shortcutStore.rules, matchedRules: evaluation.matchedRules,
             isWaiting: evaluation.nextDeadline != nil || sequenceRuntime.hasProgress
         )
         scheduleSequenceDeadline(evaluation.nextDeadline)
@@ -137,7 +160,7 @@ final class AutomationCoordinator: ObservableObject {
         sequenceDeadlineTask?.cancel()
         sequenceDeadlineTask = nil
         cancelAllWorkflows()
-        for sessionID in activeContinuousSessions {
+        for sessionID in activeContinuousSessions.keys {
             try? continuousWindowController.cancel(sessionID: sessionID)
         }
         activeContinuousSessions.removeAll()
@@ -169,25 +192,61 @@ final class AutomationCoordinator: ObservableObject {
     }
 
     /// A execução manual passa pela mesma aprovação e pelo mesmo executor das regras.
-    func runManually(_ rule: ShortcutRule) {
-        guard rule.workflow.isValid else { return }
+    @discardableResult
+    func runManually(
+        _ rule: ShortcutRule,
+        origin: AutomationExecutionOrigin = .scene,
+        providedContent: AutomationContent? = nil,
+        preparedContent: ContentExecutionContext? = nil,
+        requiresLayoutReview: Bool = true
+    ) -> Task<WorkflowExecutionReport, Never>? {
+        guard allowsExecution, rule.workflow.isValid else { return nil }
         explanation = AutomationExplanation(title: "Execução solicitada", detail: rule.name, ruleIDs: [rule.id])
-        execute([rule])
+        return execute([rule], origin: origin, providedContent: providedContent,
+                       preparedContent: preparedContent, requiresLayoutReview: requiresLayoutReview).first
     }
 
+    @discardableResult
     private func execute(
         _ rules: [ShortcutRule],
-        event: InputEventDescriptor? = nil
-    ) {
-        guard !rules.isEmpty else { return }
+        event: InputEventDescriptor? = nil,
+        origin: AutomationExecutionOrigin = .trigger,
+        providedContent: AutomationContent? = nil,
+        preparedContent: ContentExecutionContext? = nil,
+        requiresLayoutReview: Bool = true
+    ) -> [Task<WorkflowExecutionReport, Never>] {
+        guard allowsExecution, !rules.isEmpty else { return [] }
+        var tasks: [Task<WorkflowExecutionReport, Never>] = []
 
         for rule in rules {
+            if providedContent == nil, let onContentRequested,
+               rule.workflow.enabledSteps.contains(where: {
+                   if case let .content(configuration) = $0.action { return configuration.source == .provided }
+                   return false
+               }) {
+                onContentRequested(rule)
+                continue
+            }
+            let precedingTask = workflowTasks[rule.id]?.task
             cancelWorkflow(ruleID: rule.id)
             let executionID = UUID()
-            let task = Task { @MainActor [weak self] in
-                guard let self else { return }
-                let report = await workflowExecutor.execute(
+            let task = Task { @MainActor [weak self] () -> WorkflowExecutionReport in
+                // Espera a limpeza da execução substituída antes de tocar nos
+                // mesmos destinos. Cancelar não significa que o efeito já terminou.
+                if let precedingTask { _ = await precedingTask.value }
+                guard let self else {
+                    return WorkflowExecutionReport(workflowID: rule.workflow.id,
+                        stepExecutions: [], startedAt: Date(), finishedAt: Date(), wasCancelled: true)
+                }
+                var report: WorkflowExecutionReport
+                if Task.isCancelled {
+                    report = WorkflowExecutionReport(workflowID: rule.workflow.id,
+                        stepExecutions: [], startedAt: Date(), finishedAt: Date(), wasCancelled: true)
+                } else {
+                    report = await workflowExecutor.execute(
                     rule.workflow,
+                    providedContent: providedContent,
+                    preparedContent: preparedContent,
                     approval: { [weak self] content in
                         guard let self else { return false }
                         return await self.requestScriptApproval(
@@ -196,10 +255,12 @@ final class AutomationCoordinator: ObservableObject {
                             ruleID: rule.id,
                             executionID: executionID
                         )
-                    }
-                )
-                guard !Task.isCancelled || report.wasCancelled else { return }
-                guard isCurrentWorkflow(executionID, ruleID: rule.id) else { return }
+                    },
+                    requiresLayoutReview: requiresLayoutReview
+                    )
+                }
+                if Task.isCancelled { report.wasCancelled = true }
+                guard isCurrentWorkflow(executionID, ruleID: rule.id) else { return report }
 
                 lastWorkflowReport = report
                 do {
@@ -225,13 +286,17 @@ final class AutomationCoordinator: ObservableObject {
                 ))
                 workflowTasks[rule.id] = nil
                 runningRuleIDs.remove(rule.id)
+                onExecutionFinished?(rule, report, origin)
+                return report
             }
             runningRuleIDs.insert(rule.id)
             workflowTasks[rule.id] = RunningWorkflow(
                 executionID: executionID,
                 task: task
             )
+            tasks.append(task)
         }
+        return tasks
     }
 
     private func isCurrentWorkflow(_ executionID: UUID, ruleID: UUID) -> Bool {
@@ -250,25 +315,46 @@ final class AutomationCoordinator: ObservableObject {
     ) -> Bool {
         guard let gestureEvent = event.gestureEvent else { return false }
 
-        if activeContinuousSessions.contains(gestureEvent.sessionID) {
+        let sessionID = gestureEvent.sessionID
+        if var session = activeContinuousSessions[sessionID] {
+            let isTerminal = gestureEvent.phase == .ended || gestureEvent.phase == .cancelled
+            guard !session.failed else {
+                if isTerminal { activeContinuousSessions[sessionID] = nil }
+                return true
+            }
+            guard continuousSessionIsCurrent(session) else {
+                session.failed = true
+                activeContinuousSessions[sessionID] = isTerminal ? nil : session
+                do { try continuousWindowController.cancel(sessionID: sessionID) }
+                catch { reportError(error) }
+                return true
+            }
             do {
                 switch gestureEvent.phase {
                 case .began:
                     break
                 case .changed:
                     try continuousWindowController.update(
-                        sessionID: gestureEvent.sessionID,
+                        sessionID: sessionID,
                         progress: continuousProgress(for: gestureEvent),
-                        curve: continuousAction(for: event, context: context)?.curve ?? .linear
+                        curve: session.curve
                     )
+                    session.appliedUpdate = true
+                    activeContinuousSessions[sessionID] = session
                 case .ended:
-                    continuousWindowController.commit(sessionID: gestureEvent.sessionID)
-                    activeContinuousSessions.remove(gestureEvent.sessionID)
+                    activeContinuousSessions[sessionID] = nil
+                    continuousWindowController.commit(sessionID: sessionID)
+                    finishContinuousSession(session)
                 case .cancelled:
-                    try continuousWindowController.cancel(sessionID: gestureEvent.sessionID)
-                    activeContinuousSessions.remove(gestureEvent.sessionID)
+                    activeContinuousSessions[sessionID] = nil
+                    try continuousWindowController.cancel(sessionID: sessionID)
                 }
             } catch {
+                if var failedSession = activeContinuousSessions[sessionID] {
+                    failedSession.failed = true
+                    activeContinuousSessions[sessionID] = failedSession
+                }
+                try? continuousWindowController.cancel(sessionID: sessionID)
                 reportError(error)
             }
             return true
@@ -279,30 +365,67 @@ final class AutomationCoordinator: ObservableObject {
             return false
         }
 
+        var session = ContinuousSession(rule: action.rule, context: context, step: action.step,
+            curve: action.curve, startedAt: Date())
+        activeContinuousSessions[sessionID] = session
         do {
             try continuousWindowController.begin(
-                sessionID: gestureEvent.sessionID,
+                sessionID: sessionID,
                 target: action.target,
                 operation: action.operation
             )
-            activeContinuousSessions.insert(gestureEvent.sessionID)
             if gestureEvent.phase == .changed {
                 try continuousWindowController.update(
-                    sessionID: gestureEvent.sessionID,
+                    sessionID: sessionID,
                     progress: continuousProgress(for: gestureEvent),
                     curve: action.curve
                 )
+                session.appliedUpdate = true
+                activeContinuousSessions[sessionID] = session
             }
         } catch {
+            session.failed = true
+            activeContinuousSessions[sessionID] = session
+            try? continuousWindowController.cancel(sessionID: sessionID)
             reportError(error)
         }
         return true
+    }
+
+    private func continuousSessionIsCurrent(_ session: ContinuousSession) -> Bool {
+        shortcutStore.rules.contains {
+            $0.id == session.rule.id && $0.updatedAt == session.rule.updatedAt
+                && $0.workflow == session.rule.workflow
+                && $0.matches(session.context)
+        }
+    }
+
+    /// Commit apenas encerra o handle no serviço. Só há sucesso após uma escrita
+    /// real sem erro, e somente se essa etapa representar toda a regra. O caminho
+    /// contínuo legado não executa etapas posteriores nem layouts; não atribuímos
+    /// sucesso a efeitos que não ocorreram.
+    private func finishContinuousSession(_ session: ContinuousSession) {
+        guard session.appliedUpdate, !session.failed, continuousSessionIsCurrent(session),
+              session.rule.workflow.enabledSteps.count == 1,
+              session.rule.workflow.sceneLayout == nil else { return }
+        let finishedAt = Date()
+        let execution = WorkflowStepExecution(stepID: session.step.id,
+            stepName: session.step.displayName, index: 0,
+            result: .succeeded("Gesto contínuo concluído.", executedAt: finishedAt),
+            duration: finishedAt.timeIntervalSince(session.startedAt))
+        let report = WorkflowExecutionReport(workflowID: session.rule.workflow.id,
+            stepExecutions: [execution], startedAt: session.startedAt,
+            finishedAt: finishedAt, wasCancelled: false)
+        lastWorkflowReport = report
+        onExecutionFinished?(session.rule, report, .trigger)
     }
 
     private func continuousAction(
         for event: InputEventDescriptor,
         context: ContextSnapshot
     ) -> (
+        rule: ShortcutRule,
+        step: WorkflowStep,
         target: ApplicationTarget,
         operation: ContinuousWindowOperation,
         curve: ContinuousResponseCurve
@@ -310,15 +433,14 @@ final class AutomationCoordinator: ObservableObject {
         let matches = matcher.matchingRules(
             in: shortcutStore.rules,
             for: event,
-            context: context,
-            profiles: shortcutStore.profiles
+            context: context
         )
         for rule in matches {
             guard let step = rule.workflow.enabledSteps.first,
                   case let .continuousWindow(target, operation, curve) = step.action else {
                 continue
             }
-            return (target, operation, curve)
+            return (rule, step, target, operation, curve)
         }
         return nil
     }
@@ -356,8 +478,7 @@ final class AutomationCoordinator: ObservableObject {
             guard !Task.isCancelled, let self else { return }
             let rules = sequenceRuntime.flushExpired(
                 rules: shortcutStore.rules,
-                at: Date(),
-                profiles: shortcutStore.profiles
+                at: Date()
             )
             if !rules.isEmpty {
                 explanation = AutomationExplanation(title: "Atalho reconhecido",
@@ -375,22 +496,31 @@ final class AutomationCoordinator: ObservableObject {
         ruleID: UUID,
         executionID: UUID
     ) async -> Bool {
+        guard !Task.isCancelled, isCurrentWorkflow(executionID, ruleID: ruleID) else { return false }
         if approvalStore.isApproved(command) {
             return true
         }
         if approvalRequest != nil {
             resolveScriptApproval(approved: false)
         }
-        return await withCheckedContinuation { continuation in
-            approvalRequest = ApprovalRequest(
-                ruleID: ruleID,
-                executionID: executionID,
-                continuation: continuation
-            )
-            pendingScriptApproval = PendingScriptApproval(
-                ruleName: ruleName,
-                command: command
-            )
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard !Task.isCancelled, isCurrentWorkflow(executionID, ruleID: ruleID) else {
+                    continuation.resume(returning: false)
+                    return
+                }
+                approvalRequest = ApprovalRequest(ruleID: ruleID, executionID: executionID,
+                                                  continuation: continuation)
+                pendingScriptApproval = PendingScriptApproval(ruleName: ruleName, command: command)
+            }
+        } onCancel: {
+            // O timeout da etapa pode cancelar antes de o diálogo aparecer.
+            // O token impede que essa limpeza recuse uma aprovação mais recente.
+            Task { @MainActor [weak self] in
+                guard let self, let request = approvalRequest,
+                      request.ruleID == ruleID, request.executionID == executionID else { return }
+                resolveScriptApproval(approved: false)
+            }
         }
     }
 

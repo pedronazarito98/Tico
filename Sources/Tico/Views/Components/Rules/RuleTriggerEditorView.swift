@@ -6,8 +6,10 @@ struct RuleTriggerEditorView: View {
     let captureMode: TrackpadCaptureMode
     let detectedTrackpads: [TrackpadHardwareInfo]
     let deviceCapabilities: [String: TrackpadDeviceCapability]
+    @State private var availableWidth: CGFloat = 600
 
     var body: some View {
+      VStack(alignment: .leading, spacing: 14) {
         Picker("Tipo de gatilho", selection: triggerKind) {
             ForEach(EditorTriggerKind.allCases) { kind in
                 Label(kind.title, systemImage: kind.systemImage).tag(kind)
@@ -15,24 +17,23 @@ struct RuleTriggerEditorView: View {
         }
 
         triggerFields
+      }
+      .frame(maxWidth: .infinity, alignment: .leading)
+      .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
     }
 
     @ViewBuilder
     private var triggerFields: some View {
         switch trigger {
         case .keyboard:
-            Stepper(
-                "Código da tecla: \(keyboardKeyCode.wrappedValue)",
-                value: keyboardKeyCode,
-                in: 0...255
-            )
+            KeyboardShortcutPicker(keyCode: keyboardKeyCode, modifiers: Binding(
+                get: { currentModifiers }, set: { trigger = .keyboard(keyCode: keyboardKeyCode.wrappedValue, modifiers: $0) }))
             modifierToggles
         case .mouseButton:
-            Stepper(
-                "Número do botão: \(mouseButton.wrappedValue)",
-                value: mouseButton,
-                in: 0...31
-            )
+            Picker("Botão do mouse", selection: mouseButton) {
+                ForEach(2...31, id: \.self) { Text(InputPresentation.mouseLabel($0)).tag($0) }
+                if mouseButton.wrappedValue < 2 { Text(InputPresentation.mouseLabel(mouseButton.wrappedValue) + " (não capturado)").tag(mouseButton.wrappedValue) }
+            }
             modifierToggles
         case .trackpad:
             TrackpadTriggerEditorView(
@@ -43,7 +44,9 @@ struct RuleTriggerEditorView: View {
                 deviceCapabilities: deviceCapabilities
             )
         case let .customTrackpad(template):
-            HStack(alignment: .top, spacing: 16) {
+            // AnyLayout conserva TextField e Binding ao reorganizar o inspetor.
+            (availableWidth < 560 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+                                  : AnyLayout(HStackLayout(alignment: .top, spacing: 16))) {
                 GesturePathPreview(path: template.representativePath)
                     .frame(width: 180, height: 130)
                 VStack(alignment: .leading, spacing: 10) {
@@ -57,7 +60,7 @@ struct RuleTriggerEditorView: View {
                     LabeledContent("Tolerância") {
                         HStack {
                             Slider(value: customGestureTolerance, in: 0.05...0.5, step: 0.01)
-                                .frame(width: 150)
+                                .frame(maxWidth: 180)
                             Text(
                                 customGestureTolerance.wrappedValue,
                                 format: .number.precision(.fractionLength(2))

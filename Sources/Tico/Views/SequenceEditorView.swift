@@ -65,10 +65,10 @@ struct SequenceEditorView: View {
             }
 
             Divider()
-            LabeledContent("Intervalo máximo") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Intervalo máximo").font(.callout)
                 HStack {
                     Slider(value: maximumInterval, in: 0.15...3, step: 0.05)
-                        .frame(width: 160)
                     Text(sequence.maximumInterval, format: .number.precision(.fractionLength(2)))
                         .monospacedDigit()
                         .frame(width: 44)
@@ -88,18 +88,11 @@ struct SequenceEditorView: View {
     private func stepFields(at index: Int) -> some View {
         switch sequence.steps[index] {
         case let .keyboard(keyCode, modifiers):
-            Stepper(
-                "Código da tecla: \(keyCode)",
-                value: Binding(
-                    get: { keyCode },
-                    set: { sequence.steps[index] = .keyboard(keyCode: $0, modifiers: modifiers) }
-                ),
-                in: 0...255
-            )
-            modifierButtons(
-                modifiers: modifiers,
-                onChange: { sequence.steps[index] = .keyboard(keyCode: keyCode, modifiers: $0) }
-            )
+            KeyboardShortcutPicker(keyCode: Binding(get: { keyCode }, set: {
+                sequence.steps[index] = .keyboard(keyCode: $0, modifiers: modifiers)
+            }), modifiers: Binding(get: { modifiers }, set: {
+                sequence.steps[index] = .keyboard(keyCode: keyCode, modifiers: $0)
+            }))
         case let .mouseButton(button, modifiers):
             Stepper(
                 "Botão: \(button)",

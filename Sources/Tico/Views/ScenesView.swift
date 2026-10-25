@@ -12,67 +12,72 @@ struct ScenesView: View {
     let onRun: (ActionWorkflow) -> Void
     let onCancel: (UUID) -> Void
     let onCreateRule: (ActionWorkflow) -> Void
+    var sceneLayouts: SceneLayoutSession? = nil
+    var routineSection: DisplayRoutineSectionView? = nil
+    var searchText = ""
+    var newSceneRequest: UUID? = nil
+    var onConfigureRoutine: ((ActionWorkflow) -> Void)? = nil
+    var hasPendingRecovery = false
     @State private var editing: ActionWorkflow?
     @State private var pendingDeletion: ActionWorkflow?
     @State private var pendingRun: ActionWorkflow?
     @State private var error: String?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Prepare seu espaço").font(.largeTitle.bold())
-                        Text("Reúna apps, links e janelas numa sequência que você controla.").foregroundStyle(.secondary)
+        GeometryReader { geometry in
+            let inset: CGFloat = geometry.size.width < 600 ? 16 : 32
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Prepare seu espaço").font(.largeTitle.bold()).fixedSize(horizontal: false, vertical: true)
+                            Text("Reúna apps, links e janelas numa sequência que você controla.")
+                                .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
                     }
-                    Spacer()
-                    Button("Nova cena", systemImage: "plus") {
-                        editing = ActionWorkflow(name: "Minha cena", steps: [
-                            WorkflowStep(action: .openApplication(bundleIdentifier: "com.apple.Safari"))
-                        ])
-                    }.accessibilityIdentifier("tico.scenes.new")
-                }
-                if workflows.isEmpty {
-                    ContentUnavailableView("Como você começa a trabalhar?", systemImage: "rectangle.3.group",
-                        description: Text("Crie uma cena com os aplicativos e a disposição de janelas que você usa."))
-                }
-                ForEach(workflows) { workflow in
-                    GroupBox {
-                        VStack(alignment: .leading, spacing: 14) {
-                            HStack {
-                                Text(workflow.name.isEmpty ? "Cena sem nome" : workflow.name).font(.title3.bold())
-                                Spacer()
-                                Button("Editar") { editing = workflow }
-                                Button("Excluir", role: .destructive) { pendingDeletion = workflow }
+                    if let sceneLayouts { SceneLayoutRecoveryView(session: sceneLayouts, workflows: workflows) }
+                    if workflows.isEmpty {
+                        ContentUnavailableView {
+                            Label("Seu espaço, do seu jeito", systemImage: "rectangle.3.group")
+                        } description: {
+                            Text("Guarde as janelas desta tela ou monte uma cena com seus aplicativos.")
+                        } actions: {
+                            Button("Criar minha primeira cena", action: createScene).buttonStyle(.borderedProminent)
+                                .accessibilityIdentifier("tico.scenes.new")
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 280, maxHeight: .infinity)
+                    } else {
+                        LazyVGrid(columns: sceneColumns(availableWidth: geometry.size.width - inset * 2),
+                                  alignment: .leading, spacing: 16) {
+                            ForEach(filteredWorkflows) { workflow in
+                                SceneCardView(workflow: workflow, applications: applications,
+                                    isRunning: runningIDs.contains(workflow.id),
+                                    hasPendingRecovery: workflow.sceneLayout != nil && hasPendingRecovery,
+                                    report: lastReport?.workflowID == workflow.id ? lastReport : nil,
+                                    onEdit: { editing = workflow }, onDelete: { pendingDeletion = workflow },
+                                    onRun: { pendingRun = workflow }, onCancel: { onCancel(workflow.id) },
+                                    onCreateRule: { onCreateRule(workflow) },
+                                    onConfigureRoutine: onConfigureRoutine.map { configure in { configure(workflow) } })
                             }
-                            ForEach(Array(workflow.enabledSteps.enumerated()), id: \.element.id) { index, step in
-                                Label("\(index + 1). \(step.displayName)", systemImage: "checklist")
-                                    .font(.callout)
-                            }
-                            HStack {
-                                Button("Usar em um atalho") { onCreateRule(workflow) }
-                                Spacer()
-                                if runningIDs.contains(workflow.id) {
-                                    ProgressView().controlSize(.small)
-                                    Button("Cancelar execução") { onCancel(workflow.id) }
-                                } else {
-                                    Button("Preparar cena", systemImage: "play.fill") { pendingRun = workflow }
-                                        .buttonStyle(.borderedProminent)
-                                        .disabled(!workflow.isValid)
-                                }
-                            }
-                            if let lastReport, lastReport.workflowID == workflow.id {
-                                WorkflowReportView(report: lastReport)
-                            }
-                        }.padding(10)
+                        }
+                        if filteredWorkflows.isEmpty {
+                            ContentUnavailableView.search(text: searchText)
+                                .frame(maxWidth: .infinity, minHeight: 280, maxHeight: .infinity)
+                        }
+                        if let routineSection { routineSection }
                     }
+                    if let error { Text(error).foregroundStyle(.red) }
                 }
-                if let error { Text(error).foregroundStyle(.red) }
-            }.padding(28)
+                .frame(maxWidth: 1_080, minHeight: max(0, geometry.size.height - inset * 2), alignment: .topLeading)
+                .frame(maxWidth: .infinity)
+                .padding(inset)
+            }
         }.navigationTitle("Cenas")
+            .onChange(of: newSceneRequest) { if newSceneRequest != nil { createScene() } }
             .sheet(item: $editing) { workflow in
                 SceneEditorView(workflow: workflow, applications: applications,
-                    macOSShortcuts: macOSShortcuts, onSave: onSave)
+                    macOSShortcuts: macOSShortcuts, onSave: onSave, sceneLayouts: sceneLayouts)
             }
             .confirmationDialog("Excluir esta cena?", isPresented: deletionPresented, titleVisibility: .visible) {
                 Button("Excluir da biblioteca", role: .destructive) {
@@ -82,12 +87,35 @@ struct ScenesView: View {
                 }
             } message: { Text("Atalhos que já usam uma cópia desta cena serão preservados.") }
             .confirmationDialog("Preparar \(pendingRun?.name ?? "cena")?", isPresented: runPresented, titleVisibility: .visible) {
-                Button("Executar as etapas") {
+                Button(pendingRun?.sceneLayout == nil ? "Executar as etapas" : "Iniciar e revisar layout") {
                     guard let pendingRun else { return }
                     onRun(pendingRun)
                     self.pendingRun = nil
                 }
-            } message: { Text("Os aplicativos, links e janelas listados serão alterados. Scripts ainda exigem a aprovação habitual.") }
+            } message: {
+                Text(pendingRun?.sceneLayout == nil
+                     ? "Os aplicativos, links e janelas listados serão alterados. Scripts ainda exigem a aprovação habitual."
+                     : "As ações configuradas serão executadas primeiro. Depois você revisará as janelas disponíveis e confirmará apenas o layout. Cancelar nessa revisão preserva as ações já executadas.")
+            }
+    }
+
+    /// A largura disponível pertence à área de conteúdo, já sem a sidebar.
+    /// O estado vazio ocupa essa área; coleções ganham duas colunas apenas quando
+    /// cada cartão continua legível. A rolagem mantém tudo acessível em pouca altura.
+    /// Paralelo com React: um container fluido com max-width e uma grade adaptável.
+    private func sceneColumns(availableWidth: CGFloat) -> [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: 16, alignment: .top),
+              count: availableWidth >= 820 ? 2 : 1)
+    }
+
+    private var filteredWorkflows: [ActionWorkflow] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return workflows.filter { query.isEmpty || $0.name.localizedStandardContains(query)
+            || $0.enabledSteps.contains { RuleEditorSummary.action($0.action, applications: applications).localizedStandardContains(query) } }
+    }
+
+    private func createScene() {
+        editing = ActionWorkflow(name: "", steps: [])
     }
 
     private var deletionPresented: Binding<Bool> {

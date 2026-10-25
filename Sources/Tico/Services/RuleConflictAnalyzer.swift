@@ -3,14 +3,13 @@ import Foundation
 struct RuleConflictAnalyzer {
     func conflicts(
         for candidate: ShortcutRule,
-        among rules: [ShortcutRule],
-        profiles: [ShortcutProfile] = []
+        among rules: [ShortcutRule]
     ) -> [RuleConflict] {
         rules.compactMap { existing in
             guard existing.id != candidate.id,
                   existing.isEnabled,
                   candidate.isEnabled,
-                  contextsOverlap(existing, candidate, profiles: profiles) else {
+                  contextsOverlap(existing, candidate) else {
                 return nil
             }
 
@@ -85,33 +84,11 @@ struct RuleConflictAnalyzer {
         _ rhs: ShortcutRule
     ) -> Bool {
         lhs.scope == rhs.scope
-            && lhs.profileID == rhs.profileID
             && lhs.conditions == rhs.conditions
     }
 
-    private func contextsOverlap(
-        _ lhs: ShortcutRule,
-        _ rhs: ShortcutRule,
-        profiles: [ShortcutProfile]
-    ) -> Bool {
-        guard lhs.scope.overlaps(rhs.scope),
-              conditionsOverlap(lhs.conditions, rhs.conditions) else {
-            return false
-        }
-        guard let lhsID = lhs.profileID, let rhsID = rhs.profileID else {
-            return true
-        }
-        guard let lhsProfile = profiles.first(where: { $0.id == lhsID }),
-              let rhsProfile = profiles.first(where: { $0.id == rhsID }) else {
-            return lhsID == rhsID
-        }
-        let appScopesOverlap = lhsProfile.applicationBundleIdentifiers.isEmpty
-            || rhsProfile.applicationBundleIdentifiers.isEmpty
-            || !lhsProfile.applicationBundleIdentifiers.isDisjoint(
-                with: rhsProfile.applicationBundleIdentifiers
-            )
-        return appScopesOverlap
-            && conditionsOverlap(lhsProfile.conditions, rhsProfile.conditions)
+    private func contextsOverlap(_ lhs: ShortcutRule, _ rhs: ShortcutRule) -> Bool {
+        lhs.scope.overlaps(rhs.scope) && conditionsOverlap(lhs.conditions, rhs.conditions)
     }
 
     private func conditionsOverlap(

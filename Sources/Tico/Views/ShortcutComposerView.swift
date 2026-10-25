@@ -1,14 +1,15 @@
 import SwiftUI
 
-/// Criação visual e edição compartilham uma única sessão de rascunho. A captura
-/// pertence ao controller; esta composição possui apenas o token da sua prática.
-/// Paralelo com React: o formulário controla filhos por Binding e efeitos por callbacks.
+/// Fluxo guiado com um único rascunho persistível e um candidato de captura.
+/// O controller possui os monitores; esta view conserva apenas seu token de prática.
+/// Paralelo com React: filhos controlados recebem Binding e callbacks, sem IO no body.
 struct ShortcutComposerView: View {
     @ObservedObject var session: RuleEditingSession
     @ObservedObject var practiceSession: GesturePracticeSession
+    @ObservedObject var localInput: LocalInputCaptureService
     let applications: [ApplicationChoice]
     let macOSShortcuts: [String]
-    let profiles: [ShortcutProfile]
+
     let reusableWorkflows: [ActionWorkflow]
     let presets: [GesturePreset]
     let displays: [DisplayCatalogService.Choice]
@@ -19,6 +20,9 @@ struct ShortcutComposerView: View {
     let snapshot: TrackpadLaboratorySnapshot?
     let detectedTrackpads: [TrackpadHardwareInfo]
     let deviceCapabilities: [String: TrackpadDeviceCapability]
+    let canCaptureGlobalInput: Bool
+    let onOpenPermissions: () -> Void
+    let onStartLocalRecording: () -> Bool
     let onStartRecording: () -> Bool
     let onStopRecording: () -> Void
     let onStartPreview: (ShortcutRule) -> UUID?
@@ -29,100 +33,98 @@ struct ShortcutComposerView: View {
     let onSave: (ShortcutRule, Bool) throws -> Void
     let onCancel: () -> Void
 
-    @State private var panel = Panel.preview
+    @StateObject private var capture = TriggerCaptureSession(trigger: nil)
+    @State private var step = Step.action
     @State private var presentedSheet: Sheet?
-    @State private var showsScope = false
-    @State private var showsTriggerPicker = false
     @State private var previewID: UUID?
-    @State private var recognizedCount = 0
     @State private var ownsRecording = false
     @State private var captureError: String?
     @State private var asksToReplace = false
+    @State private var asksToDiscard = false
+    @State private var initialized = false
+    @State private var actionSearch = ""
+    @State private var actionSelectionRevision = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private enum Panel { case preview, options, workflow }
-    private enum Sheet: String, Identifiable {
-        case gesture, standard, custom, actions
-        var id: Self { self }
+    private enum Step: Int, CaseIterable { case action, trigger, review
+        var title: String { switch self { case .action: "Resultado"; case .trigger: "Como ativar"; case .review: "Conferir" } }
     }
+    private enum Sheet: String, Identifiable { case actions, options, trigger; var id: Self { self } }
+    private var actionIssue: String? { WorkflowEditorValidation.issue(in: session.draft.workflow) }
     private var canSave: Bool { session.composerValidationMessage == nil }
     private var conflicts: [RuleConflict] { canSave ? conflictsForRule(session.draft) : [] }
 
     var body: some View {
+      GeometryReader { geometry in
+        let contentWidth = max(0, geometry.size.width - 40)
         VStack(spacing: 0) {
-            HStack {
-                TicoMarkView().frame(width: 24, height: 24).accessibilityHidden(true)
-                Text("Tico").font(.headline)
-                Spacer()
-                Text(session.isNew ? "Novo atalho" : "Editar atalho").font(.headline)
-                Spacer()
-                Menu {
-                    if !session.isNew { Button("Reverter alterações") { stopPreview(); session.revert() } }
-                    Button("Salvar como modelo") {
-                        do { try onSavePreset(session.makePreset()) } catch { session.recordSaveError(error) }
-                    }.disabled(!canSave)
-                    ForEach(presets) { preset in
-                        Button("Usar modelo: \(preset.name)") {
-                            stopPreview()
-                            session.applyPreset(preset)
-                            session.chooseTrigger(preset.trigger)
-                            session.chooseAction(session.draft.action, title: preset.name)
-                        }
-                    }
-                } label: { Image(systemName: "ellipsis.circle") }
-                .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Mais opções do atalho")
-            }.padding(.horizontal, 20).padding(.vertical, 12)
+            header
             Divider()
-            HStack(spacing: 0) {
+            stepper.padding(.vertical, 12)
+            ScrollViewReader { scroll in
+              ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    ShortcutActionCatalogView(applications: applications,
-                        selectedAction: session.hasChosenAction ? session.draft.action : nil,
-                        onSelect: chooseAction, onMoreActions: { presentedSheet = .actions })
-                    Divider()
-                    gestureSection
-                    if panel == .options {
-                        Divider()
-                        Button("Cancelar") { stopRecording(); stopPreview(); onCancel() }
-                            .keyboardShortcut(.cancelAction).padding(.top, 6)
+                    if step == .trigger { actionSummary }
+                    switch step {
+                    case .action:
+                        ComposerActionStep(session: session, applications: applications,
+                            macOSShortcuts: macOSShortcuts, reusableWorkflows: reusableWorkflows,
+                            search: $actionSearch, onChoose: chooseAction,
+                            onMoreActions: { presentedSheet = .actions },
+                            onSaveReusableWorkflow: onSaveReusableWorkflow, availableWidth: contentWidth)
+                    case .trigger:
+                        TriggerCaptureEditor(capture: capture, localInput: localInput, snapshot: snapshot,
+                            captureMode: captureMode, isRecording: ownsRecording && recordingIsActive,
+                            canCaptureGlobalInput: canCaptureGlobalInput, onRecord: beginRecording,
+                            onStop: stopRecording, onOpenPermissions: onOpenPermissions,
+                            onAdvanced: { presentedSheet = .trigger }, availableWidth: contentWidth)
+                    case .review:
+                        ComposerReviewStep(session: session, practice: practiceSession, applications: applications,
+                            conflicts: conflicts, isPracticing: previewID != nil,
+                            canCaptureGlobalInput: canCaptureGlobalInput, onOpenPermissions: onOpenPermissions,
+                            onEditTrigger: { navigate(.trigger) }, onEditAction: { navigate(.action) },
+                            onOptions: { presentedSheet = .options }, availableWidth: contentWidth)
                     }
-                }.padding(18).frame(width: 305)
-                Divider()
-                Group {
-                    switch panel {
-                    case .preview: preview
-                    case .options:
-                        ShortcutOptionsView(session: session, applications: applications, profiles: profiles,
-                            displays: displays, onClose: { panel = .preview })
-                    case .workflow:
-                        VStack(alignment: .leading, spacing: 16) {
-                            HStack {
-                                Text("Configurar ações").font(.title3.bold())
-                                Spacer()
-                                Button("Concluir") { panel = .preview }.buttonStyle(.borderedProminent)
-                            }
-                            ScrollView {
-                                WorkflowEditorView(workflow: $session.draft.workflow, applications: applications,
-                                    macOSShortcuts: macOSShortcuts, reusableWorkflows: reusableWorkflows,
-                                    onSaveReusable: onSaveReusableWorkflow)
-                            }
-                        }.padding(20)
-                    }
-                }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }.padding(.horizontal, 20).padding(.vertical, 14).frame(maxWidth: .infinity)
+                    .id("composer-content-top")
+              }
+              .onChange(of: step) { scroll.scrollTo("composer-content-top", anchor: .top) }
+              .onChange(of: capture.mode) { scroll.scrollTo("composer-content-top", anchor: .top) }
+              .onChange(of: capture.device) { scroll.scrollTo("composer-content-top", anchor: .top) }
+              .onChange(of: actionSelectionRevision) {
+                  if contentWidth < 720 { scroll.scrollTo("composer-action-parameters", anchor: .top) }
+              }
+              .onChange(of: contentWidth < 720) { _, compact in
+                  // Ao empilhar, mantém a configuração em edição visível. O
+                  // campo conserva foco e valor; só a posição da rolagem muda.
+                  if compact, step == .action, session.hasChosenAction {
+                      scroll.scrollTo("composer-action-parameters", anchor: .top)
+                  }
+              }
             }
-            if panel != .options {
-                Divider()
-                footer
-            }
+            Divider()
+            footer(availableWidth: geometry.size.width)
         }
-        .frame(width: 960, height: 680)
-        .background(TicoBrand.Palette.background)
-        .tint(TicoBrand.Palette.primary)
-        .sheet(item: $presentedSheet, onDismiss: stopRecording) { sheet in sheetContent(sheet) }
-        .onChange(of: practiceSession.completedCount) {
-            guard previewID != nil, previewID == practiceSession.sessionID else { return }
-            recognizedCount = practiceSession.completedCount
+      }
+        .adaptiveSheetFrame(idealWidth: 980, idealHeight: 740)
+        .background(TicoBrand.Palette.background).tint(TicoBrand.Palette.primary)
+        .sheet(item: $presentedSheet) { sheetContent($0) }
+        .onAppear {
+            guard !initialized else { return }; initialized = true
+            if session.hasChosenTrigger { capture.load(session.draft.trigger) }
+            if !session.isNew { step = .review }
         }
-        .onChange(of: session.draft.trigger) { stopPreview(); recognizedCount = 0 }
-        .onChange(of: session.draft.workflow) { stopPreview(); recognizedCount = 0 }
+        .onChange(of: latestEvent) {
+            guard ownsRecording, recordingIsActive, let latestEvent else { return }
+            capture.receive(latestEvent)
+        }
+        .onChange(of: localInput.issue) {
+            if ownsRecording, let issue = localInput.issue { capture.issue = issue }
+        }
+        .onChange(of: recordingIsActive) {
+            if !recordingIsActive { ownsRecording = false; previewID = nil }
+        }
+        .onChange(of: session.draft.workflow) { stopPreview() }
         .onDisappear { stopRecording(); stopPreview() }
         .alert("Não foi possível concluir", isPresented: Binding(
             get: { session.saveError != nil || captureError != nil },
@@ -131,181 +133,153 @@ struct ShortcutComposerView: View {
             Button("OK", role: .cancel) { session.clearSaveError(); captureError = nil }
         } message: { Text(session.saveError ?? captureError ?? "") }
         .confirmationDialog("Este gatilho já está em uso", isPresented: $asksToReplace, titleVisibility: .visible) {
+            Button("Alterar acionamento") { navigate(.trigger) }
+            Button("Revisar aplicativos") { presentedSheet = .options }
             Button("Substituir atalho existente", role: .destructive) { persist(replacing: true) }
-            Button("Cancelar", role: .cancel) { }
+            Button("Voltar", role: .cancel) { }
         } message: { Text(conflicts.map(\.message).joined(separator: "\n")) }
-    }
-
-    private var gestureSection: some View {
-        VStack(spacing: 4) {
-            Text("Seu gesto").font(.headline).frame(maxWidth: .infinity, alignment: .leading)
-            ShortcutGesturePreview(trigger: session.hasChosenTrigger ? session.draft.trigger : nil, height: 92)
-                .padding(.horizontal, 24)
-            if session.hasChosenTrigger {
-                Text(RuleEditorSummary.trigger(session.draft.trigger)).font(.callout).lineLimit(2)
-                    .multilineTextAlignment(.center)
-                Label(recognizedCount > 0 ? "Reconhecido agora" : "Acionamento definido", systemImage: "checkmark.circle.fill")
-                    .font(.caption).foregroundStyle(.green)
-            }
-            Button(session.hasChosenTrigger ? "Gravar novamente" : "Gravar gesto", systemImage: "record.circle") {
-                beginRecording(.gesture)
-            }.accessibilityIdentifier("tico.composer.record")
-            Menu("Outros acionamentos") {
-                Button("Escolher acionamento…") { stopPreview(); showsTriggerPicker = true }
-                Button("Gravar teclado ou mouse…") { beginRecording(.standard) }
-                Button("Desenhar meu gesto…") { beginRecording(.custom) }
-            }.menuStyle(.borderlessButton).fixedSize().font(.caption)
-                .popover(isPresented: $showsTriggerPicker) {
-                    ShortcutTriggerPicker(trigger: session.draft.trigger, captureMode: captureMode,
-                        detectedTrackpads: detectedTrackpads, deviceCapabilities: deviceCapabilities,
-                        onChoose: session.chooseTrigger)
-                }
+        .confirmationDialog("Descartar as alterações deste atalho?", isPresented: $asksToDiscard, titleVisibility: .visible) {
+            Button("Descartar alterações", role: .destructive) { session.revert(); onCancel() }
+            Button("Continuar editando", role: .cancel) { }
         }
     }
 
-    private var preview: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text(previewID == nil ? "Veja o resultado" : "Experimente seu atalho").font(.headline)
-                Spacer()
-                if previewID != nil { Label("Teste na prévia", systemImage: "play.fill").font(.caption).foregroundStyle(.secondary) }
-            }
-            if session.hasChosenAction {
-                ShortcutResultPreview(workflow: session.draft.workflow, applications: applications, recognitionCount: recognizedCount)
-                if recognizedCount > 0 {
-                    Label("Funcionou! O gesto foi reconhecido na prévia.", systemImage: "checkmark.circle.fill")
-                        .font(.callout).foregroundStyle(.green).padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.green.opacity(0.09), in: .rect(cornerRadius: 8))
-                }
-                HStack {
-                    Text(RuleEditorSummary.action(session.draft.action, applications: applications)).font(.callout)
-                    Spacer()
-                    Button("Configurar ações") { stopPreview(); panel = .workflow }.buttonStyle(.borderless)
-                }
-            } else {
-                ContentUnavailableView("O que vamos automatizar?", systemImage: "cursorarrow.rays",
-                    description: Text("Escolha um aplicativo ou uma ação ao lado para ver o resultado."))
-                    .frame(maxWidth: .infinity, minHeight: 230)
-            }
-            HStack(spacing: 16) {
-                if session.hasChosenTrigger {
-                    Image(systemName: RuleEditorSummary.symbol(session.draft.trigger))
-                        .font(.title2).foregroundStyle(TicoBrand.Palette.primary)
-                    Text(RuleEditorSummary.trigger(session.draft.trigger)).font(.callout).lineLimit(2)
-                    Image(systemName: "arrow.right").foregroundStyle(.secondary)
-                    ShortcutActionIcon(action: session.draft.action, applications: applications, size: 30)
-                } else {
-                    Image(systemName: "hand.draw").font(.title2).foregroundStyle(.secondary)
-                    Text("Grave um gesto para completar o atalho.").font(.callout)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(16).frame(maxWidth: .infinity, minHeight: 80)
-            .background(TicoBrand.Palette.surface.opacity(0.5), in: .rect(cornerRadius: 9))
-            .overlay { RoundedRectangle(cornerRadius: 9).strokeBorder(.quaternary) }
-            if previewID != nil {
-                Text("Repita o gesto. As ações serão mostradas somente na prévia.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            if let issue = session.hasChosenAction && session.hasChosenTrigger ? session.validationMessage : nil {
-                Label(issue, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.orange)
-            }
-            if let conflict = conflicts.first {
-                Label(conflict.message, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
-            }
-            Spacer(minLength: 0)
-            HStack {
-                Button { showsScope = true } label: {
-                    Label(session.draft.scope.displayName(applications: applications), systemImage: "globe")
-                        .lineLimit(2)
-                }.buttonStyle(.borderless).accessibilityIdentifier("tico.composer.scope")
-                    .popover(isPresented: $showsScope) {
-                        ShortcutScopePicker(scope: $session.draft.scope, applications: applications)
-                    }
-                Spacer()
-                Button("Mais ajustes", systemImage: "slider.horizontal.3") { stopPreview(); panel = .options }
-                    .buttonStyle(.borderless).accessibilityIdentifier("tico.composer.options")
-            }
-        }.padding(20)
-    }
-
-    private var footer: some View {
+    private var header: some View {
         HStack {
-            Button("Cancelar") { stopRecording(); stopPreview(); onCancel() }.keyboardShortcut(.cancelAction)
+            HStack(spacing: 9) { TicoMarkView().frame(width: 25, height: 25); Text("Tico").font(.title3.bold()) }
             Spacer()
-            Button(previewID == nil ? "Experimentar gesto" : "Encerrar teste",
-                   systemImage: previewID == nil ? "play.fill" : "stop.fill", action: togglePreview)
-                .buttonStyle(.glass).disabled(!canSave)
-                .accessibilityIdentifier("tico.composer.preview")
+            Text(session.isNew ? "Novo atalho" : "Editar atalho").font(.headline)
             Spacer()
-            Button(session.isNew ? "Criar atalho" : "Salvar alterações", action: save)
-                .buttonStyle(.glassProminent).disabled(!canSave)
-                .keyboardShortcut("s", modifiers: .command)
-                .accessibilityIdentifier("tico.composer.save")
-        }.controlSize(.large).padding(.horizontal, 20).padding(.vertical, 13)
+            Menu {
+                if !session.isNew { Button("Reverter alterações") { stopRecording(); stopPreview(); session.revert(); capture.load(session.draft.trigger) } }
+                Button("Salvar como modelo") {
+                    do { try onSavePreset(session.makePreset()) } catch { session.recordSaveError(error) }
+                }.disabled(!canSave)
+                ForEach(presets) { preset in
+                    Button("Usar modelo: \(preset.name)") {
+                        stopRecording(); stopPreview(); session.applyPreset(preset)
+                        capture.load(preset.trigger)
+                        step = .review
+                    }
+                }
+            } label: { Image(systemName: "ellipsis.circle") }
+                .menuStyle(.borderlessButton).fixedSize()
+                .accessibilityLabel("Mais opções do atalho").help("Modelos e opções do atalho")
+        }.padding(.horizontal, 20).padding(.vertical, 11)
     }
-
+    private var stepper: some View {
+        HStack(spacing: 12) {
+            ForEach(Step.allCases, id: \.rawValue) { item in
+                if item != .action { Rectangle().fill(item.rawValue <= step.rawValue ? TicoBrand.Palette.primary : .secondary.opacity(0.2)).frame(minWidth: 12, maxWidth: 80).frame(height: 1) }
+                Button { navigate(item) } label: {
+                    VStack(spacing: 5) {
+                        Image(systemName: item.rawValue < step.rawValue ? "checkmark.circle.fill" : item == step ? "circle.inset.filled" : "circle")
+                            .font(.system(size: 17))
+                        Text(item.title).font(.caption.weight(item == step ? .semibold : .regular))
+                    }.foregroundStyle(item.rawValue <= step.rawValue ? TicoBrand.Palette.primary : Color.secondary)
+                }.buttonStyle(.plain)
+                    .disabled(item == .trigger && (!session.hasChosenAction || actionIssue != nil) || item == .review && !canSave)
+                    .accessibilityLabel("Etapa \(item.rawValue + 1): \(item.title)")
+                    .accessibilityAddTraits(item == step ? [.isSelected] : [])
+            }
+        }.padding(.horizontal, 20)
+    }
+    private var actionSummary: some View {
+        HStack(spacing: 12) {
+            if session.draft.workflow.steps.isEmpty, let layout = session.draft.workflow.sceneLayout {
+                Label("Organizar \(layout.windows.count) janelas", systemImage: "rectangle.3.group")
+                    .font(.callout.weight(.medium))
+            } else {
+                ShortcutActionIcon(action: session.draft.action, applications: applications, size: 28)
+                Text(RuleEditorSummary.action(session.draft.action, applications: applications))
+                    .font(.callout.weight(.medium)).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            Button("Alterar ação") { navigate(.action) }.buttonStyle(.borderless).fixedSize()
+        }.padding(12).background(TicoBrand.Palette.surface.opacity(0.6), in: .rect(cornerRadius: 12))
+            .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(.primary.opacity(0.1)) }
+    }
+    /// AnyLayout reorganiza os mesmos controles, sem substituir sua identidade.
+    /// Paralelo com React: muda a direção do flex, mantendo os mesmos filhos.
+    private func footer(availableWidth: CGFloat) -> some View {
+        let compact = availableWidth < 760
+        return (compact ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                        : AnyLayout(HStackLayout(spacing: 12))) {
+          HStack(spacing: 12) {
+            Button("Cancelar", action: cancel).keyboardShortcut(.cancelAction)
+            if step != .action { Button("Voltar") { navigate(step == .review ? .trigger : .action) } }
+          }.frame(maxWidth: .infinity, alignment: .leading)
+          HStack(spacing: 12) {
+            if step == .review {
+                Button(previewID == nil ? "Testar acionamento" : "Encerrar teste", systemImage: previewID == nil ? "play.fill" : "stop.fill", action: togglePreview)
+                    .disabled(!canSave).accessibilityIdentifier("tico.composer.preview")
+                Button(session.isNew ? "Criar atalho" : "Salvar alterações", action: save)
+                    .buttonStyle(.borderedProminent).disabled(!canSave).accessibilityIdentifier("tico.composer.save")
+            } else {
+                Button(step == .action ? "Escolher acionamento" : "Usar acionamento") {
+                    if step == .action { navigate(.trigger) }
+                    else if let trigger = capture.result { stopRecording(); session.chooseTrigger(trigger); navigate(.review) }
+                }.buttonStyle(.borderedProminent)
+                    .disabled(step == .action ? (!session.hasChosenAction || actionIssue != nil) : capture.result == nil || capture.issue != nil || (ownsRecording && localInput.issue != nil))
+                    .accessibilityIdentifier("tico.composer.continue")
+            }
+          }.frame(maxWidth: .infinity, alignment: .trailing)
+        }.controlSize(.large).padding(.horizontal, 20).padding(.vertical, compact ? 10 : 14)
+    }
     @ViewBuilder private func sheetContent(_ sheet: Sheet) -> some View {
         switch sheet {
         case .actions:
-            RuleActionPickerView(applications: applications) { action in
-                chooseAction(action, RuleEditorSummary.action(action, applications: applications))
-                if case .openApplication = action { return }
-                if case .window = action { return }
-                panel = .workflow
+            RuleActionPickerView(applications: applications, initialSearch: actionSearch) {
+                chooseAction($0, RuleEditorSummary.action($0, applications: applications))
             }
-        case .gesture:
-            ShortcutGestureRecorder(latestEvent: latestEvent, snapshot: snapshot, isRecording: recordingIsActive,
-                startupError: startupError, onCancel: { presentedSheet = nil }, onUseTrigger: useRecording)
-        case .standard, .custom:
-            TriggerRecorderView(mode: sheet == .standard ? .standard : .customTrackpad,
-                suggestedName: session.draft.name, isRecording: recordingIsActive,
-                latestEvent: latestEvent, captureMode: captureMode, startupError: startupError,
-                snapshot: snapshot, onCancel: { presentedSheet = nil }, onUseTrigger: useRecording)
+        case .options:
+            ShortcutOptionsView(session: session, applications: applications, displays: displays,
+                onClose: { presentedSheet = nil })
+        case .trigger:
+            ShortcutTriggerPicker(trigger: capture.result ?? capture.input ?? session.draft.trigger, captureMode: captureMode,
+                detectedTrackpads: detectedTrackpads, deviceCapabilities: deviceCapabilities, onChoose: capture.load)
         }
     }
-
     private func chooseAction(_ action: ShortcutAction, _ title: String) {
         stopPreview()
         session.chooseAction(action, title: title)
-        recognizedCount = 0
+        actionSelectionRevision += 1
     }
-    private func beginRecording(_ sheet: Sheet) {
-        stopPreview()
-        guard onStartRecording() else { captureError = "Não foi possível iniciar a captura. Verifique as permissões ou encerre outra gravação."; return }
-        ownsRecording = true
-        presentedSheet = sheet
+    private func navigate(_ next: Step) {
+        stopRecording(); stopPreview()
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) { step = next }
     }
-    private func useRecording(_ trigger: TriggerDefinition) {
-        session.chooseTrigger(trigger)
-        presentedSheet = nil
-        stopRecording()
+    private func beginRecording() {
+        stopPreview(); capture.beginCapture()
+        let started = capture.requiresTrackpad ? onStartRecording() : onStartLocalRecording()
+        if started { ownsRecording = true }
+        else { captureError = startupError ?? "Não foi possível gravar. Verifique as permissões ou encerre outra sessão de captura." }
     }
     private func stopRecording() {
         guard ownsRecording else { return }
-        onStopRecording()
-        ownsRecording = false
+        if let issue = localInput.issue { capture.issue = issue }
+        onStopRecording(); ownsRecording = false
     }
     private func togglePreview() {
         if previewID != nil { stopPreview(); return }
         guard canSave else { return }
-        recognizedCount = 0
-        previewID = onStartPreview(session.draft)
+        stopRecording(); previewID = onStartPreview(session.draft)
         if previewID == nil { captureError = "A captura não está disponível. Verifique as permissões e tente novamente." }
     }
-    private func stopPreview() {
-        guard let previewID else { return }
-        onStopPreview(previewID)
-        self.previewID = nil
+    private func stopPreview() { if let id = previewID { onStopPreview(id); previewID = nil } }
+    private func cancel() {
+        if ownsRecording { stopRecording(); return }
+        if previewID != nil { stopPreview(); return }
+        let candidateChanged = capture.result.map { !session.hasChosenTrigger || $0 != session.draft.trigger }
+            ?? (capture.mode == .custom && !capture.samples.isEmpty)
+        if session.hasUnsavedChanges || candidateChanged { asksToDiscard = true } else { onCancel() }
     }
     private func save() {
-        guard canSave else { return }
-        stopPreview()
+        guard canSave else { return }; stopPreview()
         if conflicts.contains(where: { $0.severity == .replacementRequired }) { asksToReplace = true }
         else { persist(replacing: false) }
     }
     private func persist(replacing: Bool) {
-        do { try onSave(session.draftForPersistence, replacing) }
-        catch { session.recordSaveError(error) }
+        do { try onSave(session.draftForPersistence, replacing) } catch { session.recordSaveError(error) }
     }
 }

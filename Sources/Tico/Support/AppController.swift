@@ -24,7 +24,10 @@ final class AppController: ObservableObject {
     @Published private(set) var pendingScriptApproval: PendingScriptApproval?
 
     let practiceSession = GesturePracticeSession()
+    let localInputCapture = LocalInputCaptureService()
     let companion: CompanionCoordinator
+    let experiences: ContextualExperienceCoordinator
+    let contentInteraction: ContentInteractionCoordinator
     @Published private(set) var captureResumesAt: Date?
     private var captureResumeTask: Task<Void, Never>?
 
@@ -39,6 +42,7 @@ final class AppController: ObservableObject {
 
     private let captureCoordinator: CaptureCoordinator
     private let laboratoryCoordinator: LaboratoryCoordinator
+    private let scriptApprovalPresenter = ScriptApprovalPresenter()
     private let automationCoordinator: AutomationCoordinator
     private let applicationCatalogService: ApplicationCatalogService
     private let macOSShortcutCatalog: any MacOSShortcutRunning
@@ -91,6 +95,7 @@ final class AppController: ObservableObject {
             captureCoordinator: resolvedCaptureCoordinator,
             calibrationStore: calibrationStore
         )
+        let sceneLayouts = SceneLayoutSession(allowsExecution: allowsAutomationExecution)
         self.automationCoordinator = AutomationCoordinator(
             shortcutStore: shortcutStore,
             eventLogStore: eventLogStore,
@@ -100,6 +105,8 @@ final class AppController: ObservableObject {
             continuousWindowController: continuousWindowController,
             approvalStore: approvalStore,
             contextSnapshotService: contextSnapshotService,
+            sceneLayouts: sceneLayouts,
+            allowsExecution: allowsAutomationExecution,
             setContinuousPhasesEnabled: { [weak resolvedCaptureCoordinator] isEnabled in
                 resolvedCaptureCoordinator?.setContinuousPhasesEnabled(isEnabled)
             }
@@ -109,6 +116,15 @@ final class AppController: ObservableObject {
             contextProvider: contextSnapshotService ?? ContextSnapshotService(),
             allowsExecution: allowsAutomationExecution
         )
+        self.experiences = ContextualExperienceCoordinator(
+            store: shortcutStore, automation: automationCoordinator,
+            sceneLayouts: sceneLayouts, allowsExecution: allowsAutomationExecution)
+        self.contentInteraction = ContentInteractionCoordinator(
+            store: shortcutStore, automation: automationCoordinator,
+            contextProvider: contextSnapshotService ?? ContextSnapshotService(),
+            allowsExecution: allowsAutomationExecution)
+        companion.onRequestContent = { [weak contentInteraction] in contentInteraction?.show() }
+        companion.onRequestSelection = { [weak contentInteraction] in contentInteraction?.show(useSelection: true) }
         self.applicationCatalogService = applicationCatalogService ?? ApplicationCatalogService()
         self.macOSShortcutCatalog = macOSShortcutCatalog
 
@@ -182,14 +198,24 @@ final class AppController: ObservableObject {
             .store(in: &cancellables)
         automationCoordinator.$pendingScriptApproval
             .sink { [weak self] approval in
-                self?.pendingScriptApproval = approval
+                guard let self else { return }
+                pendingScriptApproval = approval
+                scriptApprovalPresenter.update(approval) { [weak self] accepted in
+                    self?.automationCoordinator.resolveScriptApproval(approved: accepted)
+                }
             }
             .store(in: &cancellables)
         // Uma atividade não pode liberar a execução enquanto outra ainda usa a captura.
         Publishers.CombineLatest3($recordingIsActive, laboratoryCoordinator.$isRecording, laboratoryCoordinator.$isReplaying)
             .map { $0 || $1 || $2 }
             .removeDuplicates()
-            .sink { [weak companion] suspended in companion?.interactionIsSuspended = suspended }
+            .sink { [weak companion, weak experiences, weak contentInteraction] suspended in
+                companion?.interactionIsSuspended = suspended
+                experiences?.setSuspended(suspended)
+                contentInteraction?.interactionIsSuspended = suspended
+            }
+            .store(in: &cancellables)
+        experiences.$message.compactMap { $0 }.sink { [weak self] in self?.presentedError = $0 }
             .store(in: &cancellables)
         automationCoordinator.setErrorHandler { [weak self] message in
             self?.presentedError = message
@@ -234,6 +260,7 @@ final class AppController: ObservableObject {
             } catch {
                 availableMacOSShortcuts = []
             }
+            contentInteraction.updateMacOSShortcuts(availableMacOSShortcuts)
         }
     }
 
@@ -297,6 +324,7 @@ final class AppController: ObservableObject {
         switch captureCoordinator.startCapture() {
         case .started:
             presentedError = nil
+            experiences.setPausedByUser(false)
         case let .blocked(message), let .failed(message):
             presentedError = message
         }
@@ -306,6 +334,8 @@ final class AppController: ObservableObject {
         captureResumeTask?.cancel()
         captureResumesAt = nil
         companion.closePanel()
+        contentInteraction.close()
+        experiences.setPausedByUser(true)
         captureCoordinator.stopCapture()
         automationCoordinator.stop()
     }
@@ -326,7 +356,13 @@ final class AppController: ObservableObject {
     }
 
     @discardableResult
-    func beginRecording() -> Bool {
+    func beginRecording() -> Bool { beginRecording(requiresTrackpad: true) }
+
+    /// A captura local não depende de TCC. Ainda possui a mesma exclusão mútua
+    /// da gravação global, para que uma edição nunca execute automações.
+    func beginLocalRecording() -> Bool { beginRecording(requiresTrackpad: false) }
+
+    private func beginRecording(requiresTrackpad: Bool) -> Bool {
         guard !recordingIsActive, practiceSession.sessionID == nil else {
             presentedError = "Já existe uma prática ou gravação em outra janela. Encerre-a antes de começar."
             return false
@@ -340,19 +376,30 @@ final class AppController: ObservableObject {
         recordingIsActive = true
         captureWasRunningBeforeRecording = captureCoordinator.isRunning
         trackpadWasRunningBeforeRecording = captureCoordinator.isTrackpadObservationRunning
-        guard startTrackpadObservation() else {
-            recordingIsActive = false
-            return false
+        if requiresTrackpad {
+            guard startTrackpadObservation() else {
+                recordingIsActive = false
+                return false
+            }
+            if permissions.status.canCaptureGlobalInput { startCapture() }
         }
-        if permissions.status.canCaptureGlobalInput {
-            startCapture()
-        }
+        localInputCapture.start(onEvent: { [weak self] event in
+            guard let self, self.recordingIsActive else { return }
+            self.recordedEvent = event
+            self.practiceSession.receive(event)
+        }, onModifiers: { [weak self] in self?.activeModifiers = $0 }, onCancel: { [weak self] in
+            guard let self else { return }
+            if let id = self.practiceSession.sessionID { self.endPractice(sessionID: id) }
+            else { self.endRecording() }
+        })
         return true
     }
 
     func endRecording() {
         guard recordingIsActive else { return }
         recordingIsActive = false
+        localInputCapture.stop()
+        activeModifiers = []
         if !captureWasRunningBeforeRecording {
             captureCoordinator.stopGlobalCapture()
         }
@@ -364,7 +411,7 @@ final class AppController: ObservableObject {
     }
 
     func beginPractice(_ rule: ShortcutRule, repetitionLimit: Int? = 3) -> UUID? {
-        guard beginRecording() else { return nil }
+        guard beginRecording(requiresTrackpad: rule.trigger.requiresTrackpadCapture) else { return nil }
         return practiceSession.begin(rule, repetitionLimit: repetitionLimit)
     }
 
@@ -402,6 +449,9 @@ final class AppController: ObservableObject {
     }
 
     private func receive(_ incomingEvent: InputEventDescriptor) {
+        // O monitor local já tratou teclado/mouse nesta sessão. Ignorar a cópia
+        // global evita duplicação e evita sobrescrever a combinação ao soltar ⌘.
+        if recordingIsActive, incomingEvent.kind != .trackpadGesture { return }
         if incomingEvent.kind == .keyboard {
             activeModifiers = incomingEvent.modifiers
         }

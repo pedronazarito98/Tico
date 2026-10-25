@@ -8,6 +8,8 @@ import Foundation
 final class GesturePracticeSession: ObservableObject {
     private(set) var sessionID: UUID?
     @Published private(set) var rule: ShortcutRule?
+    @Published private(set) var lastReceivedDescription: String?
+    @Published private(set) var lastInputMatched = false
     @Published private(set) var completedCount = 0
     @Published private(set) var feedback = "Escolha um atalho para praticar."
     private var runtime = TriggerSequenceRuntime()
@@ -23,6 +25,8 @@ final class GesturePracticeSession: ObservableObject {
         self.rule = rule
         self.repetitionLimit = repetitionLimit
         completedCount = 0
+        lastReceivedDescription = nil
+        lastInputMatched = false
         runtime.reset()
         lastSessionID = nil
         lastAcceptedAt = .distantPast
@@ -38,15 +42,17 @@ final class GesturePracticeSession: ObservableObject {
             let isRecognition = gesture.phase == .ended || (gesture.kind == .hold && gesture.phase == .began)
             guard isRecognition, gesture.sessionID != lastSessionID else { return }
         }
+        lastReceivedDescription = event.displayName
         candidate.isEnabled = true
         candidate.scope = .global
-        candidate.profileID = nil
+
         candidate.conditions = []
         let evaluation = runtime.process(
             event: event, rules: [candidate],
             context: ContextSnapshot(modifiers: event.modifiers, capturedAt: event.timestamp)
         )
-        guard !evaluation.matchedRules.isEmpty else {
+        lastInputMatched = !evaluation.matchedRules.isEmpty
+        guard lastInputMatched else {
             feedback = "Continue: procure repetir o gatilho mostrado acima."
             return
         }
@@ -55,10 +61,10 @@ final class GesturePracticeSession: ObservableObject {
         lastAcceptedAt = event.timestamp
         completedCount += 1
         if let repetitionLimit {
-            feedback = isComplete ? "Três repetições reconhecidas. Pronto para usar!"
+            feedback = isComplete ? "Três repetições reconhecidas. A prática foi concluída."
                 : "Reconhecido! Mais \(repetitionLimit - completedCount) repetição(ões)."
         } else {
-            feedback = "Funcionou! Gesto reconhecido na prévia."
+            feedback = "Gesto reconhecido. Nenhuma ação foi executada."
         }
     }
 

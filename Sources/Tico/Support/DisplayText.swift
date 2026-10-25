@@ -90,16 +90,16 @@ extension TriggerDefinition {
     var displayName: String {
         switch self {
         case let .keyboard(keyCode, modifiers):
-            return modifierPrefix(modifiers) + "Tecla \(keyCode)"
+            return modifierPrefix(modifiers) + InputPresentation.label(keyCode)
         case let .mouseButton(button, modifiers):
-            return modifierPrefix(modifiers) + "Botão \(button)"
+            return modifierPrefix(modifiers) + InputPresentation.mouseLabel(button)
         case let .trackpad(spec):
             let count = spec.fingerCount.lowerBound == spec.fingerCount.upperBound
                 ? "\(spec.fingerCount.lowerBound)"
                 : "\(spec.fingerCount.lowerBound)–\(spec.fingerCount.upperBound)"
             let regionSuffix = spec.startRegion == .any ? "" : " · \(spec.startRegion.displayName)"
             let tapPrefix = spec.tapCount > 1 ? "\(spec.tapCount)× " : ""
-            return "\(tapPrefix)\(count) dedos · \(spec.gesture.displayName)\(regionSuffix)"
+            return modifierPrefix(spec.requiredModifiers ?? []) + "\(tapPrefix)\(count) dedos · \(spec.gesture.displayName)\(regionSuffix)"
         case let .customTrackpad(template):
             let count = template.fingerCount.lowerBound == template.fingerCount.upperBound
                 ? "\(template.fingerCount.lowerBound)"
@@ -126,8 +126,13 @@ extension ShortcutAction {
             return "Executar AppleScript"
         case let .macOSShortcut(name, _):
             return "Atalho: \(name)"
+        case let .content(configuration):
+            switch configuration.destination {
+            case .search: return "Pesquisar com conteúdo"
+            case .macOSShortcut: return "Executar Atalho com conteúdo"
+            }
         case let .keyboardShortcut(keyCode, modifiers):
-            return modifierPrefix(modifiers) + "Tecla \(keyCode)"
+            return modifierPrefix(modifiers) + InputPresentation.label(keyCode)
         case .setClipboard:
             return "Atualizar clipboard"
         case let .application(target, operation):
@@ -267,9 +272,9 @@ extension InputEventDescriptor {
     var displayName: String {
         switch kind {
         case .keyboard:
-            return modifierPrefix(modifiers) + "Tecla \(keyCode.map(String.init) ?? "—")"
+            return modifierPrefix(modifiers) + (keyCode.map { InputPresentation.label($0) } ?? "—")
         case .mouseButton:
-            return modifierPrefix(modifiers) + "Botão \(mouseButton.map(String.init) ?? "—")"
+            return modifierPrefix(modifiers) + (mouseButton.map(InputPresentation.mouseLabel) ?? "—")
         case .trackpadGesture:
             let count = fingerCount.map { "\($0) dedos · " } ?? ""
             let region = trackpadRegion == nil || trackpadRegion == .any
@@ -289,11 +294,16 @@ extension InputEventDescriptor {
             return .mouseButton(button: mouseButton, modifiers: modifiers)
         case .trackpadGesture:
             guard let gesture else { return nil }
-            return .trackpad(
-                gesture: gesture,
-                fingerCount: fingerCount ?? gesture.defaultFingerCount,
-                region: trackpadRegion ?? .any
-            )
+            var spec = TrackpadTriggerSpec(gesture: gesture,
+                fingerCount: fingerCount ?? gesture.defaultFingerCount, region: trackpadRegion ?? .any)
+            spec.requiredModifiers = modifiers.isEmpty ? nil : modifiers
+            if let metadata = advancedGesture {
+                spec.tapCount = metadata.tapCount
+                spec.anchorFingerCount = metadata.anchorFingerCount > 0 ? metadata.anchorFingerCount : nil
+                spec.entryOrder = metadata.entryOrder.isEmpty ? nil : metadata.entryOrder
+                spec.exitOrder = metadata.exitOrder.isEmpty ? nil : metadata.exitOrder
+            }
+            return .trackpad(spec: spec)
         }
     }
 }

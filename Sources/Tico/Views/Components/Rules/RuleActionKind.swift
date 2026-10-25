@@ -10,6 +10,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
     case shellScript
     case appleScript
     case macOSShortcut
+    case content
     case keyboardShortcut
     case clipboard
     case continuousWindow
@@ -24,6 +25,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .shellScript: self = .shellScript
         case .appleScript: self = .appleScript
         case .macOSShortcut: self = .macOSShortcut
+        case .content: self = .content
         case .keyboardShortcut: self = .keyboardShortcut
         case .setClipboard: self = .clipboard
         case .application: self = .controlApplication
@@ -44,6 +46,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .shellScript: "Execute um comando com aprovação."
         case .appleScript: "Automatize apps com aprovação."
         case .macOSShortcut: "Use uma rotina do app Atalhos."
+        case .content: "Pesquise ou execute Atalhos com texto, links e arquivos."
         case .keyboardShortcut: "Envie uma combinação de teclas."
         case .clipboard: "Prepare um texto para colar."
         case .continuousWindow: "Mova a janela acompanhando o gesto."
@@ -55,11 +58,14 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .openApplication: .openApplication(bundleIdentifier: applications.first?.bundleIdentifier ?? "com.apple.Safari")
         case .controlApplication: .application(target: .frontmost, operation: .activate)
         case .controlWindow: .window(target: .frontmost, operation: .leftHalf)
-        case .openURL: .openURL(url: URL(string: "https://example.com") ?? URL(fileURLWithPath: "/"))
+        // Uma escolha de tipo ainda não é um destino confirmado. A URL relativa
+        // vazia mantém o rascunho incompleto até o usuário informar um site.
+        case .openURL: .openURL(url: URL(string: "") ?? URL(fileURLWithPath: "/"))
         case .notification: .notification(title: TicoBrand.displayName, body: "Regra executada")
         case .shellScript: .shellScript(command: "")
         case .appleScript: .appleScript(source: "tell application \"Finder\"\nactivate\nend tell")
         case .macOSShortcut: .macOSShortcut(name: "", input: nil)
+        case .content: .content(ContentActionConfiguration())
         case .keyboardShortcut: .keyboardShortcut(keyCode: 49, modifiers: [.command])
         case .clipboard: .setClipboard(text: "")
         case .continuousWindow: .continuousWindow(target: .frontmost, operation: .moveHorizontal, curve: .linear)
@@ -76,6 +82,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .shellScript: "Executar script"
         case .appleScript: "Executar AppleScript"
         case .macOSShortcut: "Executar Atalho do macOS"
+        case .content: "Fazer com conteúdo"
         case .keyboardShortcut: "Enviar atalho de teclado"
         case .clipboard: "Copiar texto"
         case .continuousWindow: "Controlar janela continuamente"
@@ -92,6 +99,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .shellScript: "terminal"
         case .appleScript: "applescript"
         case .macOSShortcut: "square.stack.3d.up.fill"
+        case .content: "doc.text"
         case .keyboardShortcut: "keyboard"
         case .clipboard: "doc.on.clipboard"
         case .continuousWindow: "arrow.up.left.and.arrow.down.right"

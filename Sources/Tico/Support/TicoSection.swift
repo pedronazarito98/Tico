@@ -4,14 +4,19 @@ enum TicoSection: String, CaseIterable, Identifiable {
     case explore
     case scenes
     case gestureMap
-    case overview
+    case activity
     case permissions
     case rules
-    case profiles
     case library
     case laboratory
-    case metrics
     case log
+
+    /// Preserva a restauração de janelas e comandos das duas telas substituídas.
+    /// A seção removida de perfis volta para a biblioteca de atalhos.
+    static func restored(from value: String) -> Self {
+        if value == "overview" || value == "metrics" { return .activity }
+        return Self(rawValue: value) ?? .rules
+    }
 
     var id: Self { self }
 
@@ -20,13 +25,11 @@ enum TicoSection: String, CaseIterable, Identifiable {
         case .explore: "Explorar"
         case .scenes: "Cenas"
         case .gestureMap: "Mapa de gestos"
-        case .overview: "Visão geral"
+        case .activity: "Atividade"
         case .permissions: "Permissões"
         case .rules: "Meus atalhos"
-        case .profiles: "Perfis"
-        case .library: "Biblioteca"
+        case .library: "Modelos e gestos"
         case .laboratory: "Laboratório"
-        case .metrics: "Métricas"
         case .log: "Log"
         }
     }
@@ -36,13 +39,11 @@ enum TicoSection: String, CaseIterable, Identifiable {
         case .explore: "sparkles"
         case .scenes: "rectangle.3.group"
         case .gestureMap: "hand.draw"
-        case .overview: "rectangle.grid.2x2"
+        case .activity: "clock.arrow.circlepath"
         case .permissions: "lock.shield"
         case .rules: "bolt.badge.clock"
-        case .profiles: "person.2.circle"
         case .library: "square.stack.3d.up"
         case .laboratory: "waveform.path.ecg.rectangle"
-        case .metrics: "chart.xyaxis.line"
         case .log: "list.bullet.rectangle"
         }
     }

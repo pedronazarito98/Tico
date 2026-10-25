@@ -30,7 +30,7 @@ final class ShortcutStore: ObservableObject {
     static let currentDocumentVersion = ShortcutDocumentCodec.currentVersion
 
     @Published private(set) var rules: [ShortcutRule] = []
-    @Published private(set) var profiles: [ShortcutProfile] = []
+
     @Published private(set) var reusableWorkflows: [ActionWorkflow] = []
     @Published private(set) var customGestureTemplates: [CustomGestureTemplate] = []
     @Published private(set) var presets: [GesturePreset] = []
@@ -99,7 +99,6 @@ final class ShortcutStore: ObservableObject {
     func load() throws {
         let previousState = (
             rules,
-            profiles,
             reusableWorkflows,
             customGestureTemplates,
             presets
@@ -119,7 +118,6 @@ final class ShortcutStore: ObservableObject {
             let data = loaded.data
             let decoded = loaded.document
             rules = decoded.rules
-            profiles = decoded.profiles
             reusableWorkflows = decoded.reusableWorkflows
             customGestureTemplates = decoded.customGestureTemplates
             presets = decoded.presets
@@ -131,7 +129,6 @@ final class ShortcutStore: ObservableObject {
         } catch {
             (
                 rules,
-                profiles,
                 reusableWorkflows,
                 customGestureTemplates,
                 presets
@@ -198,7 +195,7 @@ final class ShortcutStore: ObservableObject {
     }
 
     func conflicts(for rule: ShortcutRule) -> [RuleConflict] {
-        conflictAnalyzer.conflicts(for: rule, among: rules, profiles: profiles)
+        conflictAnalyzer.conflicts(for: rule, among: rules)
     }
 
     func replaceConflictingRules(with rule: ShortcutRule) throws {
@@ -263,58 +260,6 @@ final class ShortcutStore: ObservableObject {
         try commit { storedRules in
             storedRules = rules
         }
-    }
-
-    @discardableResult
-    func addProfile(_ profile: ShortcutProfile) throws -> ShortcutProfile {
-        let previous = profiles
-        profiles.append(profile)
-        do {
-            try writeDocument(to: fileURL)
-            return profile
-        } catch {
-            profiles = previous
-            throw error
-        }
-    }
-
-    func updateProfile(_ profile: ShortcutProfile) throws {
-        guard let index = profiles.firstIndex(where: { $0.id == profile.id }) else {
-            throw ShortcutStoreError.invalidDocument
-        }
-        let previous = profiles
-        profiles[index] = profile
-        do {
-            try writeDocument(to: fileURL)
-        } catch {
-            profiles = previous
-            throw error
-        }
-    }
-
-    func deleteProfile(id: UUID) throws {
-        let previousProfiles = profiles
-        let previousRules = rules
-        profiles.removeAll { $0.id == id }
-        for index in rules.indices where rules[index].profileID == id {
-            rules[index].profileID = nil
-        }
-        do {
-            try writeDocument(to: fileURL)
-        } catch {
-            profiles = previousProfiles
-            rules = previousRules
-            throw error
-        }
-    }
-
-    func setProfileEnabled(_ isEnabled: Bool, id: UUID) throws {
-        guard let index = profiles.firstIndex(where: { $0.id == id }) else {
-            throw ShortcutStoreError.invalidDocument
-        }
-        var value = profiles[index]
-        value.isEnabled = isEnabled
-        try updateProfile(value)
     }
 
     func saveReusableWorkflow(_ workflow: ActionWorkflow) throws {
@@ -426,7 +371,6 @@ final class ShortcutStore: ObservableObject {
             }
             let previous = (
                 rules,
-                profiles,
                 reusableWorkflows,
                 customGestureTemplates,
                 presets
@@ -439,12 +383,10 @@ final class ShortcutStore: ObservableObject {
             }
             switch strategy {
             case .replace:
-                profiles = imported.profiles
                 reusableWorkflows = imported.reusableWorkflows
                 customGestureTemplates = imported.customGestureTemplates
                 presets = imported.presets
             case .merge:
-                profiles = Self.merged(profiles, imported.profiles)
                 reusableWorkflows = Self.merged(reusableWorkflows, imported.reusableWorkflows)
                 customGestureTemplates = Self.merged(
                     customGestureTemplates,
@@ -458,7 +400,6 @@ final class ShortcutStore: ObservableObject {
             } catch {
                 (
                     rules,
-                    profiles,
                     reusableWorkflows,
                     customGestureTemplates,
                     presets
@@ -513,7 +454,6 @@ final class ShortcutStore: ObservableObject {
         let document = ShortcutDocumentCodec.makeDocument(
             version: Self.currentDocumentVersion,
             rules: rules,
-            profiles: profiles,
             reusableWorkflows: reusableWorkflows,
             customGestureTemplates: synchronizedTemplates,
             presets: presets

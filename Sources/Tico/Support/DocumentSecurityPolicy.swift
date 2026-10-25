@@ -3,7 +3,6 @@ import Foundation
 enum DocumentSecurityPolicy {
     static let maximumDocumentBytes = 8 * 1_024 * 1_024
     static let maximumRules = 1_000
-    static let maximumProfiles = 200
     static let maximumReusableWorkflows = 200
     static let maximumCustomTemplates = 200
     static let maximumPresets = 500
@@ -28,13 +27,11 @@ enum DocumentSecurityPolicy {
 
     static func validate(
         rules: [ShortcutRule],
-        profiles: [ShortcutProfile],
         reusableWorkflows: [ActionWorkflow],
         customTemplates: [CustomGestureTemplate],
         presets: [GesturePreset]
     ) throws {
         guard rules.count <= maximumRules,
-              profiles.count <= maximumProfiles,
               reusableWorkflows.count <= maximumReusableWorkflows,
               customTemplates.count <= maximumCustomTemplates,
               presets.count <= maximumPresets else {
@@ -42,7 +39,6 @@ enum DocumentSecurityPolicy {
         }
 
         try rules.forEach(validate)
-        try profiles.forEach(validate)
         try reusableWorkflows.forEach(validate)
         try customTemplates.forEach(validate)
         for preset in presets {
@@ -50,12 +46,17 @@ enum DocumentSecurityPolicy {
             try validateString(preset.summary)
             try validate(preset.trigger)
             try validate(preset.workflow)
+            guard (-20...20).contains(preset.priority), preset.conditions.count <= 201 else {
+                throw ShortcutStoreError.invalidDocument
+            }
         }
     }
 
     static func validate(_ rule: ShortcutRule) throws {
-        guard (-10...10).contains(rule.priority),
-              rule.conditions.count <= 100 else {
+        // v8 incorpora no próprio atalho até 100 condições + 100 herdadas + apps,
+        // e soma duas prioridades antes limitadas a ±10, sem perder restrições.
+        guard (-20...20).contains(rule.priority),
+              rule.conditions.count <= 201 else {
             throw ShortcutStoreError.invalidDocument
         }
         try validateString(rule.name)
@@ -64,18 +65,10 @@ enum DocumentSecurityPolicy {
         try validate(rule.workflow)
     }
 
-    static func validate(_ profile: ShortcutProfile) throws {
-        guard (-10...10).contains(profile.priority),
-              profile.applicationBundleIdentifiers.count <= 100,
-              profile.conditions.count <= 100 else {
-            throw ShortcutStoreError.invalidDocument
-        }
-        try validateString(profile.name)
-        try profile.applicationBundleIdentifiers.forEach(validateString)
-    }
-
     static func validate(_ workflow: ActionWorkflow) throws {
-        guard (1...20).contains(workflow.steps.count),
+        guard (0...20).contains(workflow.steps.count),
+              !workflow.steps.isEmpty || workflow.sceneLayout != nil,
+              workflow.sceneLayout?.validationIssue == nil,
               workflow.timeout.isFinite,
               (1...600).contains(workflow.timeout) else {
             throw ShortcutStoreError.invalidDocument
@@ -184,6 +177,14 @@ enum DocumentSecurityPolicy {
         case let .macOSShortcut(name, input):
             try validateString(name)
             if let input { try validateString(input) }
+        case let .content(configuration):
+            guard configuration.validationMessage == nil else { throw ShortcutStoreError.invalidDocument }
+            switch configuration.destination {
+            case let .search(search):
+                try validateString(search.endpoint)
+                try validateString(search.queryParameter)
+            case let .macOSShortcut(name): try validateString(name)
+            }
         case .keyboardShortcut:
             return
         case let .setClipboard(text):

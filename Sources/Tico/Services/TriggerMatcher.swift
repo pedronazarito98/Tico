@@ -11,22 +11,21 @@ struct TriggerMatcher {
     func matchingRules(
         in rules: [ShortcutRule],
         for event: InputEventDescriptor,
-        context: ContextSnapshot,
-        profiles: [ShortcutProfile] = []
+        context: ContextSnapshot
     ) -> [ShortcutRule] {
         rules
             .filter {
-                $0.matches(context, profiles: profiles)
+                $0.matches(context)
                     && matches($0.trigger, event: event)
             }
             .sorted {
-                let lhsSpecificity = $0.effectiveSpecificity(profiles: profiles)
-                let rhsSpecificity = $1.effectiveSpecificity(profiles: profiles)
+                let lhsSpecificity = $0.effectiveSpecificity
+                let rhsSpecificity = $1.effectiveSpecificity
                 if lhsSpecificity != rhsSpecificity {
                     return lhsSpecificity > rhsSpecificity
                 }
-                return $0.effectivePriority(profiles: profiles)
-                    > $1.effectivePriority(profiles: profiles)
+                return $0.priority
+                    > $1.priority
             }
     }
 

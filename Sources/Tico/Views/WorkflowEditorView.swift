@@ -9,6 +9,7 @@ struct WorkflowEditorView: View {
     let reusableWorkflows: [ActionWorkflow]
     let onSaveReusable: (ActionWorkflow) throws -> Void
     var showsLibraryControls = true
+    var showsEmptyGuidance = true
 
     @State private var selectedStepID: UUID?
     @State private var showsActionPicker = false
@@ -20,12 +21,13 @@ struct WorkflowEditorView: View {
                 let index = workflow.steps.firstIndex { $0.id == step.id } ?? 0
                 WorkflowStepCard(step: $step, position: index + 1,
                     isExpanded: selectedStepID == step.id,
-                    showsHeader: workflow.steps.count > 1,
-                    canDelete: workflow.steps.count > 1, canMoveUp: index > 0,
+                    showsHeader: workflow.steps.count > 1 || workflow.sceneLayout != nil,
+                    canDelete: workflow.steps.count > 1 || workflow.sceneLayout != nil, canMoveUp: index > 0,
                     canMoveDown: index < workflow.steps.count - 1,
                     applications: applications, macOSShortcuts: macOSShortcuts,
                     onToggle: { selectedStepID = selectedStepID == step.id ? nil : step.id },
-                    onDelete: { deleteStep(step.id) }, onMove: { moveStep(step.id, offset: $0) })
+                    onDelete: { deleteStep(step.id) }, onMove: { moveStep(step.id, offset: $0) },
+                    showsSelectionTiming: workflow.enabledSteps.count > 1)
             }
             HStack {
                 Button("Adicionar ação", systemImage: "plus") { showsActionPicker = true }
@@ -56,8 +58,8 @@ struct WorkflowEditorView: View {
                     Stepper("Tempo limite total: \(workflow.timeout, format: .number) s", value: $workflow.timeout, in: 1...600, step: 5)
                 }.padding(.top, 10)
             }.font(.callout)
-            if workflow.enabledSteps.isEmpty {
-                Label("Mantenha pelo menos uma ação ativa.", systemImage: "info.circle")
+            if showsEmptyGuidance && workflow.enabledSteps.isEmpty && workflow.sceneLayout == nil {
+                Label("Adicione uma ação ativa ou capture um layout.", systemImage: "info.circle")
                     .font(.caption).foregroundStyle(.orange)
             }
         }
@@ -87,14 +89,14 @@ struct WorkflowEditorView: View {
         workflow = ActionWorkflow(name: reusable.name, steps: reusable.steps.map {
             WorkflowStep(name: $0.name, action: $0.action, delayBefore: $0.delayBefore,
                          timeout: $0.timeout, isEnabled: $0.isEnabled)
-        }, failurePolicy: reusable.failurePolicy, timeout: reusable.timeout)
+        }, failurePolicy: reusable.failurePolicy, timeout: reusable.timeout, sceneLayout: reusable.sceneLayout)
         selectedStepID = workflow.steps.first?.id
     }
 
     private func deleteStep(_ id: UUID) {
-        guard workflow.steps.count > 1, let index = workflow.steps.firstIndex(where: { $0.id == id }) else { return }
+        guard (workflow.steps.count > 1 || workflow.sceneLayout != nil), let index = workflow.steps.firstIndex(where: { $0.id == id }) else { return }
         workflow.steps.remove(at: index)
-        if selectedStepID == id { selectedStepID = workflow.steps[min(index, workflow.steps.count - 1)].id }
+        if selectedStepID == id { selectedStepID = workflow.steps.isEmpty ? nil : workflow.steps[min(index, workflow.steps.count - 1)].id }
     }
 
     private func moveStep(_ id: UUID, offset: Int) {

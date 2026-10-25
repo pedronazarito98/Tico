@@ -32,9 +32,14 @@ struct ShortcutGestureRecorder: View {
     }
 
     var body: some View {
-        VStack(spacing: 18) {
-            Text("Gravar gesto").font(.title.bold())
-            Text("Faça o movimento no trackpad.").foregroundStyle(.secondary)
+        VStack(spacing: 0) {
+          VStack(spacing: 8) {
+              Text("Gravar gesto").font(.title.bold())
+              Text("Faça o movimento no trackpad.").foregroundStyle(.secondary)
+          }.padding(20)
+          Divider()
+          ScrollView {
+            VStack(spacing: 18) {
             Label(isRecording ? "Gravando" : "Captura indisponível", systemImage: "record.circle.fill")
                 .foregroundStyle(isRecording ? .red : .secondary)
             ZStack {
@@ -47,11 +52,14 @@ struct ShortcutGestureRecorder: View {
             Text(movementDescription).foregroundStyle(.secondary)
             Text(startupError ?? "Solte os dedos para concluir.")
                 .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }.frame(maxWidth: .infinity).padding(20)
+          }
             Divider()
             Button("Cancelar gravação", action: onCancel)
                 .buttonStyle(.glass).keyboardShortcut(.cancelAction)
+                .padding(16)
         }
-        .padding(28).frame(width: 450)
+        .adaptiveSheetFrame(idealWidth: 450, idealHeight: 580)
         .onChange(of: latestEvent) { _, event in receive(event) }
         .onChange(of: snapshot?.phase) { finishIfReleased() }
     }

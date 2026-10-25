@@ -7,6 +7,7 @@ enum ShortcutAction: Hashable, Sendable {
     case shellScript(command: String)
     case appleScript(source: String)
     case macOSShortcut(name: String, input: String?)
+    case content(ContentActionConfiguration)
     case keyboardShortcut(keyCode: UInt16, modifiers: Set<InputModifier>)
     case setClipboard(text: String)
     case application(target: ApplicationTarget, operation: ApplicationOperation)
@@ -35,6 +36,7 @@ extension ShortcutAction: Codable {
         case curve
         case target
         case operation
+        case contentConfiguration
     }
 
     private enum Kind: String, Codable {
@@ -44,6 +46,7 @@ extension ShortcutAction: Codable {
         case shellScript
         case appleScript
         case macOSShortcut
+        case content
         case keyboardShortcut
         case setClipboard
         case application
@@ -76,6 +79,8 @@ extension ShortcutAction: Codable {
                 name: try container.decode(String.self, forKey: .name),
                 input: try container.decodeIfPresent(String.self, forKey: .input)
             )
+        case .content:
+            self = .content(try container.decode(ContentActionConfiguration.self, forKey: .contentConfiguration))
         case .keyboardShortcut:
             self = .keyboardShortcut(
                 keyCode: try container.decode(UInt16.self, forKey: .keyCode),
@@ -129,6 +134,9 @@ extension ShortcutAction: Codable {
             try container.encode(Kind.macOSShortcut, forKey: .type)
             try container.encode(name, forKey: .name)
             try container.encodeIfPresent(input, forKey: .input)
+        case let .content(configuration):
+            try container.encode(Kind.content, forKey: .type)
+            try container.encode(configuration, forKey: .contentConfiguration)
         case let .keyboardShortcut(keyCode, modifiers):
             try container.encode(Kind.keyboardShortcut, forKey: .type)
             try container.encode(keyCode, forKey: .keyCode)

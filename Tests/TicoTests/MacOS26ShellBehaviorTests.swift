@@ -20,11 +20,14 @@ final class MacOS26ShellBehaviorTests: XCTestCase {
         XCTAssertFalse(selection.changesDestination)
         XCTAssertEqual(selection.searchText, "")
         XCTAssertTrue(selection.dismissesSearch)
+        XCTAssertEqual(TicoSection.restored(from: "overview"), .activity)
+        XCTAssertEqual(TicoSection.restored(from: "metrics"), .activity)
+        XCTAssertEqual(TicoSection.restored(from: "profiles"), .rules)
     }
 
-    func testCaptureGlassStateDistinguishesPermissionPausedActiveAndLimitedModes() {
+    func testActivityCaptureStateDistinguishesPermissionPausedActiveAndLimitedModes() {
         XCTAssertEqual(
-            CaptureGlassState.resolve(
+            ActivityCaptureState.resolve(
                 captureIsRunning: false,
                 permissionsAreReady: false,
                 captureMode: .stopped
@@ -32,7 +35,7 @@ final class MacOS26ShellBehaviorTests: XCTestCase {
             .permissionRequired
         )
         XCTAssertEqual(
-            CaptureGlassState.resolve(
+            ActivityCaptureState.resolve(
                 captureIsRunning: false,
                 permissionsAreReady: true,
                 captureMode: .stopped
@@ -40,7 +43,7 @@ final class MacOS26ShellBehaviorTests: XCTestCase {
             .paused
         )
         XCTAssertEqual(
-            CaptureGlassState.resolve(
+            ActivityCaptureState.resolve(
                 captureIsRunning: true,
                 permissionsAreReady: true,
                 captureMode: .advancedGlobal
@@ -48,13 +51,15 @@ final class MacOS26ShellBehaviorTests: XCTestCase {
             .active
         )
         XCTAssertEqual(
-            CaptureGlassState.resolve(
+            ActivityCaptureState.resolve(
                 captureIsRunning: true,
                 permissionsAreReady: true,
                 captureMode: .systemGestureFallback
             ),
             .limited
         )
+        XCTAssertEqual(ActivityCaptureState.resolve(captureIsRunning: true,
+            permissionsAreReady: true, captureMode: .stopped), .trackpadUnavailable)
     }
 
     @MainActor

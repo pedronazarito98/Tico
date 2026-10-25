@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Biblioteca com lista e prévia. Rascunhos pertencem à janela e a edição visual
+/// Biblioteca com lista e resumo. Rascunhos pertencem à janela e a edição visual
 /// abre sob demanda; o editor completo permanece disponível no menu contextual.
 struct RulesView: View {
     @ObservedObject var store: ShortcutStore
@@ -15,7 +15,7 @@ struct RulesView: View {
     let trackpadSnapshot: TrackpadLaboratorySnapshot?
     let applications: [ApplicationChoice]
     let macOSShortcuts: [String]
-    let profiles: [ShortcutProfile]
+
     let reusableWorkflows: [ActionWorkflow]
     let presets: [GesturePreset]
     let detectedTrackpads: [TrackpadHardwareInfo]
@@ -26,6 +26,7 @@ struct RulesView: View {
     let onSaveReusableWorkflow: (ActionWorkflow) throws -> Void
     let onSavePreset: (GesturePreset) throws -> Void
     let onPractice: (ShortcutRule) -> Void
+    var captureIsRunning = true
 
     @State private var presentedError: String?
     @State private var rulePendingDeletion: ShortcutRule?
@@ -33,7 +34,7 @@ struct RulesView: View {
     @State private var detailedEditorPresented = false
 
     var body: some View {
-        HSplitView {
+        AdaptiveSplitView(breakpoint: 760, minPrimaryWidth: 240, idealPrimaryWidth: 300, maxPrimaryWidth: 420) {
           VStack(spacing: 0) {
             // O filtro vira menu quando os quatro segmentos não cabem na coluna.
             // ViewThatFits escolhe pelo tamanho real dos controles, sem medir texto.
@@ -55,15 +56,30 @@ struct RulesView: View {
                             Text(RuleEditorSummary.trigger(rule.trigger)).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                         }
                         Spacer(minLength: 0)
-                        if !rule.isEnabled { Image(systemName: "pause.circle").foregroundStyle(.secondary) }
+                        Image(systemName: rule.isEnabled && captureIsRunning ? "circle.fill" : "pause.circle")
+                            .font(.system(size: 9))
+                            .foregroundStyle(rule.isEnabled && captureIsRunning ? TicoBrand.Palette.primary : .secondary)
+                            .accessibilityLabel(status(for: rule))
+                            .help(status(for: rule))
+                        Menu {
+                            Button("Editar atalho") { workspace.edit(rule) }
+                            Button(rule.isEnabled ? "Pausar atalho" : "Ativar atalho") { setEnabled(rule.id, !rule.isEnabled) }
+                            Button("Duplicar") { workspace.duplicate(rule) }
+                            Button("Testar acionamento") { onPractice(rule) }
+                            Divider()
+                            Button("Excluir…", role: .destructive) { requestDeletion(rule.id) }
+                        } label: { Image(systemName: "ellipsis") }
+                            .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Opções de \(rule.name)")
                     }
                     .padding(.vertical, 5).tag(rule.id)
+                    .accessibilityElement(children: .contain).accessibilityLabel(rule.name)
                     .accessibilityIdentifier("tico.rule.row.\(rule.id)")
                     .contextMenu {
                         Button("Editar atalho") { workspace.edit(rule) }
                         Button("Editor completo…") { selectedRuleID = rule.id; detailedEditorPresented = true }
-                        Button("Praticar gesto") { onPractice(rule) }
-                        Button(rule.isEnabled ? "Desativar" : "Ativar") { setEnabled(rule.id, !rule.isEnabled) }
+                        Button("Duplicar") { workspace.duplicate(rule) }
+                        Button("Testar acionamento") { onPractice(rule) }
+                        Button(rule.isEnabled ? "Pausar atalho" : "Ativar atalho") { setEnabled(rule.id, !rule.isEnabled) }
                         Divider()
                         Button("Excluir atalho…", role: .destructive) { requestDeletion(rule.id) }
                     }
@@ -71,9 +87,9 @@ struct RulesView: View {
             }.listStyle(.inset).accessibilityIdentifier("tico.rules.list")
                 .overlay {
                     if visibleRules.isEmpty {
-                        ContentUnavailableView(searchText.isEmpty ? "Nenhum atalho" : "Nenhum resultado",
-                            systemImage: "bolt.badge.clock",
-                            description: Text("Crie um atalho no botão + ou ajuste os filtros."))
+                        Label(searchText.isEmpty ? "Nenhum atalho" : "Nenhum resultado",
+                              systemImage: "bolt.badge.clock")
+                            .font(.caption).foregroundStyle(.secondary).padding(8)
                             .allowsHitTesting(false)
                     }
                 }
@@ -83,27 +99,29 @@ struct RulesView: View {
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
             }.padding(.horizontal, 16).padding(.vertical, 8)
-          }.frame(minWidth: 245, idealWidth: 285, maxWidth: 340)
+          }
+        } detail: {
           Group {
             if let rule = selectedRule {
                 ShortcutLibraryDetailView(rule: rule, applications: applications,
                     wasJustCreated: workspace.recentlyCreatedID == rule.id,
                     onSetEnabled: { setEnabled(rule.id, $0) },
-                    onEdit: { workspace.edit(rule) }, onPractice: { onPractice(rule) })
+                    onEdit: { workspace.edit(rule) }, onPractice: { onPractice(rule) },
+                    captureIsRunning: captureIsRunning)
                     .id(rule.id)
             } else {
                 ContentUnavailableView("Seus atalhos, do seu jeito", systemImage: "hand.draw",
                     description: Text("Crie um atalho para conectar um gesto a uma ação."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-          }.frame(minWidth: 460, maxWidth: .infinity, maxHeight: .infinity)
+          }.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .sheet(isPresented: $detailedEditorPresented) {
             VStack(spacing: 0) {
                 HStack { Text("Editor completo").font(.headline); Spacer(); Button("Concluir") { detailedEditorPresented = false } }.padding(16)
                 Divider()
                 inspector
-            }.frame(width: 600, height: 720)
+            }.adaptiveSheetFrame(idealWidth: 600, idealHeight: 720)
         }
         .onChange(of: selectedRuleID, initial: true) {
             prepareSelectedSession()
@@ -118,7 +136,7 @@ struct RulesView: View {
         .onChange(of: inputFilter) { selectVisibleRule() }
         .onChange(of: applicationFilter) { selectVisibleRule() }
         .onChange(of: searchText) { selectVisibleRule() }
-        .frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle("Meus atalhos")
         .alert("Não foi possível salvar", isPresented: errorIsPresented) {
             Button("OK", role: .cancel) { presentedError = nil }
@@ -155,7 +173,6 @@ struct RulesView: View {
                 trackpadSnapshot: trackpadSnapshot,
                 applications: applications,
                 macOSShortcuts: macOSShortcuts,
-                profiles: profiles,
                 reusableWorkflows: reusableWorkflows,
                 presets: presets,
                 detectedTrackpads: detectedTrackpads,
@@ -195,7 +212,14 @@ struct RulesView: View {
     private var listStatus: String {
         let count = visibleRules.count
         let active = visibleRules.filter(\.isEnabled).count
-        return "\(count) \(count == 1 ? "atalho" : "atalhos") · \(active) \(active == 1 ? "ativo" : "ativos")"
+        return "\(count) \(count == 1 ? "atalho" : "atalhos") · \(active) \(active == 1 ? "ativado" : "ativados")"
+    }
+
+    /// Ativação pertence à regra; a captura é um estado independente do aplicativo.
+    /// O indicador comunica os dois sem criar outro controle de ativação na linha.
+    private func status(for rule: ShortcutRule) -> String {
+        if !rule.isEnabled { return "Atalho pausado" }
+        return captureIsRunning ? "Atalho ativado · captura ativa" : "Atalho ativado · captura pausada"
     }
 
     private func prepareSelectedSession() {

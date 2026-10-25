@@ -11,7 +11,6 @@ struct AutomationExplanation: Identifiable, Equatable {
         event: InputEventDescriptor,
         context: ContextSnapshot,
         rules: [ShortcutRule],
-        profiles: [ShortcutProfile],
         matchedRules: [ShortcutRule],
         isWaiting: Bool
     ) -> Self {
@@ -37,9 +36,6 @@ struct AutomationExplanation: Identifiable, Equatable {
             reason = "O atalho está desativado. Abra a regra para revisar e ativar."
         } else if !candidate.scope.matches(context) {
             reason = "Reconheci o gatilho, mas este atalho pertence a outro aplicativo."
-        } else if let id = candidate.profileID,
-                  profiles.first(where: { $0.id == id })?.matches(context) != true {
-            reason = "O perfil está desativado, ausente ou não corresponde ao contexto atual."
         } else {
             reason = "Uma condição de janela, monitor, horário ou modificador não corresponde ao contexto atual."
         }

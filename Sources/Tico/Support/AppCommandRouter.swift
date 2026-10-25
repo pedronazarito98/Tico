@@ -3,6 +3,10 @@ import Foundation
 
 enum AppCommand {
     case showContextualActions
+    case showContentActions
+    case useSelectedContent
+    case createContentRule
+    case practiceRule(UUID)
     case showGestureMap
     case describeAutomation
     case openMainWindow
@@ -65,11 +69,10 @@ final class AppCommandRouter: ObservableObject {
         observe(.ticoImportRules) { _ in .importRules }
         observe(.ticoExportRules) { _ in .exportRules }
         observe(.ticoSelectSection) { notification in
-            guard let rawValue = notification.object as? String,
-                  let section = TicoSection(rawValue: rawValue) else {
+            guard let rawValue = notification.object as? String else {
                 return nil
             }
-            return .selectSection(section)
+            return .selectSection(TicoSection.restored(from: rawValue))
         }
     }
 

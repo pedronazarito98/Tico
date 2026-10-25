@@ -55,6 +55,11 @@ fi
 BUILD_BINARY="$BUILD_DIR/$EXECUTABLE_NAME"
 BUILD_RESOURCE_BUNDLE="$BUILD_DIR/$RESOURCE_BUNDLE_NAME"
 BUILD_ICON="$BUILD_RESOURCE_BUNDLE/$ICON_FILE_NAME"
+# O SwiftPM do Xcode 27 produz bundles macOS estruturados. Versões anteriores
+# colocam o recurso na raiz; ambos são entradas válidas para o mesmo pacote.
+if [[ ! -f "$BUILD_ICON" ]]; then
+  BUILD_ICON="$BUILD_RESOURCE_BUNDLE/Contents/Resources/$ICON_FILE_NAME"
+fi
 
 mkdir -p "$STAGED_MACOS" "$STAGED_RESOURCES"
 cp "$BUILD_BINARY" "$STAGED_BINARY"

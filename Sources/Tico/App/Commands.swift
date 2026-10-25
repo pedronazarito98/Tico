@@ -6,7 +6,7 @@ struct TicoCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .newItem) {
-            Button("Nova regra") {
+            Button("Novo atalho") {
                 commandRouter.send(.createRule)
             }
             .keyboardShortcut("n", modifiers: [.command])
@@ -27,6 +27,8 @@ struct TicoCommands: Commands {
         CommandMenu("Atalhos") {
             Button("Painel de ações") { commandRouter.send(.showContextualActions) }
                 .keyboardShortcut(.space, modifiers: [.command, .option, .control])
+            Button("Fazer com conteúdo…") { commandRouter.send(.showContentActions) }
+            Button("Usar texto selecionado…") { commandRouter.send(.useSelectedContent) }
             Button("Mapa de gestos") { commandRouter.send(.showGestureMap) }
                 .keyboardShortcut("m", modifiers: [.command, .option])
             Button("Descrever automação…") { commandRouter.send(.describeAutomation) }
@@ -51,8 +53,8 @@ struct TicoCommands: Commands {
 
             Divider()
 
-            Button("Visão geral") {
-                commandRouter.send(.selectSection(.overview))
+            Button("Atividade") {
+                commandRouter.send(.selectSection(.activity))
             }
             .keyboardShortcut("1", modifiers: [.command])
 
@@ -61,17 +63,12 @@ struct TicoCommands: Commands {
             }
             .keyboardShortcut("2", modifiers: [.command])
 
-            Button("Regras") {
+            Button("Meus atalhos") {
                 commandRouter.send(.selectSection(.rules))
             }
             .keyboardShortcut("3", modifiers: [.command])
 
-            Button("Perfis") {
-                commandRouter.send(.selectSection(.profiles))
-            }
-            .keyboardShortcut("4", modifiers: [.command])
-
-            Button("Biblioteca") {
+            Button("Modelos e gestos") {
                 commandRouter.send(.selectSection(.library))
             }
             .keyboardShortcut("5", modifiers: [.command])
@@ -80,11 +77,6 @@ struct TicoCommands: Commands {
                 commandRouter.send(.selectSection(.laboratory))
             }
             .keyboardShortcut("6", modifiers: [.command])
-
-            Button("Métricas") {
-                commandRouter.send(.selectSection(.metrics))
-            }
-            .keyboardShortcut("7", modifiers: [.command])
 
             Button("Log") {
                 commandRouter.send(.selectSection(.log))

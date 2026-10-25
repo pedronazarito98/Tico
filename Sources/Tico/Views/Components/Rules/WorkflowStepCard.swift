@@ -16,6 +16,7 @@ struct WorkflowStepCard: View {
     let onToggle: () -> Void
     let onDelete: () -> Void
     let onMove: (Int) -> Void
+    var showsSelectionTiming = false
     @State private var urlDraft = ""
 
     var body: some View {
@@ -50,7 +51,8 @@ struct WorkflowStepCard: View {
             }
             VStack(alignment: .leading, spacing: 14) {
                 if showsHeader { Divider() }
-                RuleActionEditorView(action: $step.action, urlText: urlText, applications: applications, macOSShortcuts: macOSShortcuts)
+                RuleActionEditorView(action: $step.action, urlText: urlText, applications: applications,
+                    macOSShortcuts: macOSShortcuts, showsSelectionTiming: showsSelectionTiming)
                 if let issue = WorkflowEditorValidation.issue(in: step.action) {
                     Label(issue, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.orange)
                 }

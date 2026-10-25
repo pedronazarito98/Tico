@@ -9,6 +9,7 @@ final class WorkflowExecutor {
 
     private let actionRunner: ActionRunner
     private let now: () -> Date
+    private let sceneLayouts: SceneLayoutSession?
     private let logger = Logger(
         subsystem: Bundle.main.bundleIdentifier ?? "com.pedronazarito.Tico",
         category: "Workflow"
@@ -16,29 +17,83 @@ final class WorkflowExecutor {
 
     init(
         actionRunner: ActionRunner = ActionRunner(),
-        now: @escaping () -> Date = Date.init
+        now: @escaping () -> Date = Date.init,
+        sceneLayouts: SceneLayoutSession? = nil
     ) {
         self.actionRunner = actionRunner
         self.now = now
+        self.sceneLayouts = sceneLayouts
     }
 
     func execute(
         _ workflow: ActionWorkflow,
+        providedContent: AutomationContent? = nil,
+        preparedContent: ContentExecutionContext? = nil,
         approval: ScriptApprovalHandler? = nil,
+        requiresLayoutReview: Bool = true,
         onStep: ((WorkflowStepExecution) -> Void)? = nil
     ) async -> WorkflowExecutionReport {
         let startedAt = now()
-        var executions: [WorkflowStepExecution] = []
         guard workflow.timeout.isFinite,
               (1...600).contains(workflow.timeout),
-              (1...20).contains(workflow.steps.count) else {
+              (0...20).contains(workflow.steps.count), workflow.isValid else {
             return invalidReport(
                 workflow: workflow,
                 message: "O workflow contém limites inválidos.",
                 startedAt: startedAt
             )
         }
+        var layoutReservation: UUID?
+        if workflow.sceneLayout != nil {
+            guard let sceneLayouts else {
+                return invalidReport(workflow: workflow, message: "O serviço de layout não está disponível nesta execução.", startedAt: startedAt)
+            }
+            do { layoutReservation = try await sceneLayouts.acquireReservation(workflowID: workflow.id) }
+            catch {
+                if Task.isCancelled {
+                    return report(workflow: workflow, executions: [], startedAt: startedAt, cancelled: true)
+                }
+                return invalidReport(workflow: workflow, message: error.localizedDescription, startedAt: startedAt)
+            }
+        }
+        // O corpo não lança: todo retorno, inclusive os atalhos de erro/cancel,
+        // volta por este wrapper. A liberação é aguardada, nunca uma Task solta.
+        let result = await executeReserved(workflow, providedContent: providedContent,
+            preparedContent: preparedContent, approval: approval, requiresLayoutReview: requiresLayoutReview,
+            onStep: onStep, startedAt: startedAt, layoutReservation: layoutReservation)
+        if let layoutReservation, let sceneLayouts {
+            await sceneLayouts.releaseReservation(layoutReservation)
+        }
+        return result
+    }
+
+    private func executeReserved(
+        _ workflow: ActionWorkflow,
+        providedContent: AutomationContent?,
+        preparedContent: ContentExecutionContext?,
+        approval: ScriptApprovalHandler?,
+        requiresLayoutReview: Bool,
+        onStep: ((WorkflowStepExecution) -> Void)?,
+        startedAt: Date,
+        layoutReservation: UUID?
+    ) async -> WorkflowExecutionReport {
+        var executions: [WorkflowStepExecution] = []
         let deadline = startedAt.addingTimeInterval(workflow.timeout)
+        // Fixa a seleção antes de atrasos ou efeitos mudarem o foco. O snapshot
+        // preparado pelo painel mantém a origem mesmo após editar a entrada.
+        let contentContext: ContentExecutionContext
+        if let preparedContent {
+            contentContext = preparedContent
+        } else {
+            contentContext = await actionRunner.prepareContentContext(
+                actions: workflow.enabledSteps.map(\.action), providedContent: providedContent)
+        }
+        if Task.isCancelled {
+            return report(workflow: workflow, executions: [], startedAt: startedAt, cancelled: true)
+        }
+        if let issue = contentPreflight(workflow: workflow, context: contentContext) {
+            return invalidReport(workflow: workflow, message: issue, startedAt: startedAt)
+        }
 
         for (index, step) in workflow.enabledSteps.enumerated() {
             guard step.delayBefore.isFinite,
@@ -135,6 +190,7 @@ final class WorkflowExecutor {
             let timedExecution = await execute(
                 step: step,
                 approval: approval,
+                contentContext: contentContext,
                 timeout: timeoutConfiguration.duration,
                 timeoutMessage: timeoutConfiguration.message,
                 reachesWorkflowDeadline: timeoutConfiguration.reachesWorkflowDeadline
@@ -156,6 +212,27 @@ final class WorkflowExecutor {
             }
         }
 
+        // Layout é a última etapa da cena. A sessão congela o saldo do deadline
+        // enquanto a pessoa revisa; consulta/aplicação continuam limitadas.
+        // Cancelamento e relatório permanecem na mesma execução.
+        if workflow.sceneLayout != nil, !Task.isCancelled,
+           workflow.failurePolicy == .continueRemaining || executions.allSatisfy({ $0.result.success }) {
+            let layoutResults: [WorkflowStepExecution]
+            if let sceneLayouts, let layoutReservation {
+                layoutResults = await sceneLayouts.execute(workflow: workflow, deadline: deadline,
+                    reservationToken: layoutReservation, requiresReview: requiresLayoutReview)
+            } else {
+                layoutResults = [.init(stepID: workflow.id, stepName: "Layout de janelas", index: 0,
+                    result: .failed("O serviço de layout não está disponível nesta execução."), duration: 0)]
+            }
+            let firstIndex = executions.count
+            for (offset, var execution) in layoutResults.enumerated() {
+                execution.index = firstIndex + offset
+                executions.append(execution)
+                onStep?(execution)
+            }
+        }
+
         return report(
             workflow: workflow,
             executions: executions,
@@ -167,6 +244,7 @@ final class WorkflowExecutor {
     private func execute(
         step: WorkflowStep,
         approval: ScriptApprovalHandler?,
+        contentContext: ContentExecutionContext,
         timeout: TimeInterval,
         timeoutMessage: String,
         reachesWorkflowDeadline: Bool
@@ -177,7 +255,8 @@ final class WorkflowExecutor {
                 TimedExecution(
                     result: await actionRunner.execute(
                         step.action,
-                        scriptApproval: approval
+                        scriptApproval: approval,
+                        contentContext: contentContext
                     ),
                     reachedWorkflowDeadline: false
                 )
@@ -204,6 +283,32 @@ final class WorkflowExecutor {
             group.cancelAll()
             return result
         }
+    }
+
+    /// Valida toda entrada conhecida antes do primeiro efeito. Erros são tipados
+    /// e sanitizados: relatórios nunca recebem o texto, URL ou caminho fornecido.
+    private func contentPreflight(workflow: ActionWorkflow, context: ContentExecutionContext) -> String? {
+        do {
+            for step in workflow.enabledSteps {
+                guard case let .content(configuration) = step.action else { continue }
+                guard configuration.validationMessage == nil else { throw ContentActionError.invalidConfiguration }
+                let content: AutomationContent
+                switch configuration.source {
+                case .provided:
+                    guard let value = context.providedContent else { throw ContentActionError.emptyContent }
+                    content = value
+                case .selection:
+                    guard configuration.selectionTiming == .workflowStart else { continue }
+                    guard let snapshot = context.initialSelection else { throw ContentActionError.selectionUnavailable }
+                    content = try snapshot.get()
+                }
+                try content.validate()
+                guard configuration.accepts(content) else { throw ContentActionError.incompatibleContent }
+                if case let .search(destination) = configuration.destination { _ = try destination.url(for: content) }
+            }
+            return nil
+        } catch let error as ContentActionError { return error.localizedDescription }
+        catch { return ContentActionError.invalidConfiguration.localizedDescription }
     }
 
     private func appendWorkflowTimeout(

@@ -5,15 +5,19 @@ struct RuleActionEditorView: View {
     @Binding var urlText: String
     let applications: [ApplicationChoice]
     var macOSShortcuts: [String] = []
+    var showsSelectionTiming = false
+    var showsActionHeader = true
     @State private var showsActionPicker = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label(RuleActionKind(action: action).title, systemImage: RuleActionKind(action: action).systemImage)
-                    .font(.body.weight(.medium))
-                Spacer()
-                Button("Trocar ação") { showsActionPicker = true }.buttonStyle(.borderless)
+            if showsActionHeader {
+                HStack {
+                    Label(RuleActionKind(action: action).title, systemImage: RuleActionKind(action: action).systemImage)
+                        .font(.body.weight(.medium))
+                    Spacer()
+                    Button("Trocar ação") { showsActionPicker = true }.buttonStyle(.borderless)
+                }
             }
             fields
         }
@@ -32,8 +36,10 @@ struct RuleActionEditorView: View {
             ), applications: applications)
 
         case .openURL:
-            TextField("URL", text: $urlText)
-            if !urlIsValid {
+            Text("Qual site você quer abrir?").font(.headline)
+            TextField("https://…", text: $urlText).textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Endereço do site")
+            if !urlText.isEmpty && !urlIsValid {
                 Text("Informe uma URL completa, incluindo https://")
                     .font(.caption)
                     .foregroundStyle(.red)
@@ -90,6 +96,12 @@ struct RuleActionEditorView: View {
             Text("Use exatamente o nome exibido no app Atalhos.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+        case let .content(configuration):
+            ContentActionEditorView(configuration: Binding(
+                get: { configuration },
+                set: { action = .content($0) }
+            ), macOSShortcuts: macOSShortcuts, showsSelectionTiming: showsSelectionTiming)
 
         case let .keyboardShortcut(keyCode, modifiers):
             KeyboardActionChoices(keyCode: keyCode, modifiers: modifiers) { code, flags in

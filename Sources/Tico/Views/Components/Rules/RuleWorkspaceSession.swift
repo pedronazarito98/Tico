@@ -22,6 +22,20 @@ final class RuleWorkspaceSession: ObservableObject {
         presentedEditor = session(for: rule)
     }
 
+    /// Duplicar abre um rascunho independente e pausado. Só Salvar persiste a cópia.
+    func duplicate(_ rule: ShortcutRule) {
+        var copy = rule
+        copy.id = UUID()
+        copy.name += " (cópia)"
+        copy.isEnabled = false
+        copy.createdAt = Date()
+        copy.updatedAt = copy.createdAt
+        let session = RuleEditingSession(rule: copy, isNew: true)
+        session.chooseWorkflow(copy.workflow, title: copy.name)
+        session.chooseTrigger(copy.trigger)
+        presentedEditor = session
+    }
+
     func session(for rule: ShortcutRule) -> RuleEditingSession {
         if let session = sessions[rule.id] {
             session.receivePersisted(rule)

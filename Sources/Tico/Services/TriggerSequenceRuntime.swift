@@ -26,12 +26,11 @@ struct TriggerSequenceRuntime {
     mutating func process(
         event: InputEventDescriptor,
         rules: [ShortcutRule],
-        context: ContextSnapshot,
-        profiles: [ShortcutProfile] = []
+        context: ContextSnapshot
     ) -> TriggerRuntimeEvaluation {
-        var matched = flushExpired(rules: rules, at: event.timestamp, profiles: profiles)
+        var matched = flushExpired(rules: rules, at: event.timestamp)
         let eligibleRules = rules.filter {
-            $0.matches(context, profiles: profiles)
+            $0.matches(context)
         }
 
         let simpleMatches = matcher.matchingRules(
@@ -40,8 +39,7 @@ struct TriggerSequenceRuntime {
                 return true
             },
             for: event,
-            context: context,
-            profiles: profiles
+            context: context
         )
         for rule in simpleMatches {
             if let deadline = tapAmbiguityDeadline(
@@ -109,15 +107,14 @@ struct TriggerSequenceRuntime {
         }
 
         return TriggerRuntimeEvaluation(
-            matchedRules: deduplicatedAndSorted(matched, profiles: profiles),
+            matchedRules: deduplicatedAndSorted(matched),
             nextDeadline: pendingMatches.values.map(\.deadline).min()
         )
     }
 
     mutating func flushExpired(
         rules: [ShortcutRule],
-        at date: Date = Date(),
-        profiles: [ShortcutProfile] = []
+        at date: Date = Date()
     ) -> [ShortcutRule] {
         let expired = pendingMatches.values.filter { $0.deadline <= date }
         for pending in expired {
@@ -127,10 +124,9 @@ struct TriggerSequenceRuntime {
             expired.compactMap { pending in
                 rules.first {
                     $0.id == pending.ruleID
-                        && $0.matches(pending.context, profiles: profiles)
+                        && $0.matches(pending.context)
                 }
-            },
-            profiles: profiles
+            }
         )
     }
 
@@ -210,31 +206,29 @@ struct TriggerSequenceRuntime {
     }
 
     private func deduplicatedAndSorted(
-        _ rules: [ShortcutRule],
-        profiles: [ShortcutProfile]
+        _ rules: [ShortcutRule]
     ) -> [ShortcutRule] {
         var seen = Set<UUID>()
         let sorted = rules
             .filter { seen.insert($0.id).inserted }
             .sorted {
-                let lhsSpecificity = $0.effectiveSpecificity(profiles: profiles)
-                let rhsSpecificity = $1.effectiveSpecificity(profiles: profiles)
+                let lhsSpecificity = $0.effectiveSpecificity
+                let rhsSpecificity = $1.effectiveSpecificity
                 if lhsSpecificity != rhsSpecificity {
                     return lhsSpecificity > rhsSpecificity
                 }
-                return $0.effectivePriority(profiles: profiles)
-                    > $1.effectivePriority(profiles: profiles)
+                return $0.priority
+                    > $1.priority
             }
         var accepted: [ShortcutRule] = []
         let conflictAnalyzer = RuleConflictAnalyzer()
         for rule in sorted {
             let isShadowed = accepted.contains {
-                $0.effectiveSpecificity(profiles: profiles)
-                    > rule.effectiveSpecificity(profiles: profiles)
+                $0.effectiveSpecificity
+                    > rule.effectiveSpecificity
                     && !conflictAnalyzer.conflicts(
                         for: rule,
-                        among: [$0],
-                        profiles: profiles
+                        among: [$0]
                     ).isEmpty
             }
             if !isShadowed {

@@ -12,6 +12,7 @@ final class ActionRunner {
     private let inputActionService: any InputActionPerforming
     private let applicationController: any ApplicationControlling
     private let windowController: any WindowControlling
+    private let contentActionService: ContentActionService
     private let scriptTimeout: TimeInterval
     private let now: () -> Date
 
@@ -25,6 +26,7 @@ final class ActionRunner {
         inputActionService: any InputActionPerforming = InputActionService(),
         applicationController: any ApplicationControlling = ApplicationControlService(),
         windowController: any WindowControlling = WindowControlService(),
+        contentActionService: ContentActionService = ContentActionService(),
         scriptTimeout: TimeInterval = 15,
         now: @escaping () -> Date = Date.init
     ) {
@@ -37,15 +39,27 @@ final class ActionRunner {
         self.inputActionService = inputActionService
         self.applicationController = applicationController
         self.windowController = windowController
+        self.contentActionService = contentActionService
         self.scriptTimeout = scriptTimeout
         self.now = now
     }
 
+    /// Resolva antes da primeira etapa, inclusive antes de delays ou mudanças de foco.
+    /// O contexto não deve ser armazenado em relatórios nem no estado persistido.
+    func prepareContentContext(
+        actions: [ShortcutAction],
+        providedContent: AutomationContent? = nil
+    ) async -> ContentExecutionContext {
+        await contentActionService.prepareContext(actions: actions, providedContent: providedContent)
+    }
+
     func execute(
         _ action: ShortcutAction,
-        scriptApproval: ScriptApprovalHandler? = nil
+        scriptApproval: ScriptApprovalHandler? = nil,
+        contentContext: ContentExecutionContext? = nil
     ) async -> ActionExecutionResult {
         do {
+            try Task.checkCancellation()
             let message: String
 
             switch action {
@@ -69,6 +83,7 @@ final class ActionRunner {
                 guard approved else {
                     return .failed("A execução do script foi recusada.", executedAt: now())
                 }
+                try Task.checkCancellation()
 
                 let result = try await shellScriptRunner.run(
                     command: command,
@@ -92,6 +107,7 @@ final class ActionRunner {
                 guard await scriptApproval(source) else {
                     return .failed("A execução do AppleScript foi recusada.", executedAt: now())
                 }
+                try Task.checkCancellation()
                 message = try await appleScriptRunner.run(
                     source: source,
                     approved: true,
@@ -105,6 +121,13 @@ final class ActionRunner {
                     timeout: scriptTimeout
                 )
                 message = output.isEmpty ? "Atalho “\(name)” executado." : output
+
+            case let .content(configuration):
+                message = try await contentActionService.execute(
+                    configuration,
+                    context: contentContext,
+                    timeout: scriptTimeout
+                )
 
             case let .keyboardShortcut(keyCode, modifiers):
                 try inputActionService.sendKeyboardShortcut(

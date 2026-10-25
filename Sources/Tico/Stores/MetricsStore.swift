@@ -120,14 +120,19 @@ final class MetricsStore: ObservableObject {
     }
 
     func clear() {
+        let previous = events
         events.removeAll()
         persist()
+        // Uma falha de disco não deve aparentar que o histórico foi removido.
+        if lastError != nil { events = previous }
     }
 
-    func exportCSV(to url: URL) throws {
+    /// Exporta o recorte apresentado, inclusive registros além da página visível.
+    /// O comportamento sem recorte permanece compatível com os consumidores atuais.
+    func exportCSV(to url: URL, events selection: [GestureMetricEvent]? = nil) throws {
         var lines = ["date,rule,gesture,device,outcome,confidence,latency_ms"]
         let formatter = ISO8601DateFormatter()
-        for event in events {
+        for event in selection ?? events {
             let confidenceText = event.confidence.map { String($0) } ?? ""
             let row: [String] = [
                 formatter.string(from: event.occurredAt),

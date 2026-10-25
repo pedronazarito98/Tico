@@ -12,6 +12,8 @@ struct ContextualActionsView: View {
     let isMap: Bool
     let onSelect: (UUID) -> Void
     let onClose: () -> Void
+    var onContent: () -> Void = {}
+    var onSelection: () -> Void = {}
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -40,6 +42,15 @@ struct ContextualActionsView: View {
                     }
                 }
             }.frame(maxHeight: isMap ? 320 : 250)
+            if !isMap {
+                Divider()
+                HStack {
+                    Button("Fazer com conteúdo…", action: onContent)
+                    Spacer()
+                    Menu("Mais") { Button("Usar texto selecionado", action: onSelection) }
+                        .menuStyle(.borderlessButton).fixedSize()
+                }.controlSize(.small)
+            }
             Text(isMap ? "Solte ⌘⌥ para fechar · nenhuma ação é executada" : "Clique para executar · Esc para fechar")
                 .font(.caption).foregroundStyle(.secondary)
         }.padding(20).frame(width: 370)

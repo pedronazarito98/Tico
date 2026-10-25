@@ -37,21 +37,39 @@ final class FirstShortcutUITests: XCTestCase {
         XCTAssertTrue(newRuleButton.waitForExistence(timeout: 5))
         newRuleButton.click()
 
-        let nameField = app.textFields["tico.rule.name"]
+        // O mesmo contrato de criação e persistência passa agora pelas três
+        // etapas visuais. O teste continua isolado e não executa ações reais.
+        let action = app.buttons["Centralizar janela"]
+        XCTAssertTrue(action.waitForExistence(timeout: 5))
+        action.click()
+        app.buttons["tico.composer.continue"].click()
+
+        let recordButton = app.buttons["tico.composer.record"]
+        XCTAssertTrue(recordButton.waitForExistence(timeout: 5))
+        recordButton.click()
+        app.typeKey("s", modifierFlags: [.command, .option])
+        recordButton.click()
+        let continueButton = app.buttons["tico.composer.continue"]
+        XCTAssertTrue(continueButton.isEnabled)
+        continueButton.click()
+
+        let nameField = app.textFields["tico.composer.name"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
-
-        let enabledToggle = app.switches["tico.rule.enabled"]
-        XCTAssertTrue(enabledToggle.waitForExistence(timeout: 5))
-        assertSwitchIsOff(enabledToggle)
-
+        revealReviewControl(nameField)
         nameField.click()
         nameField.typeKey("a", modifierFlags: .command)
         nameField.typeText("Minha regra E2E")
 
-        let saveButton = app.buttons["tico.rule.save"]
+        let enabledToggle = app.descendants(matching: .any)["tico.composer.enabled"]
+        XCTAssertTrue(enabledToggle.waitForExistence(timeout: 5))
+        revealReviewControl(enabledToggle)
+        enabledToggle.click()
+        assertSwitchIsOff(enabledToggle)
+
+        let saveButton = app.buttons["tico.composer.save"]
         XCTAssertTrue(saveButton.isEnabled)
         saveButton.click()
-        XCTAssertFalse(saveButton.isEnabled)
+        XCTAssertTrue(saveButton.waitForNonExistence(timeout: 5))
         assertSidebarStatusContains("0 de 3 regras ativas")
 
         app.terminate()
@@ -64,7 +82,9 @@ final class FirstShortcutUITests: XCTestCase {
         XCTAssertTrue(rulesSection.waitForExistence(timeout: 5))
         rulesSection.click()
 
-        let persistedRule = app.buttons["Minha regra E2E"]
+        let persistedRule = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "Minha regra E2E")
+        ).firstMatch
         XCTAssertTrue(
             persistedRule.waitForExistence(timeout: 5),
             app.debugDescription
@@ -74,6 +94,25 @@ final class FirstShortcutUITests: XCTestCase {
         let persistedToggle = app.switches["tico.rule.enabled"]
         XCTAssertTrue(persistedToggle.waitForExistence(timeout: 5))
         assertSwitchIsOff(persistedToggle)
+    }
+
+    /// A janela pode restaurar um tamanho compacto mesmo no processo isolado.
+    /// Navega pela rolagem real, sem forçar uma janela ampla ou pular assertions.
+    private func revealReviewControl(
+        _ control: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let content = app.sheets.scrollViews.firstMatch
+        XCTAssertTrue(content.waitForExistence(timeout: 5), file: file, line: line)
+        for _ in 0..<8 {
+            let visible = content.frame.insetBy(dx: 0, dy: 8)
+            if visible.contains(control.frame), control.isHittable { return }
+            let delta: CGFloat = control.frame.maxY > visible.maxY ? -160 : 160
+            content.scroll(byDeltaX: 0, deltaY: delta)
+        }
+        XCTAssertTrue(content.frame.contains(control.frame) && control.isHittable,
+                      "O controle da revisão precisa estar visível após rolar.", file: file, line: line)
     }
 
     private func configuredApplication() -> XCUIApplication {

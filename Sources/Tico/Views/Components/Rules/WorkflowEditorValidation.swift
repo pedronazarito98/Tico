@@ -4,7 +4,8 @@ import Foundation
 /// quando a entrada inválida está em uma ação recolhida ou posterior na sequência.
 enum WorkflowEditorValidation {
     static func issue(in workflow: ActionWorkflow) -> String? {
-        guard workflow.isValid else { return "Mantenha pelo menos uma ação ativa." }
+        if let issue = workflow.sceneLayout?.validationIssue { return issue }
+        guard workflow.isValid else { return "Mantenha uma ação ativa ou um layout de janelas válido." }
         for (index, step) in workflow.steps.enumerated() where step.isEnabled {
             if let issue = issue(in: step.action) { return "Ação \(index + 1): \(issue)" }
         }
@@ -25,6 +26,8 @@ enum WorkflowEditorValidation {
             }
         case let .shellScript(command), let .appleScript(command):
             if command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Escreva o comando a executar." }
+        case let .content(configuration):
+            return configuration.validationMessage
         case let .macOSShortcut(name, _):
             if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "Informe o nome do atalho do macOS." }
         default: break

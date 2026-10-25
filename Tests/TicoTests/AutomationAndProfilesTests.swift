@@ -193,19 +193,14 @@ final class AutomationAndProfilesTests: XCTestCase {
         XCTAssertEqual(input.clipboardValues, ["copiado"])
     }
 
-    func testVersionSixPersistsProfilesWorkflowsTemplatesAndPresets() throws {
+    func testLegacyContextMigratesWithoutLosingWorkflowsTemplatesOrPresets() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("Tico-v6-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("shortcuts.json")
         let store = ShortcutStore(fileURL: url, seedExamples: false)
-        let profile = ShortcutProfile(
-            name: "Design",
-            applicationBundleIdentifiers: ["com.apple.Preview"],
-            conditions: [.windowTitle(RuleTextMatcher(value: "PDF"))],
-            priority: 3
-        )
-        try store.addProfile(profile)
+        let profileID = UUID()
+        let inherited: [RuleCondition] = [.windowTitle(RuleTextMatcher(value: "PDF"))]
         let workflow = ActionWorkflow(
             name: "Preparar",
             steps: [
@@ -220,7 +215,6 @@ final class AutomationAndProfilesTests: XCTestCase {
             name: "Meu preset",
             trigger: .customTrackpad(template: template),
             workflow: workflow,
-            profileID: profile.id,
             createdAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
         try store.savePreset(preset)
@@ -229,20 +223,73 @@ final class AutomationAndProfilesTests: XCTestCase {
             trigger: .customTrackpad(template: template),
             action: .setClipboard(text: "legacy"),
             workflow: workflow,
-            profileID: profile.id,
             conditions: [.modifiers([.command])],
             createdAt: Date(timeIntervalSince1970: 1_800_000_000),
             updatedAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
         try store.add(rule)
 
+        // O payload é construído no diretório temporário deste teste existente;
+        // nenhuma instalação ou configuração real é usada na migração.
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .millisecondsSince1970
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let profile: [String: Any] = [
+            "id": profileID.uuidString, "name": "Design", "isEnabled": true,
+            "applicationBundleIdentifiers": ["com.apple.Preview"], "priority": 3,
+            "conditions": try JSONSerialization.jsonObject(with: encoder.encode(inherited))
+        ]
+        legacy["version"] = 7
+        legacy["profiles"] = [profile]
+        for key in ["rules", "presets"] {
+            var values = try XCTUnwrap(legacy[key] as? [[String: Any]])
+            values[0]["profileID"] = profileID.uuidString
+            legacy[key] = values
+        }
+        let original = try JSONSerialization.data(withJSONObject: legacy)
+        try original.write(to: url)
         let reloaded = ShortcutStore(fileURL: url, seedExamples: false)
+        var expected = rule
+        expected.isEnabled = false
+        expected.conditions += inherited + [.application(bundleIdentifiers: ["com.apple.Preview"])]
+        expected.priority = 3
+        expected.notes = "Migração: condições herdadas incorporadas ao atalho. Revise antes de ativar."
+        var expectedPreset = preset
+        expectedPreset.conditions = inherited + [.application(bundleIdentifiers: ["com.apple.Preview"])]
+        expectedPreset.priority = 3
 
-        XCTAssertEqual(reloaded.rules, [rule])
-        XCTAssertEqual(reloaded.profiles, [profile])
+        XCTAssertNil(reloaded.lastError)
+        XCTAssertEqual(reloaded.rules, [expected])
+        XCTAssertEqual(reloaded.rules.first?.conditions, expected.conditions)
         XCTAssertEqual(reloaded.reusableWorkflows, [workflow])
         XCTAssertEqual(reloaded.customGestureTemplates, [template])
-        XCTAssertEqual(reloaded.presets, [preset])
+        XCTAssertEqual(reloaded.presets, [expectedPreset])
+        XCTAssertEqual(try Data(contentsOf: directory.appendingPathComponent("shortcuts.v7.backup.json")), original)
+        XCTAssertEqual(ShortcutStore(fileURL: url, seedExamples: false).rules, [expected])
+        let migrated = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        XCTAssertEqual(migrated["version"] as? Int, ShortcutStore.currentDocumentVersion)
+        XCTAssertNil(migrated["profiles"])
+        XCTAssertNil((migrated["rules"] as? [[String: Any]])?.first?["profileID"])
+
+        legacy["profiles"] = []
+        let orphan = try ShortcutDocumentCodec.decode(JSONSerialization.data(withJSONObject: legacy))
+        var orphanRule = try XCTUnwrap(orphan.rules.first)
+        XCTAssertFalse(orphanRule.isEnabled)
+        orphanRule.isEnabled = true
+        XCTAssertFalse(orphanRule.matches(ContextSnapshot(frontmostApplicationBundleIdentifier: "com.apple.Preview",
+            frontmostWindowTitle: "PDF", modifiers: [.command])))
+        XCTAssertTrue(orphan.presets.first?.conditions.contains(.application(bundleIdentifiers: [])) == true)
+
+        var disabled = profile
+        disabled["isEnabled"] = false
+        legacy["profiles"] = [disabled]
+        XCTAssertFalse(try XCTUnwrap(ShortcutDocumentCodec.decode(JSONSerialization.data(withJSONObject: legacy)).rules.first).isEnabled)
+        legacy["profiles"] = [profile, profile]
+        XCTAssertThrowsError(try ShortcutDocumentCodec.decode(JSONSerialization.data(withJSONObject: legacy)))
+        var invalid = profile
+        invalid["priority"] = Int.max
+        legacy["profiles"] = [invalid]
+        XCTAssertThrowsError(try ShortcutDocumentCodec.decode(JSONSerialization.data(withJSONObject: legacy)))
     }
 
     func testVersionFiveSingleActionMigratesToWorkflowAndCreatesBackup() throws {
@@ -276,13 +323,7 @@ final class AutomationAndProfilesTests: XCTestCase {
         ))
     }
 
-    func testProfileAndConditionsFilterAndPrioritizeRules() {
-        let profile = ShortcutProfile(
-            name: "Preview PDFs",
-            applicationBundleIdentifiers: ["com.apple.Preview"],
-            conditions: [.windowTitle(RuleTextMatcher(value: "PDF"))],
-            priority: 4
-        )
+    func testIndependentConditionsFilterAndPrioritizeRules() {
         let trigger = TriggerDefinition.keyboard(keyCode: 49, modifiers: [.command])
         let global = ShortcutRule(
             name: "Global",
@@ -293,8 +334,9 @@ final class AutomationAndProfilesTests: XCTestCase {
             name: "Contextual",
             trigger: trigger,
             action: .notification(title: "Contextual", body: ""),
-            profileID: profile.id,
-            conditions: [.modifiers([.command])]
+            conditions: [.modifiers([.command]), .application(bundleIdentifiers: ["com.apple.Preview"]),
+                         .windowTitle(RuleTextMatcher(value: "PDF"))],
+            priority: 4
         )
         let context = ContextSnapshot(
             frontmostApplicationBundleIdentifier: "com.apple.Preview",
@@ -305,14 +347,13 @@ final class AutomationAndProfilesTests: XCTestCase {
         let matches = TriggerMatcher().matchingRules(
             in: [global, contextual],
             for: .keyboard(keyCode: 49, modifiers: [.command]),
-            context: context,
-            profiles: [profile]
+            context: context
         )
 
         XCTAssertEqual(matches.map(\.name), ["Contextual", "Global"])
         var wrongTitle = context
         wrongTitle.frontmostWindowTitle = "Imagem"
-        XCTAssertFalse(contextual.matches(wrongTitle, profiles: [profile]))
+        XCTAssertFalse(contextual.matches(wrongTitle))
     }
 
     func testPressureRangeAndDeviceFallbackAreMatched() {
@@ -409,6 +450,43 @@ final class AutomationAndProfilesTests: XCTestCase {
             String(decoding: try Data(contentsOf: csvURL), as: UTF8.self)
                 .contains("latency_ms")
         )
+
+        // Valida o recorte apresentado e exportado usando somente os registros
+        // sintéticos deste teste. Fronteiras são dias locais, não blocos de 24h.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: -10_800))
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let today = calendar.startOfDay(for: now)
+        let boundary = try XCTUnwrap(calendar.date(byAdding: .day, value: -6, to: today))
+        let id = UUID()
+        let records = [
+            GestureMetricEvent(occurredAt: now.addingTimeInterval(-1), ruleID: id, ruleName: "Nome atual", outcome: .success),
+            GestureMetricEvent(occurredAt: today.addingTimeInterval(-1), ruleID: id, ruleName: "Nome anterior", outcome: .success),
+            GestureMetricEvent(occurredAt: boundary, ruleName: "Outra", outcome: .failure),
+            GestureMetricEvent(occurredAt: now.addingTimeInterval(-2), ruleID: id, ruleName: "Nome atual", outcome: .cancelled),
+            GestureMetricEvent(occurredAt: now.addingTimeInterval(-3), outcome: .rejected),
+            GestureMetricEvent(occurredAt: boundary.addingTimeInterval(-1), outcome: .failure),
+            GestureMetricEvent(occurredAt: now.addingTimeInterval(60), outcome: .success)
+        ]
+        let week = ActivitySummary(events: records, period: .week, now: now, calendar: calendar)
+        XCTAssertEqual(week.events.count, 5)
+        XCTAssertEqual(week.executionCount, 4)
+        XCTAssertEqual(week.successes, 2)
+        XCTAssertEqual(week.failures, 1)
+        XCTAssertEqual(week.cancellations, 1)
+        XCTAssertEqual(week.rejections, 1)
+        XCTAssertEqual(week.usage.first?.name, "Nome atual")
+        XCTAssertEqual(week.usage.first?.count, 3)
+        XCTAssertEqual(week.history(outcome: .success, subject: week.usage.first?.id).count, 2)
+        XCTAssertEqual(ActivitySummary(events: records, period: .today, now: now, calendar: calendar).events.count, 3)
+        XCTAssertEqual(ActivitySummary(events: records, period: .all, now: now, calendar: calendar).events.count, 6)
+        XCTAssertEqual(ActivitySummary(events: records, period: .week, search: "Nome atual", now: now, calendar: calendar).events.count, 2)
+        let failures = week.history(outcome: .failure, subject: nil)
+        try store.exportCSV(to: csvURL, events: failures)
+        let filteredCSV = try String(contentsOf: csvURL, encoding: .utf8)
+        XCTAssertEqual(filteredCSV.split(separator: "\n").count, 2)
+        XCTAssertTrue(filteredCSV.contains("Outra"))
+        XCTAssertFalse(filteredCSV.contains("Nome atual"))
     }
 
     private func makeTemplate(name: String) -> CustomGestureTemplate {

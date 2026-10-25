@@ -13,9 +13,14 @@ public struct TicoApp: App {
     @StateObject private var controller: AppController
     @StateObject private var commandRouter: AppCommandRouter
     private let lifecycle: any ApplicationLifecycleControlling
+    private let validationColorScheme: ColorScheme?
 
     public init() {
         let launchConfiguration = TicoLaunchConfiguration.current()
+        // Aparência restrita à execução isolada: permite validar o modo escuro
+        // sem alterar as preferências do macOS ou da instalação do usuário.
+        validationColorScheme = launchConfiguration.isUITesting
+            && ProcessInfo.processInfo.arguments.contains("--ui-testing-dark") ? .dark : nil
         let shortcutStore = ShortcutStore(
             fileURL: launchConfiguration.fileURL(named: "shortcuts.json")
         )
@@ -69,8 +74,19 @@ public struct TicoApp: App {
                 commandRouter: commandRouter
             )
             .tint(TicoBrand.Palette.primary)
+            .preferredColorScheme(validationColorScheme)
         }
         .defaultSize(width: 1_240, height: 780)
+        .defaultWindowPlacement { _, context in
+            // A primeira janela respeita a área útil da tela. O macOS continua
+            // responsável por restaurar a posição e o tamanho escolhidos depois.
+            let available = context.defaultDisplay.visibleRect
+            return WindowPlacement(.center, size: CGSize(
+                width: min(1_240, available.width - 32),
+                height: min(780, available.height - 32)
+            ))
+        }
+        .windowResizability(.contentMinSize)
         .commands {
             TicoCommands(commandRouter: commandRouter)
         }

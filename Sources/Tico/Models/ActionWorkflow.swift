@@ -41,19 +41,22 @@ struct ActionWorkflow: Identifiable, Codable, Hashable, Sendable {
     var steps: [WorkflowStep]
     var failurePolicy: WorkflowFailurePolicy
     var timeout: TimeInterval
+    var sceneLayout: SceneLayoutPlan?
 
     init(
         id: UUID = UUID(),
         name: String = "",
         steps: [WorkflowStep],
         failurePolicy: WorkflowFailurePolicy = .stop,
-        timeout: TimeInterval = 60
+        timeout: TimeInterval = 60,
+        sceneLayout: SceneLayoutPlan? = nil
     ) {
         self.id = id
         self.name = name
         self.steps = Array(steps.prefix(20))
         self.failurePolicy = failurePolicy
         self.timeout = min(max(timeout, 1), 600)
+        self.sceneLayout = sceneLayout
     }
 
     init(action: ShortcutAction) {
@@ -65,7 +68,8 @@ struct ActionWorkflow: Identifiable, Codable, Hashable, Sendable {
     }
 
     var isValid: Bool {
-        !enabledSteps.isEmpty && steps.count <= 20
+        (!enabledSteps.isEmpty || sceneLayout != nil) && steps.count <= 20
+            && (sceneLayout?.validationIssue == nil)
     }
 }
 

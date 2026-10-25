@@ -15,14 +15,29 @@ struct ContentView: View {
     @StateObject private var ruleWorkspace = RuleWorkspaceSession()
     @State private var applicationFilter: String?
     @State private var navigationVisibility = NavigationSplitViewVisibility.all
-    @State private var selectedSection = TicoSection.overview
+    @State private var selectedSection = TicoSection.activity
     @State private var selectedRuleID: ShortcutRule.ID?
     @State private var searchText = ""
     @State private var didPerformInitialSetup = false
     @State private var practicePresentation: PracticePresentation?
+    @State private var practiceError: String?
     @State private var showsDescription = false
+    @State private var describedDraft: ShortcutRule?
+    @State private var newSceneRequest: UUID?
 
     var body: some View {
+        GeometryReader { geometry in
+            windowContent
+                .environment(\.presentationAvailableSize, CGSize(
+                    width: max(1, geometry.size.width - 32),
+                    height: max(1, geometry.size.height - 24)))
+        }
+        .frame(minWidth: 680, minHeight: 480)
+    }
+
+    // A área oferecida pelo SwiftUI é a fonte dos limites dos modais. Redimensionar
+    // a janela atualiza o ambiente sem recriar o owner dos rascunhos.
+    private var windowContent: some View {
         NavigationSplitView(columnVisibility: $navigationVisibility) {
             SidebarView(
                 selection: sectionBinding,
@@ -31,62 +46,37 @@ struct ContentView: View {
                 scopedApplications: scopedApplications,
                 enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
                 totalRuleCount: shortcutStore.rules.count,
-                captureIsRunning: controller.captureIsRunning
+                captureIsRunning: controller.captureIsRunning,
+                onToggleCapture: controller.toggleCapture
             )
         } detail: {
             detail
                 .scrollEdgeEffectStyle(.soft, for: .top)
+                .modifier(SectionSearchModifier(text: $searchText, prompt: searchPrompt))
         }
         .navigationSplitViewStyle(.balanced)
-        .frame(minWidth: 1_040, minHeight: 620)
-        .searchable(
-            text: $searchText,
-            placement: .toolbar,
-            prompt: "Buscar atalhos"
-        )
-        .searchToolbarBehavior(.automatic)
-        .onChange(of: searchText) {
-            guard !searchText.isEmpty, selectedSection != .rules else { return }
-            selectedSection = .rules
-            storedSection = TicoSection.rules.rawValue
-        }
-        .toolbar(id: "main-toolbar") {
-            ToolbarItem(id: "describe-rule", placement: .primaryAction) {
-                Button("Descrever automação", systemImage: "text.bubble") { showsDescription = true }
-            }
-            ToolbarItem(id: "new-rule", placement: .primaryAction) {
-                Button {
-                    select(.rules)
-                    createRule()
-                } label: {
-                    Label("Novo atalho", systemImage: "plus")
+        // A toolbar pertence à janela. Uma família customizável com ID fixo
+        // sincronizava o botão automático da sidebar entre janelas reabertas,
+        // duplicando esse item no AppKit. Os controles mantêm seus IDs acessíveis.
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                if selectedSection == .scenes {
+                    Button("Nova cena", systemImage: "plus") { newSceneRequest = UUID() }
+                        .accessibilityIdentifier("tico.scenes.new")
+                } else if [.rules, .explore, .library, .activity].contains(selectedSection) {
+                    Button("Novo atalho", systemImage: "plus") { createRule() }
+                        .accessibilityIdentifier("tico.toolbar.new-rule")
                 }
-                .labelStyle(.titleAndIcon)
-                .accessibilityIdentifier("tico.toolbar.new-rule")
-            }
-
-            ToolbarSpacer(.fixed, placement: .primaryAction)
-
-            ToolbarItem(id: "capture", placement: .primaryAction) {
-                Button(action: controller.toggleCapture) {
-                    Label(
-                        controller.captureIsRunning ? "Pausar captura" : "Iniciar captura",
-                        systemImage: controller.captureIsRunning ? "pause.fill" : "play.fill"
-                    )
-                }
-                .buttonStyle(.glassProminent)
-                .tint(
-                    controller.captureIsRunning
-                        ? Color.orange
-                        : TicoBrand.Palette.primary
-                )
-                .help(controller.captureIsRunning ? "Pausar captura global" : "Iniciar captura global")
             }
         }
         .onAppear {
             guard !didPerformInitialSetup else { return }
             didPerformInitialSetup = true
-            selectedSection = TicoSection(rawValue: storedSection) ?? .overview
+            controller.experiences.onPractice = { [weak router = commandRouter, openWindow] id in
+                openWindow(id: "main")
+                router?.send(.practiceRule(id))
+            }
+            selectedSection = TicoSection.restored(from: storedSection)
             let arguments = ProcessInfo.processInfo.arguments
             if arguments.contains("--open-laboratory") {
                 select(.laboratory)
@@ -114,30 +104,38 @@ struct ContentView: View {
             permissions.refresh()
         }
         .sheet(item: $practicePresentation) { presentation in
-            GesturePracticeView(session: controller.practiceSession, isRecording: controller.recordingIsActive,
-                startupError: controller.trackpadStartupError,
-                onFinish: {
-                    controller.endPractice(sessionID: presentation.id)
-                    practicePresentation = nil
-                })
-                .onDisappear { controller.endPractice(sessionID: presentation.id) }
+            GesturePracticeView(session: controller.practiceSession,
+                isRecording: presentation.sessionID != nil
+                    && controller.practiceSession.sessionID == presentation.sessionID && controller.recordingIsActive,
+                startupError: practiceError ?? controller.trackpadStartupError,
+                onFinish: { finishPractice(presentation.id) }, rule: presentation.rule,
+                onRetry: { retryPractice(presentation.id) },
+                onOpenPermissions: permissions.openInputMonitoringSettings)
+                .onDisappear { finishPractice(presentation.id) }
         }
-        .sheet(isPresented: $showsDescription) {
+        .sheet(isPresented: $showsDescription, onDismiss: {
+            guard let draft = describedDraft else { return }
+            describedDraft = nil
+            installDraft(draft)
+        }) {
             DescribeAutomationView(applications: controller.availableApplications,
                 latestEvent: controller.recordedEvent, recordingIsActive: controller.recordingIsActive,
                 captureMode: controller.trackpadCaptureMode, startupError: controller.trackpadStartupError,
                 snapshot: controller.laboratorySnapshot, onStartRecording: controller.beginRecording,
-                onStopRecording: controller.endRecording, onCreate: installDraft)
+                onStopRecording: controller.endRecording, onCreate: { describedDraft = $0 })
         }
         .sheet(item: $ruleWorkspace.presentedEditor) { session in
             ShortcutComposerView(session: session, practiceSession: controller.practiceSession,
-                applications: controller.availableApplications, macOSShortcuts: controller.availableMacOSShortcuts,
-                profiles: shortcutStore.profiles, reusableWorkflows: shortcutStore.reusableWorkflows,
+                localInput: controller.localInputCapture,
+                applications: controller.availableApplications, macOSShortcuts: controller.availableMacOSShortcuts, reusableWorkflows: shortcutStore.reusableWorkflows,
                 presets: shortcutStore.presets, displays: controller.availableDisplays,
                 latestEvent: controller.recordedEvent, recordingIsActive: controller.recordingIsActive,
                 captureMode: controller.trackpadCaptureMode, startupError: controller.trackpadStartupError,
                 snapshot: controller.laboratorySnapshot, detectedTrackpads: controller.detectedTrackpads,
                 deviceCapabilities: controller.capabilityStore.devices,
+                canCaptureGlobalInput: permissions.status.canCaptureGlobalInput,
+                onOpenPermissions: permissions.openInputMonitoringSettings,
+                onStartLocalRecording: controller.beginLocalRecording,
                 onStartRecording: controller.beginRecording, onStopRecording: controller.endRecording,
                 onStartPreview: { controller.beginPractice($0, repetitionLimit: nil) },
                 onStopPreview: controller.endPractice,
@@ -154,18 +152,7 @@ struct ContentView: View {
         } message: {
             Text(controller.presentedError ?? "Erro desconhecido")
         }
-        .alert(item: scriptApprovalBinding) { approval in
-            Alert(
-                title: Text("Executar automação de “\(approval.ruleName)”?"),
-                message: Text(approval.command),
-                primaryButton: .default(Text("Executar")) {
-                    controller.resolveScriptApproval(approved: true)
-                },
-                secondaryButton: .cancel {
-                    controller.resolveScriptApproval(approved: false)
-                }
-            )
-        }
+
     }
 
     @ViewBuilder
@@ -173,39 +160,36 @@ struct ContentView: View {
         switch currentSection {
         case .explore:
             ExploreView(applications: controller.availableApplications, onChoose: installDraft,
-                onPractice: practice, onDescribe: { showsDescription = true }, onOpenLibrary: { select(.library) })
+                onPractice: practice, onDescribe: { showsDescription = true }, onOpenLibrary: { select(.library) },
+                searchText: searchText)
         case .gestureMap:
-            GestureMapView(rules: shortcutStore.rules, profiles: shortcutStore.profiles,
+            GestureMapView(learning: controller.experiences.learning,
+                rules: shortcutStore.rules,
                 applications: controller.availableApplications, context: companion.context,
                 onPractice: practice, onEdit: editRule)
         case .scenes:
-            ScenesView(workflows: shortcutStore.reusableWorkflows, applications: controller.availableApplications,
-                macOSShortcuts: controller.availableMacOSShortcuts, runningIDs: companion.runningIDs,
-                lastReport: companion.lastReport, onSave: shortcutStore.saveReusableWorkflow,
-                onDelete: shortcutStore.deleteReusableWorkflow, onRun: companion.runScene,
-                onCancel: companion.cancel, onCreateRule: installSceneRule)
-        case .overview:
-            VStack(spacing: 0) {
-                ExecutionInsightView(explanation: companion.explanation, report: companion.lastReport,
-                    onEdit: editRule, onExplore: { select(.explore) })
-                OverviewView(
-                enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
-                totalRuleCount: shortcutStore.rules.count,
-                captureIsRunning: controller.captureIsRunning,
-                trackpadCaptureMode: controller.trackpadCaptureMode,
-                trackpadStartupError: controller.trackpadStartupError,
-                permissionsAreReady: permissions.status.canCaptureGlobalInput,
-                lastEventDescription: controller.lastEvent?.displayName,
-                lastEventDate: controller.lastEvent?.timestamp,
-                recentLogMessages: eventLogStore.entries.map { $0.result.message },
-                onToggleCapture: controller.toggleCapture,
-                onCreateRule: {
-                    select(.rules)
-                    createRule()
-                },
-                onOpenPermissions: { select(.permissions) }
-                )
-            }
+            ScenesWorkspaceView(shortcutStore: shortcutStore, companion: companion,
+                experiences: controller.experiences, applications: controller.availableApplications,
+                macOSShortcuts: controller.availableMacOSShortcuts, onCreateRule: installSceneRule,
+                searchText: searchText, newSceneRequest: newSceneRequest)
+        case .activity:
+            ActivityView(store: controller.metricsStore,
+                status: ActivityStatusView(
+                    state: .resolve(captureIsRunning: controller.captureIsRunning,
+                                    permissionsAreReady: permissions.status.canCaptureGlobalInput,
+                                    captureMode: controller.trackpadCaptureMode),
+                    enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
+                    totalRuleCount: shortcutStore.rules.count,
+                    startupError: controller.trackpadStartupError,
+                    onToggleCapture: controller.toggleCapture,
+                    onOpenPermissions: { select(.permissions) },
+                    onOpenLaboratory: { select(.laboratory) },
+                    onOpenRules: { select(.rules) }, onCreateRule: createRule),
+                session: ActivitySessionView(explanation: companion.explanation, report: companion.lastReport,
+                    onEdit: editRule, onExplore: { select(.explore) }),
+                ruleIDs: Set(shortcutStore.rules.map(\.id)),
+                sceneIDs: Set(shortcutStore.reusableWorkflows.map(\.id)),
+                onOpenRule: editRule, onOpenScenes: { select(.scenes) }, searchText: searchText)
 
         case .permissions:
             PermissionsView(
@@ -260,7 +244,6 @@ struct ContentView: View {
                 trackpadSnapshot: controller.laboratorySnapshot,
                 applications: controller.availableApplications,
                 macOSShortcuts: controller.availableMacOSShortcuts,
-                profiles: shortcutStore.profiles,
                 reusableWorkflows: shortcutStore.reusableWorkflows,
                 presets: shortcutStore.presets,
                 detectedTrackpads: controller.detectedTrackpads,
@@ -270,17 +253,12 @@ struct ContentView: View {
                 onStopRecording: controller.endRecording,
                 onSaveReusableWorkflow: shortcutStore.saveReusableWorkflow,
                 onSavePreset: shortcutStore.savePreset,
-                onPractice: practice
-            )
-
-        case .profiles:
-            ProfilesView(
-                store: shortcutStore,
-                applications: controller.availableApplications
+                onPractice: practice,
+                captureIsRunning: controller.captureIsRunning
             )
 
         case .library:
-            GestureLibraryView(store: shortcutStore)
+            GestureLibraryView(store: shortcutStore, onUsePreset: installPreset, searchText: searchText)
 
         case .laboratory:
             TrackpadLaboratoryView(
@@ -306,9 +284,6 @@ struct ContentView: View {
                 onRestoreAdvanced: controller.restoreAdvancedTrackpadCapture,
                 onRefreshHardware: controller.refreshTrackpadHardware
             )
-
-        case .metrics:
-            MetricsView(store: controller.metricsStore)
 
         case .log:
             EventLogView(
@@ -343,6 +318,16 @@ struct ContentView: View {
         switch command {
         case .showContextualActions:
             companion.showActions()
+        case .showContentActions:
+            controller.contentInteraction.show()
+        case .useSelectedContent:
+            controller.contentInteraction.show(useSelection: true)
+        case .createContentRule:
+            controller.contentInteraction.showRecipeEditor()
+        case let .practiceRule(id):
+            guard let rule = shortcutStore.rules.first(where: { $0.id == id }) else { return }
+            select(.gestureMap)
+            practice(rule)
         case .showGestureMap:
             select(.gestureMap)
         case .describeAutomation:
@@ -392,16 +377,6 @@ struct ContentView: View {
         )
     }
 
-    private var scriptApprovalBinding: Binding<PendingScriptApproval?> {
-        Binding(
-            get: { controller.pendingScriptApproval },
-            set: { approval in
-                guard approval == nil, controller.pendingScriptApproval != nil else { return }
-                controller.resolveScriptApproval(approved: false)
-            }
-        )
-    }
-
     private func select(_ section: TicoSection) {
         applySelection(section)
     }
@@ -423,38 +398,82 @@ struct ContentView: View {
     }
 
     private func practice(_ rule: ShortcutRule) {
-        guard let id = controller.beginPractice(rule) else { return }
-        practicePresentation = PracticePresentation(id: id)
+        guard practicePresentation == nil else { return }
+        let sessionID = controller.beginPractice(rule)
+        practiceError = sessionID == nil ? controller.presentedError : nil
+        if practiceError != nil { controller.presentedError = nil }
+        practicePresentation = PracticePresentation(id: UUID(), rule: rule, sessionID: sessionID)
+    }
+
+    /// A apresentação tem identidade estável; cada tentativa possui seu token.
+    /// Um fechamento tardio nunca encerra a captura de outra janela.
+    private func retryPractice(_ id: UUID) {
+        guard var presentation = practicePresentation, presentation.id == id else { return }
+        if let token = presentation.sessionID { controller.endPractice(sessionID: token) }
+        presentation.sessionID = controller.beginPractice(presentation.rule)
+        practiceError = presentation.sessionID == nil ? controller.presentedError : nil
+        if practiceError != nil { controller.presentedError = nil }
+        practicePresentation = presentation
+    }
+
+    private func finishPractice(_ id: UUID) {
+        guard let presentation = practicePresentation, presentation.id == id else { return }
+        if let token = presentation.sessionID { controller.endPractice(sessionID: token) }
+        practicePresentation = nil
+        practiceError = nil
     }
 
     private func editRule(_ id: UUID) {
-        guard shortcutStore.rules.contains(where: { $0.id == id }) else { return }
+        guard let rule = shortcutStore.rules.first(where: { $0.id == id }) else { return }
         applicationFilter = nil
         selectedRuleID = id
         select(.rules)
+        ruleWorkspace.edit(rule)
     }
 
+    /// Receitas e modelos abrem o mesmo rascunho. Só o botão final do criador
+    /// persiste: personalizar e cancelar não deixam regras incompletas na coleção.
     private func installDraft(_ draft: ShortcutRule) {
         applicationFilter = nil
-        do {
-            var disabled = draft
-            disabled.isEnabled = false
-            let rule = try shortcutStore.add(disabled)
-            selectedRuleID = rule.id
-            select(.rules)
-        } catch { controller.presentedError = error.localizedDescription }
+        let session = RuleEditingSession(rule: draft, isNew: true)
+        session.chooseWorkflow(draft.workflow, title: draft.name)
+        session.chooseTrigger(draft.trigger)
+        ruleWorkspace.presentedEditor = session
+    }
+
+    private func installPreset(_ preset: GesturePreset) {
+        installDraft(ShortcutRule(name: preset.name, isEnabled: true,
+            trigger: preset.trigger,
+            action: preset.workflow.steps.first?.action ?? .notification(title: "Tico", body: "Cena"),
+            workflow: preset.workflow, scope: preset.scope, conditions: preset.conditions,
+            priority: preset.priority, notes: preset.summary))
     }
 
     private func installSceneRule(_ workflow: ActionWorkflow) {
-        installDraft(ShortcutRule(name: workflow.name, isEnabled: false,
+        let draft = ShortcutRule(name: workflow.name, isEnabled: true,
             trigger: .keyboard(keyCode: 49, modifiers: [.command, .option, .shift]),
-            action: workflow.steps.first?.action ?? .notification(title: "Tico", body: "Cena vazia"),
-            workflow: workflow, notes: "Escolha um gatilho e associe um perfil em Escopo, se desejar."))
+            action: workflow.steps.first?.action ?? .notification(title: "Tico", body: "Cena"),
+            workflow: workflow)
+        let session = RuleEditingSession(rule: draft, isNew: true)
+        session.chooseWorkflow(draft.workflow, title: draft.name)
+        // O gatilho inicial só satisfaz o modelo; não conta como escolha feita.
+        ruleWorkspace.presentedEditor = session
     }
 
     private func createRule() {
         applicationFilter = nil
         ruleWorkspace.create()
+    }
+
+    private var searchPrompt: String? {
+        switch selectedSection {
+        case .rules: "Buscar atalhos"
+        case .scenes: "Buscar cenas"
+        case .explore: "Buscar ideias"
+        case .library: "Buscar modelos e gestos"
+        case .activity: "Buscar execuções"
+        default: nil
+        }
     }
 
     /// Persiste uma única vez; fechar o criador antes de salvar não cria uma regra.
@@ -515,4 +534,20 @@ struct ContentView: View {
 
 private struct PracticePresentation: Identifiable {
     let id: UUID
+    let rule: ShortcutRule
+    var sessionID: UUID?
+}
+
+/// Busca pertence à seção visível. Digitar nunca muda o destino de navegação.
+private struct SectionSearchModifier: ViewModifier {
+    @Binding var text: String
+    let prompt: String?
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if let prompt {
+            content.searchable(text: $text, placement: .toolbar, prompt: Text(prompt))
+                .searchToolbarBehavior(.automatic)
+        } else { content }
+    }
 }

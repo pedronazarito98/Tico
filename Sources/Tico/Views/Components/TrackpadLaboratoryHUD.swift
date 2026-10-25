@@ -28,6 +28,15 @@ struct TrackpadLaboratoryHUD: View {
                     sessionControl
                         .layoutPriority(1)
                 }
+                .fixedSize(horizontal: true, vertical: false)
+
+                VStack(spacing: 8) {
+                    modeControl
+                    HStack(spacing: 12) {
+                        captureStatus(showsTitle: false)
+                        sessionControl
+                    }
+                }
             }
         }
         .frame(maxWidth: .infinity)

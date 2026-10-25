@@ -46,10 +46,12 @@ final class ContextualPanelService {
         return isVisible
     }
 
-    func show(appName: String, items: [ContextualActionItem], isMap: Bool, onSelect: @escaping (UUID) -> Void) {
+    func show(appName: String, items: [ContextualActionItem], isMap: Bool,
+              onSelect: @escaping (UUID) -> Void,
+              onContent: @escaping () -> Void = {}, onSelection: @escaping () -> Void = {}) {
         close()
         mapIsVisible = isMap
-        let panel = CompanionPanel(contentRect: NSRect(x: 0, y: 0, width: 370, height: 390),
+        let panel = CompanionPanel(contentRect: NSRect(x: 0, y: 0, width: 370, height: isMap ? 390 : 440),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isReleasedWhenClosed = false
         panel.level = .floating
@@ -61,7 +63,7 @@ final class ContextualPanelService {
         panel.onCancel = { [weak self] in self?.close() }
         panel.contentView = NSHostingView(rootView: ContextualActionsView(
             appName: appName, items: items, isMap: isMap, onSelect: onSelect,
-            onClose: { [weak self] in self?.close() }))
+            onClose: { [weak self] in self?.close() }, onContent: onContent, onSelection: onSelection))
         let pointer = NSEvent.mouseLocation
         let screen = NSScreen.screens.first { NSMouseInRect(pointer, $0.frame, false) } ?? NSScreen.main
         if let bounds = screen?.visibleFrame {

@@ -36,6 +36,6 @@ struct ShortcutTriggerPicker: View {
                     .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
                     .accessibilityIdentifier("tico.composer.use-trigger")
             }
-        }.padding(20).frame(width: 460, height: 450)
+        }.padding(20).adaptiveSheetFrame(idealWidth: 650, idealHeight: 580)
     }
 }

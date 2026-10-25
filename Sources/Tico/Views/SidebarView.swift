@@ -6,8 +6,8 @@ enum SidebarDestination: Hashable {
     case application(String)
 }
 
-/// Navegação estável da janela. A busca atua na biblioteca, sem substituir linhas
-/// da source list nativa por resultados com outra hierarquia.
+/// Navegação estável e controle global de captura no rodapé. A busca pertence
+/// ao conteúdo da seção e não substitui destinos na lista nativa.
 struct SidebarView: View {
     @Binding var selection: TicoSection?
     @Binding var selectedRuleID: ShortcutRule.ID?
@@ -16,21 +16,20 @@ struct SidebarView: View {
     let enabledRuleCount: Int
     let totalRuleCount: Int
     let captureIsRunning: Bool
+    let onToggleCapture: () -> Void
     @SceneStorage("sidebar.advancedToolsExpanded") private var advancedToolsExpanded = false
 
     private let primarySections: [TicoSection] = [
         .rules,
         .explore,
         .scenes,
-        .gestureMap
+        .gestureMap,
+        .activity
     ]
     private let toolSections: [TicoSection] = [
-        .overview,
         .permissions,
-        .profiles,
         .library,
         .laboratory,
-        .metrics,
         .log
     ]
 
@@ -61,11 +60,17 @@ struct SidebarView: View {
             VStack(alignment: .leading, spacing: 12) {
                 SettingsLink { Label("Ajustes…", systemImage: "gearshape") }
                     .buttonStyle(.plain)
-                SidebarStatusRow(
-                    captureIsRunning: captureIsRunning,
-                    enabledRuleCount: enabledRuleCount,
-                    totalRuleCount: totalRuleCount
-                )
+                HStack(spacing: 6) {
+                    SidebarStatusRow(captureIsRunning: captureIsRunning,
+                        enabledRuleCount: enabledRuleCount, totalRuleCount: totalRuleCount)
+                    Menu {
+                        Button(captureIsRunning ? "Pausar captura" : "Retomar captura", action: onToggleCapture)
+                        Button("Conferir permissões") { selection = .permissions }
+                    } label: { Image(systemName: "ellipsis.circle") }
+                        .menuStyle(.borderlessButton).fixedSize()
+                        .accessibilityLabel("Controlar captura")
+                        .help("Pausar, retomar ou conferir permissões")
+                }
             }
             .padding(14)
         }

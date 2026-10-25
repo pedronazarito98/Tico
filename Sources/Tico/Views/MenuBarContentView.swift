@@ -16,6 +16,8 @@ struct MenuBarContentView: View {
 
         Divider()
         Button("Painel de ações ⌃⌥⌘Espaço", action: companion.showActions)
+        Button("Fazer com conteúdo…") { controller.contentInteraction.show() }
+        Button("Usar texto selecionado…") { controller.contentInteraction.show(useSelection: true) }
         Button("Mapa de gestos", action: companion.showMap)
         if !shortcutStore.reusableWorkflows.isEmpty {
             Menu("Preparar cena") {
@@ -38,20 +40,6 @@ struct MenuBarContentView: View {
 
         Text("\(shortcutStore.rules.filter(\.isEnabled).count) regras ativas")
 
-        if !shortcutStore.profiles.isEmpty {
-            Menu("Perfis") {
-                ForEach(shortcutStore.profiles) { profile in
-                    Button {
-                        try? shortcutStore.setProfileEnabled(!profile.isEnabled, id: profile.id)
-                    } label: {
-                        Label(
-                            shortMenuTitle(profile.name),
-                            systemImage: profile.isEnabled ? "checkmark.circle.fill" : "circle"
-                        )
-                    }
-                }
-            }
-        }
 
         if let event = controller.lastEvent {
             Text(shortMenuTitle("Último: \(event.displayName)"))

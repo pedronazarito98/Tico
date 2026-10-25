@@ -1,12 +1,11 @@
 import Foundation
 
 struct ShortcutDocumentCodec {
-    static let currentVersion = 6
+    static let currentVersion = 8
 
     static func makeDocument(
         version: Int,
         rules: [ShortcutRule],
-        profiles: [ShortcutProfile],
         reusableWorkflows: [ActionWorkflow],
         customGestureTemplates: [CustomGestureTemplate],
         presets: [GesturePreset]
@@ -14,7 +13,6 @@ struct ShortcutDocumentCodec {
         ShortcutDocument(
             version: version,
             rules: rules,
-            profiles: profiles,
             reusableWorkflows: reusableWorkflows,
             customGestureTemplates: customGestureTemplates,
             presets: presets
@@ -42,14 +40,12 @@ struct ShortcutDocumentCodec {
                 let decoded = DecodedShortcutDocument(
                     version: document.version,
                     rules: document.rules,
-                    profiles: document.profiles,
                     reusableWorkflows: document.reusableWorkflows,
                     customGestureTemplates: document.customGestureTemplates,
                     presets: document.presets
                 )
                 try DocumentSecurityPolicy.validate(
                     rules: decoded.rules,
-                    profiles: decoded.profiles,
                     reusableWorkflows: decoded.reusableWorkflows,
                     customTemplates: decoded.customGestureTemplates,
                     presets: decoded.presets
@@ -62,10 +58,10 @@ struct ShortcutDocumentCodec {
 
         // Version 0 stored the rules as a top-level array. Accepting it provides
         // a small, deterministic migration path for early development builds.
-        if let legacyRules = try? decoder.decode([ShortcutRule].self, from: data) {
+        if let legacy = try? decoder.decode([LegacyShortcutContextMigration.Rule].self, from: data) {
+            let legacyRules = try legacy.map(LegacyShortcutContextMigration().migrate)
             try DocumentSecurityPolicy.validate(
                 rules: legacyRules,
-                profiles: [],
                 reusableWorkflows: [],
                 customTemplates: [],
                 presets: []
@@ -93,7 +89,6 @@ struct ShortcutDocumentCodec {
 struct ShortcutDocument: Codable {
     let version: Int
     let rules: [ShortcutRule]
-    let profiles: [ShortcutProfile]
     let reusableWorkflows: [ActionWorkflow]
     let customGestureTemplates: [CustomGestureTemplate]
     let presets: [GesturePreset]
@@ -101,7 +96,6 @@ struct ShortcutDocument: Codable {
     private enum CodingKeys: String, CodingKey {
         case version
         case rules
-        case profiles
         case reusableWorkflows
         case customGestureTemplates
         case presets
@@ -110,14 +104,12 @@ struct ShortcutDocument: Codable {
     init(
         version: Int,
         rules: [ShortcutRule],
-        profiles: [ShortcutProfile],
         reusableWorkflows: [ActionWorkflow],
         customGestureTemplates: [CustomGestureTemplate],
         presets: [GesturePreset]
     ) {
         self.version = version
         self.rules = rules
-        self.profiles = profiles
         self.reusableWorkflows = reusableWorkflows
         self.customGestureTemplates = customGestureTemplates
         self.presets = presets
@@ -126,8 +118,9 @@ struct ShortcutDocument: Codable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         version = try container.decode(Int.self, forKey: .version)
-        rules = try container.decode([ShortcutRule].self, forKey: .rules)
-        profiles = try container.decodeIfPresent([ShortcutProfile].self, forKey: .profiles) ?? []
+        let migration = try LegacyShortcutContextMigration(from: decoder)
+        rules = try container.decode([LegacyShortcutContextMigration.Rule].self, forKey: .rules)
+            .map(migration.migrate)
         reusableWorkflows = try container.decodeIfPresent(
             [ActionWorkflow].self,
             forKey: .reusableWorkflows
@@ -136,7 +129,8 @@ struct ShortcutDocument: Codable {
             [CustomGestureTemplate].self,
             forKey: .customGestureTemplates
         ) ?? []
-        presets = try container.decodeIfPresent([GesturePreset].self, forKey: .presets) ?? []
+        presets = try (container.decodeIfPresent([LegacyShortcutContextMigration.Preset].self, forKey: .presets) ?? [])
+            .map(migration.migrate)
     }
 }
 
@@ -147,7 +141,6 @@ private struct ShortcutDocumentHeader: Decodable {
 struct DecodedShortcutDocument {
     var version: Int
     var rules: [ShortcutRule]
-    var profiles: [ShortcutProfile] = []
     var reusableWorkflows: [ActionWorkflow] = []
     var customGestureTemplates: [CustomGestureTemplate] = []
     var presets: [GesturePreset] = []

@@ -16,6 +16,8 @@ final class CompanionCoordinator: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     @Published private(set) var context: ContextSnapshot?
     @Published private(set) var message: String?
+    var onRequestContent: (() -> Void)?
+    var onRequestSelection: (() -> Void)?
 
     var explanation: AutomationExplanation? { automation.explanation }
     var lastReport: WorkflowExecutionReport? { automation.lastWorkflowReport }
@@ -71,7 +73,7 @@ final class CompanionCoordinator: ObservableObject {
             trigger: .keyboard(keyCode: 49, modifiers: []),
             action: workflow.steps.first?.action ?? .notification(title: "Tico", body: "Cena vazia"), workflow: workflow)
         message = nil
-        automation.runManually(rule)
+        automation.runManually(rule, origin: .scene)
     }
 
     func cancel(_ id: UUID) { automation.cancelWorkflow(ruleID: id) }
@@ -90,17 +92,17 @@ final class CompanionCoordinator: ObservableObject {
         context = snapshot
         panelContext = snapshot
         let configured = store.rules.filter { rule in
-            rule.matches(snapshot, profiles: store.profiles) && (isMap || rule.workflow.enabledSteps.allSatisfy {
+            rule.matches(snapshot) && (isMap || rule.workflow.enabledSteps.allSatisfy {
                 if case .continuousWindow = $0.action { return false }
                 return true
             })
-        }.sorted { $0.effectiveSpecificity(profiles: store.profiles) > $1.effectiveSpecificity(profiles: store.profiles) }
+        }.sorted { $0.effectiveSpecificity > $1.effectiveSpecificity }
         var candidates = configured
         if !isMap {
             for recipe in AutomationRecipeCatalog.recipes where candidates.count < 4 {
                 var rule = recipe.makeRule()
                 rule.isEnabled = true
-                if rule.matches(snapshot, profiles: store.profiles),
+                if rule.matches(snapshot),
                    !candidates.contains(where: { $0.action == rule.action }) {
                     candidates.append(rule)
                 }
@@ -109,7 +111,9 @@ final class CompanionCoordinator: ObservableObject {
         panelRules = isMap ? candidates : Array(candidates.prefix(4))
         panel.show(appName: snapshot.frontmostApplicationName ?? "Aplicativo atual",
             items: panelRules.map { ContextualActionItem(id: $0.id, name: $0.name, trigger: $0.trigger.displayName) },
-            isMap: isMap, onSelect: { [weak self] id in self?.select(id) })
+            isMap: isMap, onSelect: { [weak self] id in self?.select(id) },
+            onContent: { [weak self] in self?.panel.close(); self?.onRequestContent?() },
+            onSelection: { [weak self] in self?.panel.close(); self?.onRequestSelection?() })
     }
 
     private func select(_ id: UUID) {
@@ -123,7 +127,7 @@ final class CompanionCoordinator: ObservableObject {
             return
         }
         if let saved = store.rules.first(where: { $0.id == id }) {
-            guard saved.matches(current, profiles: store.profiles) else { return }
+            guard saved.matches(current) else { return }
             rule = saved
         }
         // Fixe alvos relativos antes de fechar o painel; o foco não deve mudar o destino.
@@ -137,6 +141,6 @@ final class CompanionCoordinator: ObservableObject {
             }
         }
         message = nil
-        automation.runManually(rule)
+        automation.runManually(rule, origin: .contextualPanel)
     }
 }

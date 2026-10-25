@@ -43,7 +43,6 @@ struct TrackpadLaboratoryView: View {
                     store: calibrationStore,
                     highlightedRegion: $highlightedRegion
                 )
-                .padding(.top, 92)
             }
 
             laboratoryLayer(for: .sessions) {
@@ -59,7 +58,6 @@ struct TrackpadLaboratoryView: View {
                     onReplay: onReplay,
                     onCancelReplay: onCancelReplay
                 )
-                .padding(.top, 92)
             }
 
             laboratoryLayer(for: .validation) {
@@ -71,9 +69,11 @@ struct TrackpadLaboratoryView: View {
                     onRestoreAdvanced: onRestoreAdvanced,
                     onRefreshHardware: onRefreshHardware
                 )
-                .padding(.top, 92)
             }
-
+        }
+        // O conteúdo recebe o espaço restante da barra, inclusive quando seus
+        // controles passam para duas linhas. Evita sobreposição por offsets fixos.
+        .safeAreaInset(edge: .top, spacing: 0) {
             TrackpadLaboratoryHUD(
                 selectedTab: $selectedTab,
                 captureMode: captureMode,
@@ -88,7 +88,7 @@ struct TrackpadLaboratoryView: View {
             )
             .padding(.horizontal, 20)
             .padding(.top, 14)
-            .zIndex(2)
+            .padding(.bottom, 12)
         }
         .navigationTitle("Laboratório do Trackpad")
         .onAppear(perform: onStartObservation)

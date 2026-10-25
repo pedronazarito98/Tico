@@ -49,11 +49,20 @@ final class RuleEditingSession: ObservableObject, Identifiable {
         hasChosenTrigger = true
     }
 
+    /// Cenas podem conter somente disposição de janelas. Selecionar o workflow
+    /// inteiro não pode materializar a ação legada de fallback como notificação.
+    func chooseWorkflow(_ workflow: ActionWorkflow, title: String) {
+        draft.workflow = workflow
+        draft.name = title
+        suggestedName = title
+        hasChosenAction = true
+    }
+
     /// Restaura apenas personalizações opcionais; ação e gesto continuam escolhidos.
     func resetComposerOptions() {
         draft.notes = ""
         draft.scope = .global
-        draft.profileID = nil
+
         draft.priority = 0
         draft.conditions = []
         draft.workflow.timeout = 60
@@ -145,14 +154,16 @@ final class RuleEditingSession: ObservableObject, Identifiable {
             summary: draft.notes,
             trigger: draft.trigger,
             workflow: draft.workflow,
-            profileID: draft.profileID
+            scope: draft.scope, conditions: draft.conditions, priority: draft.priority
         )
     }
 
     func applyPreset(_ preset: GesturePreset) {
-        draft.trigger = preset.trigger
-        draft.workflow = preset.workflow
-        draft.profileID = preset.profileID
+        chooseWorkflow(preset.workflow, title: preset.name)
+        chooseTrigger(preset.trigger)
+        draft.scope = preset.scope
+        draft.conditions = preset.conditions
+        draft.priority = preset.priority
     }
 
     func beginRecording(_ mode: TriggerRecordingMode) {

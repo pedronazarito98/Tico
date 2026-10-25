@@ -5,7 +5,6 @@ import SwiftUI
 struct ShortcutOptionsView: View {
     @ObservedObject var session: RuleEditingSession
     let applications: [ApplicationChoice]
-    let profiles: [ShortcutProfile]
     let displays: [DisplayCatalogService.Choice]
     let onClose: () -> Void
     @State private var showsNote = false
@@ -92,15 +91,6 @@ struct ShortcutOptionsView: View {
                     Divider()
                     DisclosureGroup("Avançado", isExpanded: $showsAdvanced) {
                         VStack(alignment: .leading, spacing: 18) {
-                            ShortcutOptionRow(title: "Perfil") {
-                                Picker("Perfil", selection: $session.draft.profileID) {
-                                    Text("Nenhum").tag(UUID?.none)
-                                    ForEach(profiles) { profile in
-                                        Text(profile.name + (profile.isEnabled ? "" : " · desativado")).tag(Optional(profile.id))
-                                    }
-                                }
-                                .labelsHidden()
-                            }
                             VStack(alignment: .leading, spacing: 7) {
                                 ShortcutOptionRow(title: "Prioridade") {
                                   Picker("Prioridade", selection: $session.draft.priority) {
@@ -168,6 +158,7 @@ struct ShortcutOptionsView: View {
                 Button("Concluir", action: onClose).buttonStyle(.glassProminent)
             }.padding(16)
         }
+        .adaptiveSheetFrame(idealWidth: 650, idealHeight: 630)
         .onAppear { usesCustomTimeout = session.draft.workflow.timeout != 60 }
     }
 

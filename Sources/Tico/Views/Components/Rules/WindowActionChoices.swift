@@ -22,7 +22,7 @@ struct WindowActionChoices: View {
     }
 
     private func choices(_ values: [WindowOperation]) -> some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 6) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 6)], spacing: 6) {
             ForEach(values, id: \.self) { value in
                 Button { onSelect(value) } label: {
                     VStack(spacing: 6) {

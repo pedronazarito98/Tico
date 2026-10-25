@@ -2,22 +2,13 @@ import SwiftUI
 
 struct RuleContextEditorView: View {
     @Binding var scope: RuleScope
-    @Binding var profileID: UUID?
     @Binding var conditions: [RuleCondition]
-    let profiles: [ShortcutProfile]
     let applications: [ApplicationChoice]
     let currentContext: ContextSnapshot?
     var showsScopePicker = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Picker("Perfil", selection: $profileID) {
-                Text("Sem perfil · regra independente").tag(UUID?.none)
-                ForEach(profiles.filter(\.isEnabled)) { profile in
-                    Text(profile.name).tag(Optional(profile.id))
-                }
-            }
-
             if showsScopePicker { RuleScopePicker(scope: $scope, applications: applications) }
 
             Divider()
@@ -25,7 +16,7 @@ struct RuleContextEditorView: View {
             RuleConditionsEditor(
                 conditions: $conditions,
                 applications: applications,
-                emptyMessage: "Sem condições extras. O escopo e o perfil acima definem quando a regra participa."
+                emptyMessage: "Sem condições extras. O escopo e as condições definem quando a regra participa."
             )
 
             if let currentContext {
@@ -48,8 +39,7 @@ struct RuleContextEditorView: View {
               conditions.allSatisfy({ $0.matches(context) }) else {
             return false
         }
-        guard let profileID else { return true }
-        return profiles.first { $0.id == profileID }?.matches(context) == true
+        return true
     }
 
     private func contextDescription(_ context: ContextSnapshot) -> String {

@@ -22,26 +22,32 @@ struct TriggerRecorderView: View {
     @State private var trainingError: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            header
-            captureStatus
-
-            if mode == .customTrackpad {
-                customTraining
-            } else {
-                standardRecording
+        VStack(alignment: .leading, spacing: 0) {
+            header.padding(20)
+            Divider()
+            // Só a informação capturada rola; cancelar e usar continuam visíveis
+            // mesmo quando as amostras ultrapassam a altura disponível.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    captureStatus
+                    if mode == .customTrackpad {
+                        customTraining
+                    } else {
+                        standardRecording
+                    }
+                }.padding(20)
             }
-
+            Divider()
             HStack {
                 Button("Cancelar", action: onCancel)
+                    .keyboardShortcut(.cancelAction)
                 Spacer()
                 Button(primaryButtonTitle, action: useRecordedTrigger)
                     .buttonStyle(.borderedProminent)
                     .disabled(!canUseRecording)
-            }
+            }.padding(20)
         }
-        .padding(28)
-        .frame(width: 560)
+        .adaptiveSheetFrame(idealWidth: 560, idealHeight: 620)
         .onChange(of: latestEvent) { _, event in
             guard mode == .customTrackpad, let event else { return }
             collectSample(event)
@@ -144,7 +150,7 @@ struct TriggerRecorderView: View {
                     }
                 }
 
-            HStack(spacing: 8) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), alignment: .leading)], alignment: .leading, spacing: 8) {
                 ForEach(0..<CustomGestureTemplate.maximumSampleCount, id: \.self) { index in
                     Label(
                         index < samples.count ? "Amostra \(index + 1)" : "Pendente",
@@ -153,7 +159,6 @@ struct TriggerRecorderView: View {
                     .font(.caption)
                     .foregroundStyle(index < samples.count ? .green : .secondary)
                 }
-                Spacer()
                 Button("Limpar") {
                     samples.removeAll()
                 }

@@ -83,7 +83,7 @@ final class ShortcutStoreTests: XCTestCase {
         let store = ShortcutStore(repository: repository, seedExamples: true)
 
         XCTAssertTrue(store.rules.isEmpty)
-        XCTAssertTrue(store.profiles.isEmpty)
+        XCTAssertTrue(store.reusableWorkflows.isEmpty)
         XCTAssertNotNil(store.lastError)
     }
 
