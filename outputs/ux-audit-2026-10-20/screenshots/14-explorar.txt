@@ -1,0 +1,32 @@
+The following is a diff from the previous accessibility tree for Window: "Explorar" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 79-95
+~63 standard window Explorar, ID: main-AppWindow-1, Secondary Actions: Raise
+~					70 row (selected) Explorar
+~					71 row (selectable) Cenas
++		107 scroll area
++			108 text O que você quer facilitar? Escolha uma receita, experimente o movimento e ajuste ao seu jeito.
++			109 button Descrever uma automação
++			110 button Minha biblioteca
++			111 pop up button Objetivo, Value: Organizar meu espaço
++			112 collection Secondary Actions: AXScrollToTop, AXScrollToBottom
++				113 container
++					114 image Description: 3 dedos · Deslizar para a esquerda, ID: arrow.left
++					115 text Janela à esquerda Reserve metade da tela para a janela atual. 3 dedos · Deslizar para a esquerda
++					116 button Experimentar
++					117 button Description: Usar receita, ID: tico.recipe.window-left
++				118 container
++					119 image Description: 3 dedos · Deslizar para a direita, ID: arrow.right
++					120 text Janela à direita Coloque duas janelas lado a lado. 3 dedos · Deslizar para a direita
++					121 button Experimentar
++					122 button Description: Usar receita, ID: tico.recipe.window-right
++				123 container
++					124 image Description: 3 dedos · Deslizar para cima, ID: arrow.up
++					125 text Mais espaço para trabalhar Amplie a janela atual para a área útil da tela. 3 dedos · Deslizar para cima
++					126 button Experimentar
++					127 button Description: Usar receita, ID: tico.recipe.window-maximize
++			128 text As receitas são salvas desativadas. Revise o gatilho e os conflitos antes de ativar.
+~	106 text Explorar
+Selected:
+	70 row (selected)
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

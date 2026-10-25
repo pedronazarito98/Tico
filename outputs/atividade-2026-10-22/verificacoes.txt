@@ -1,0 +1,29 @@
+2026-10-22 — Saída resumida do gate completo após a correção da toolbar.
+Exit code: 0
+
+==> Validating shell scripts
+==> Building Tico (SwiftPM product Tico)
+==> Building and verifying thin Xcode app target
+debug app strict deep signature: PASS
+release archive (arm64 + x86_64, hardened runtime): PASS
+==> Running isolated XCUITest end-to-end flow
+XCUITest end-to-end flow: PASS
+==> Running complete Swift test suite
+Executed 8 tests, with 0 failures (0 unexpected) in 0.076 (0.076) seconds
+Executed 128 tests, with 0 failures (0 unexpected) in 1.254 (1.262) seconds
+Executed 128 tests, with 0 failures (0 unexpected) in 1.254 (1.263) seconds
+==> Running security regression suite
+Executed 8 tests, with 0 failures (0 unexpected) in 0.084 (0.084) seconds
+Executed 8 tests, with 0 failures (0 unexpected) in 0.084 (0.085) seconds
+==> Building and verifying local ad hoc package
+==> Verifying Tico DMG
+==> Running release preflight for ZIP and DMG
+==> Automated verification summary
+Swift tests: 128
+Xcode app target: verified
+XCUITest end-to-end flow: verified
+Local app path: dist/Tico.app
+Verified ad hoc archive: dist/Tico.zip
+Verified DMG: dist/Tico.dmg
+Physical trackpad coverage: not exercised by this automated gate
+Notarization: not exercised by this automated gate

@@ -1,0 +1,27 @@
+The following is a diff from the previous accessibility tree for Window: "Mapa de gestos" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 79-106
+~63 standard window Mapa de gestos, ID: main-AppWindow-1, Secondary Actions: Raise
+~					69 row (selectable) Meus atalhos, 2 regras
+~					72 row (selected) Mapa de gestos
+~			77 text Help: 1 de 2 regras ativas, Value: Captura pausada, 1 de 2 regras ativas, ID: tico.sidebar.status
++		118 scroll area
++			119 text Seus gestos, à vista Consulte os atalhos e pratique sem executar suas ações.
++			120 checkbox Description: Somente disponíveis em ChatGPT, Value: 0
++			121 text Com a captura ativa, segure ⌘⌥ para consultar o mapa no aplicativo em uso.
++			122 container
++				123 image Description: ⌘⇧ S, ID: keyboard
++				124 text Open Safari ⌘⇧ S Todos os apps Ativo
++				125 button Praticar
++				126 button Editar
++				127 button Aprender
++			128 container
++				129 image Description: Botão lateral 1, ID: computermouse
++				130 text Abrir site de exemplo do Tico Botão lateral 1 Todos os apps Desativado
++				131 button Praticar
++				132 button Editar
++				133 button (disabled) Aprender
+~	117 text Mapa de gestos
+Selected:
+	72 row (selected)
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

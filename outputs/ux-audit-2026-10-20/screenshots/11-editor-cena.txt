@@ -1,0 +1,22 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 66-78, 96-116
+~63 sheet Secondary Actions: Raise
+~	64 container
+~		65 text Editar cena
++		66 text field (settable) Value: Minha cena, Placeholder: Nome da cena, ID: tico.scene.name
++		67 text Capture a disposição das janelas e, se necessário, acrescente ações à cena. Na execução, as ações são realizadas primeiro; depois você revisa e aplica o layout.
++		68 scroll area
++			69 container
++				70 text Disposição das janelas
++				71 button Description: Capturar janelas abertas, ID: tico.scene.layout.capture
++				72 text Capture explicitamente as janelas abertas, escolha quais manter e ajuste suas posições. Títulos e documentos não são armazenados.
++			73 button Description: Adicionar ação, ID: tico.workflow.add-action
++			74 disclosure triangle Description: Opções da sequência, Value: off
++			75 text Adicione uma ação ativa ou capture um layout.
++		76 button Cancelar
++		77 button (disabled) Description: Salvar cena, ID: tico.scene.save
+Selected text: ```
+Minha cena
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

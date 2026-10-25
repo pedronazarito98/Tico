@@ -1,0 +1,19 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 105-183, 185
+~			100 text Como você quer ativar? Clique em Gravar e faça o acionamento. Você também pode escolher no desenho.
+~				102 radio button Description: Teclado, Value: 0, ID: keyboard
+~				103 radio button Description: Trackpad, Value: 1, ID: hand.draw
++			195 unknown 3 dedos · Deslizar para cima
++			196 unknown Prévia: Deslizar para cima, 3 dedos
++			197 text Deslizar para cima
++			198 button Description: Ver movimento, Help: Mostra um exemplo do movimento escolhido.
++			199 pop up button Dedos, Value: 3 dedos
++			200 pop up button Movimento, Value: Deslizar para cima
+~			184 menu button Combinar ou criar uma sequência, ID: plus.circle
++			201 button Desenhar meu gesto
++			202 image Description: Bloquear, ID: hand.raised.fill
++			203 text Permita observar seu trackpad Ative Monitoramento de Entrada para gravar e reconhecer gestos fora do Tico.
++			204 button Abrir Ajustes
+~			186 text A captura observa o gesto. Gestos do macOS também podem acontecer.
+~		97 button Description: Usar acionamento, ID: tico.composer.continue
+The focused UI element is 63 sheet Secondary Actions: Raise

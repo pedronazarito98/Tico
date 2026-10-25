@@ -1,0 +1,10 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+~				72 disclosure triangle Description: Somente neste ambiente, Value: on
++				77 pop up button Telas externas após a mudança, Value: Qualquer quantidade
++				78 pop up button Tela integrada, Value: Indiferente
++				79 pop up button Tela principal, Value: Indiferente
+Selected text: ```
+Minha rotina
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

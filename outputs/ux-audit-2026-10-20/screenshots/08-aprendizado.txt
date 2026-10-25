@@ -1,0 +1,9 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 66-78, 107-133
+~63 sheet Secondary Actions: Raise
+~	64 container
+~		65 text Open Safari Aprenda durante o uso Receba uma dica discreta depois de usar esta ação pelo painel. O Tico acompanha um atalho por vez.
++		66 button Quero aprender este atalho
++		67 text Preferências e progresso ficam salvos neste Mac. Praticar não executa ações e não conta como uso natural.
++		68 button Concluir
+The focused UI element is 63 sheet Secondary Actions: Raise

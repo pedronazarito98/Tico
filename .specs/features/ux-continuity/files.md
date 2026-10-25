@@ -1,0 +1,82 @@
+# Arquivos desta fase
+
+Inventário comparado com o snapshot anterior à implementação aprovada. Não inclui mudanças anteriores do worktree.
+
+- Modificado: `Sources/Tico/App/Commands.swift`
+- Modificado: `Sources/Tico/Models/ContentActionChoice.swift`
+- Criado: `Sources/Tico/Models/ContentRecipe.swift`
+- Criado: `Sources/Tico/Models/ContentRecipeIntent.swift`
+- Modificado: `Sources/Tico/Models/SceneLayoutPreview.swift`
+- Modificado: `Sources/Tico/Models/ShortcutLearningGoal.swift`
+- Modificado: `Sources/Tico/Services/SceneLayoutService.swift`
+- Modificado: `Sources/Tico/Services/WorkflowExecutor.swift`
+- Criado: `Sources/Tico/Stores/ContentRecipeRepository.swift`
+- Criado: `Sources/Tico/Stores/ContentRecipeStore.swift`
+- Modificado: `Sources/Tico/Stores/DisplayRoutineStore.swift`
+- Modificado: `Sources/Tico/Stores/ShortcutLearningStore.swift`
+- Modificado: `Sources/Tico/Support/AppController.swift`
+- Modificado: `Sources/Tico/Support/ContentInteractionCoordinator.swift`
+- Modificado: `Sources/Tico/Support/ContextualExperienceCoordinator.swift`
+- Modificado: `Sources/Tico/Support/DisplayRoutineCoordinator.swift`
+- Modificado: `Sources/Tico/Support/GesturePracticeSession.swift`
+- Modificado: `Sources/Tico/Support/SceneLayoutSession.swift`
+- Modificado: `Sources/Tico/Support/TicoSection.swift`
+- Modificado: `Sources/Tico/Views/Components/Content/ContentActionEditorView.swift`
+- Modificado: `Sources/Tico/Views/Components/Content/ContentActionPanelView.swift`
+- Criado: `Sources/Tico/Views/Components/Content/ContentDestinationEditorView.swift`
+- Criado: `Sources/Tico/Views/Components/Content/ContentPanelActionsView.swift`
+- Criado: `Sources/Tico/Views/Components/Content/ContentPanelInputView.swift`
+- Modificado: `Sources/Tico/Views/Components/Content/ContentPanelSession.swift`
+- Criado: `Sources/Tico/Views/Components/Content/ContentRecipeEditorView.swift`
+- Modificado: `Sources/Tico/Views/Components/ContentInteractionPanelView.swift`
+- Criado: `Sources/Tico/Views/Components/Describe/DescriptionActionChoice.swift`
+- Criado: `Sources/Tico/Views/Components/Describe/DescriptionGestureChoice.swift`
+- Criado: `Sources/Tico/Views/Components/Describe/DescriptionPhraseDraft.swift`
+- Modificado: `Sources/Tico/Views/Components/DisplayRoutineEditorView.swift`
+- Modificado: `Sources/Tico/Views/Components/DisplayRoutinePromptView.swift`
+- Modificado: `Sources/Tico/Views/Components/DisplayRoutineSectionView.swift`
+- Criado: `Sources/Tico/Views/Components/Rules/Composer/ActionCatalogEntry.swift`
+- Criado: `Sources/Tico/Views/Components/Rules/Composer/ActionCatalogResults.swift`
+- Criado: `Sources/Tico/Views/Components/Rules/Composer/ComposerActionParameters.swift`
+- Criado: `Sources/Tico/Views/Components/Rules/Composer/ComposerActionStep.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/Composer/ComposerReviewStep.swift`
+- Criado: `Sources/Tico/Views/Components/Rules/Composer/CustomGestureCaptureView.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/Composer/TrackpadCaptureVisual.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/Composer/TriggerCaptureEditor.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/Composer/TriggerCaptureSession.swift`
+- Criado: `Sources/Tico/Views/Components/Rules/Composer/TriggerChoiceSurface.swift`
+- Criado: `Sources/Tico/Views/Components/Rules/Composer/TriggerRecordingSurface.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/RuleActionKind.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/RuleActionPickerView.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/RuleEditingSession.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/RuleEditorSummary.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/RuleWorkspaceSession.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/ShortcutActionCatalogView.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/ShortcutLibraryDetailView.swift`
+- Modificado: `Sources/Tico/Views/Components/Rules/WorkflowStepCard.swift`
+- Criado: `Sources/Tico/Views/Components/Scenes/SceneCardView.swift`
+- Modificado: `Sources/Tico/Views/Components/Scenes/SceneLayoutConfigurationView.swift`
+- Criado: `Sources/Tico/Views/Components/Scenes/SceneLayoutPlanEditor.swift`
+- Modificado: `Sources/Tico/Views/Components/Scenes/SceneLayoutRecoveryView.swift`
+- Modificado: `Sources/Tico/Views/Components/Scenes/SceneLayoutReviewView.swift`
+- Modificado: `Sources/Tico/Views/Components/Scenes/SceneLayoutWindowEditor.swift`
+- Modificado: `Sources/Tico/Views/Components/ShortcutLearningGoalView.swift`
+- Modificado: `Sources/Tico/Views/Components/ShortcutLearningPromptView.swift`
+- Modificado: `Sources/Tico/Views/ContentView.swift`
+- Modificado: `Sources/Tico/Views/DescribeAutomationView.swift`
+- Modificado: `Sources/Tico/Views/ExploreView.swift`
+- Modificado: `Sources/Tico/Views/GestureLibraryView.swift`
+- Modificado: `Sources/Tico/Views/GestureMapView.swift`
+- Modificado: `Sources/Tico/Views/GesturePracticeView.swift`
+- Modificado: `Sources/Tico/Views/RuleActionEditorView.swift`
+- Modificado: `Sources/Tico/Views/RulesView.swift`
+- Modificado: `Sources/Tico/Views/SceneEditorView.swift`
+- Modificado: `Sources/Tico/Views/ScenesView.swift`
+- Modificado: `Sources/Tico/Views/ScenesWorkspaceView.swift`
+- Modificado: `Sources/Tico/Views/ShortcutComposerView.swift`
+- Modificado: `Sources/Tico/Views/SidebarView.swift`
+- Modificado: `Sources/Tico/Views/WorkflowEditorView.swift`
+
+Documentação desta fase: `README.md`, `.specs/features/ux-continuity/{spec,files,validation}.md` e `outputs/ux-continuity/guia.md`.
+
+Evidência visual: seis capturas JPEG da interface em `outputs/ux-continuity/screens/`.

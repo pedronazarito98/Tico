@@ -1,0 +1,20 @@
+The following is a diff from the previous accessibility tree for Window: "Cenas" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 79-95
+~63 standard window Cenas, ID: main-AppWindow-1, Secondary Actions: Raise
+~					71 row (selected) Cenas
+~					72 row (selectable) Mapa de gestos
++		107 scroll area
++			108 text Prepare seu espaço
++			109 button Description: Nova cena, ID: tico.scenes.new
++			110 text Reúna apps, links e janelas numa sequência que você controla. Como você começa a trabalhar? Crie uma cena com os aplicativos e a disposição de janelas que você usa.
++			111 container tico.scenes.display-routines
++				112 text Quando seu ambiente muda
++				113 toggle button Description: Ativar rotinas de telas, Value: off
++				114 text Rotinas de telas desativadas. Associe uma cena à conexão ou desconexão de telas. Comece oferecendo uma sugestão, ou escolha execução automática.
++				115 button (disabled) Nova rotina
++				116 text Pausadas durante prática, replay e repouso.
+~	106 text Cenas
+Selected:
+	71 row (selected)
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

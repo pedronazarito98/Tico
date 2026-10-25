@@ -1,0 +1,7 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 66
+~		65 text Open Safari Aprenda durante o uso 0 de 5 usos naturais concluídos
++		69 progress indicator Description: Progresso do aprendizado, Value: 0
++		70 button Já aprendi
++		71 button Apagar progresso
+The focused UI element is 63 sheet Secondary Actions: Raise

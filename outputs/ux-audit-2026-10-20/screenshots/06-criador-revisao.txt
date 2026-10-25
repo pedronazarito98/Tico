@@ -1,0 +1,20 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 97-104, 184, 186-193
+~		70 button (selected) Etapa 3: Experimentar
+~		71 scroll area
+~			195 text Seu atalho, pronto para conferir Confira o acionamento, o resultado e onde ele deve funcionar. QUANDO EU FIZER O TICO VAI
+~			196 unknown 3 dedos · Deslizar para cima
+~			197 image Description: Direita, ID: arrow.right
+~			198 button Alterar acionamento
+~			199 text Pesquisar com conteúdo Nome
+~			200 text field (settable) Value: Pesquisar com texto selecionado, Placeholder: Nome do atalho, ID: tico.composer.name
+~			201 text Disponível em
+~			202 button Description: Todos os apps, ID: tico.composer.scope
+~			203 text Ativar ao salvar Disponível assim que a captura estiver ativa.
+~			204 toggle button Description: Ativar ao salvar, Value: on, ID: tico.composer.enabled
++			205 text Para usar fora do Tico, autorize Monitoramento de Entrada nos Ajustes do Sistema.
++			206 button Abrir Ajustes
++			207 button Description: Mais ajustes, ID: tico.composer.options
++		208 button Description: Experimentar, ID: tico.composer.preview
++		209 button Description: Criar atalho, ID: tico.composer.save
+The focused UI element is 63 sheet Secondary Actions: Raise

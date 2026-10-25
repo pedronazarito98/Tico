@@ -1,0 +1,37 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 0-54
++63 sheet Secondary Actions: Raise
++	64 container
++		65 image Tico
++		66 text Tico Novo atalho
++		67 menu button Mais opções do atalho, Description: More, Help: Modelos e opções do atalho
++		68 button (selected) Etapa 1: Ação
++		69 button (disabled) Etapa 2: Como ativar
++		70 button (disabled) Etapa 3: Experimentar
++		71 scroll area
++			72 text O que você quer fazer? Escolha o resultado. Depois, vamos criar um jeito fácil de chegar até ele.
++			73 image Description: Buscar, ID: magnifyingglass
++			74 text field (settable) Placeholder: Buscar apps ou ações, ID: tico.composer.search
++			75 scroll area Secondary Actions: Scroll Up, Scroll Down
++				76 list Secondary Actions: AXScrollToTop, AXScrollToBottom
++					77 text Aplicativos
++					78 button Abrir Safari
++					79 button Abrir Finder
++					80 text Janelas
++					81 button Mover para a esquerda
++					82 button Centralizar janela
++					83 text Conteúdo
++					84 button Pesquisar com texto selecionado
++					85 button Enviar conteúdo a um Atalho
++					86 button Todas as ações…
++				87 scroll bar (settable, float) 0
++					88 value indicator (settable, float) 0
++					89 increment arrow button
++					90 decrement arrow button
++					91 increment page button
++					92 decrement page button
++			93 image Description: Grupo De Três Retângulos, ID: rectangle.3.group
++			94 text Cada atalho começa com uma ideia Abrir seu app favorito, organizar uma janela ou executar uma sequência de ações.
++		95 button Cancelar
++		96 button (disabled) Description: Escolher acionamento, ID: tico.composer.continue
+The focused UI element is 74 text field (settable) Placeholder: Buscar apps ou ações, ID: tico.composer.search

@@ -1,0 +1,28 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 68-92, 95-99
+~		65 text Configurar ações
+~		66 button Concluir
+~		67 scroll area
++			68 container
++				69 text Fazer com conteúdo
++				70 button Trocar ação
++				71 pop up button Usar, Value: Texto selecionado
++				72 pop up button Capturar seleção, Value: No início da sequência
++				73 text A captura acontece somente ao acionar esta regra, usa Acessibilidade e recusa campos protegidos. Se o app não fornecer a seleção, a ação informa o motivo.
++				74 Fazer
++					75 radio button Description: Pesquisar, Value: 1
++					76 radio button Description: Executar Atalho, Value: 0
++				77 text field (settable) Value: https://developer.apple.com/search/, Placeholder: Endereço HTTPS da pesquisa
++				78 text field (settable) Value: q, Placeholder: Parâmetro da busca (ex.: q)
++				79 button Documentação Apple
++				80 button Google
++				81 text Aceita texto e links. O conteúdo será enviado ao site escolhido como termo de pesquisa; o navegador pode mantê-lo no histórico.
++				82 disclosure triangle Description: Ajustes desta ação, Value: off
++			83 button Description: Adicionar ação, ID: tico.workflow.add-action
++			84 menu button Biblioteca
++			85 disclosure triangle Description: Opções da sequência, Value: off
+Selected text: ```
+https://developer.apple.com/search/
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).

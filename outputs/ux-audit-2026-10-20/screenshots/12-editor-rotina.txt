@@ -1,0 +1,21 @@
+The following is a diff from the previous accessibility tree for Window: "" with ~ and + representing changed and added elements, respectively. Removed elements are summarized by ID range.
+Removed element IDs: 66-106
+~63 sheet Secondary Actions: Raise
+~	64 container
+~		65 text Rotina de telas
++		66 scroll area
++			67 container
++				68 text field (settable) Nome, Value: Minha rotina
++				69 pop up button Quando, Value: Ao conectar uma tela externa
++				70 pop up button Cena, Value: Minha cena
++				71 pop up button Comportamento, Value: Oferecer a cena
++				72 disclosure triangle Description: Somente neste ambiente, Value: off
++				73 switch Rotina ativa, Value: off
++		74 text Conectar e desconectar são identificados por quantidade e papel das telas. O Tico não salva números de série e não executa rotinas ao iniciar ou retomar o Mac.
++		75 button Cancelar
++		76 button Salvar rotina
+Selected text: ```
+Minha rotina
+```
+
+Note: Pay special attention to the content selected by the user. If the user asks a question or refers to the content they are looking at on-screen, they might be referring to the selected content (but they might be referring to something else that's visible, too).
