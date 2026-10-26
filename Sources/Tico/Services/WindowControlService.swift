@@ -3,6 +3,7 @@ import ApplicationServices
 import Foundation
 
 protocol WindowControlling {
+    @MainActor
     func perform(
         _ operation: WindowOperation,
         target: ApplicationTarget
@@ -29,11 +30,17 @@ enum WindowControlError: LocalizedError, Equatable {
     }
 }
 
+/// Mantém consultas de tela, alterações AX e frames salvos na thread principal.
+/// Ao controlar uma janela do próprio Tico, AX chama AppKit no mesmo processo;
+/// executar em uma task de workflow sem esse isolamento pode encerrar o app.
+/// Paralelo com React: é a fronteira de efeito sobre a janela nativa, mas Swift
+/// exige também definir em qual executor esse efeito pode acessar a UI.
 final class WindowControlService: WindowControlling {
     private let workspace: NSWorkspace
     private let accessibilityCheck: () -> Bool
-    private var savedFrames: [pid_t: CGRect] = [:]
+    @MainActor private var savedFrames: [pid_t: CGRect] = [:]
 
+    // A composição pode ocorrer fora do MainActor; o init apenas recebe dependências.
     init(
         workspace: NSWorkspace = .shared,
         accessibilityCheck: @escaping () -> Bool = AXIsProcessTrusted
@@ -41,7 +48,10 @@ final class WindowControlService: WindowControlling {
         self.workspace = workspace
         self.accessibilityCheck = accessibilityCheck
     }
+}
 
+@MainActor
+extension WindowControlService {
     func perform(
         _ operation: WindowOperation,
         target: ApplicationTarget
