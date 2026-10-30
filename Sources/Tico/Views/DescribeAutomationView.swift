@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Uma frase pode nascer de escolhas ou do parser local. A proposta é sempre
+/// Uma frase pode nascer de escolhas, do parser ou do modelo local da Apple. A proposta é sempre
 /// efêmera; o callback abre o editor e a persistência continua pertencendo ao shell.
 struct DescribeAutomationView: View {
+    let intelligenceService: any LocalIntelligenceServicing
     let applications: [ApplicationChoice]
     let latestEvent: InputEventDescriptor?
     let recordingIsActive: Bool
@@ -36,26 +37,38 @@ struct DescribeAutomationView: View {
                 HStack(spacing: 8) {
                     modeButton(.guided, title: "Montar com escolhas")
                     modeButton(.text, title: "Escrever uma frase")
+                    modeButton(.intelligence, title: "Linguagem natural")
                     Spacer()
                 }
             }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
             Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    if mode == .guided { guidedPhrase } else { textPhrase }
+                    if mode == .guided { guidedPhrase }
+                    else if mode == .text { textPhrase }
+                    else {
+                        NaturalAutomationView(service: intelligenceService, applications: applications,
+                            recordedTrigger: recordedTrigger, onRecord: startRecording,
+                            onCreate: { onCreate($0); dismiss() })
+                    }
                     if let error {
                         Label(error, systemImage: "info.circle").font(.callout).foregroundStyle(.orange)
                     }
-                    if let draft { proposal(draft) }
+                    if mode != .intelligence, let draft {
+                        AutomationProposalView(draft: draft, applications: applications,
+                            onReview: mode == .text ? { self.draft = nil } : nil)
+                    }
                 }.padding(20)
             }
             Divider()
             HStack {
                 Button("Cancelar") { dismiss() }.keyboardShortcut(.cancelAction)
                 Spacer()
-                Button(draft == nil ? "Conferir proposta" : "Personalizar no editor", action: continueEditing)
-                    .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
-                    .accessibilityIdentifier(draft == nil ? "tico.describe.parse" : "tico.describe.review")
+                if mode != .intelligence {
+                    Button(draft == nil ? "Conferir proposta" : "Personalizar no editor", action: continueEditing)
+                        .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+                        .accessibilityIdentifier(draft == nil ? "tico.describe.parse" : "tico.describe.review")
+                }
             }.padding(20)
         }
         .adaptiveSheetFrame(idealWidth: 660, idealHeight: 700)
@@ -213,30 +226,11 @@ struct DescribeAutomationView: View {
             DisclosureGroup("O que a frase pode descrever") {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Quando eu fizer [um toque com 3 dedos / um swipe para a esquerda com 3 dedos / este gesto] no [nome do app] ou em qualquer aplicativo, [ação].")
-                    Text("Ações: coloque a janela na metade esquerda/direita; maximize a janela; centralize a janela; reabra a última aba; abra o [nome do app]; abra [link HTTP ou HTTPS].")
+                    Text("Ações: coloque a janela na metade esquerda/direita; maximize a janela; centralize a janela; reabra a última aba; atualize a página ou janela; abra o [nome do app]; abra [link HTTP ou HTTPS].")
                     Text("Deslizamentos e toques aceitam de 2 a 5 dedos. Para outro acionamento, grave e escreva ‘este gesto’. Nomes de aplicativos precisam corresponder a um único app instalado.")
                 }.font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             }
         }
-    }
-
-    private func proposal(_ draft: ShortcutRule) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Label("Proposta para conferir", systemImage: "checkmark.circle").font(.headline)
-                Spacer()
-                if mode == .text { Button("Rever frase") { self.draft = nil } }
-            }
-            VStack(alignment: .leading, spacing: 8) {
-                Label(draft.trigger.displayName, systemImage: RuleEditorSummary.symbol(draft.trigger))
-                Label(draft.scope.displayName(applications: applications), systemImage: "globe")
-                Label(RuleEditorSummary.action(draft.action, applications: applications), systemImage: "arrow.turn.down.right")
-                    .textSelection(.enabled)
-            }.font(.callout)
-            Text("Nada foi salvo ou executado. O editor permite ajustar a proposta e escolher quando ativar.")
-                .font(.caption).foregroundStyle(.secondary)
-        }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.primary.opacity(0.025), in: .rect(cornerRadius: 12))
     }
 
     private func modeButton(_ value: DescriptionInputMode, title: String) -> some View {
@@ -282,7 +276,7 @@ struct DescribeAutomationView: View {
     }
 }
 
-private enum DescriptionInputMode { case guided, text }
+private enum DescriptionInputMode { case guided, text, intelligence }
 private enum DescriptionEditingPart {
     case trigger, scope, action
     var title: String {

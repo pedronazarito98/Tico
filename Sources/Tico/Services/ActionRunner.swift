@@ -12,6 +12,7 @@ final class ActionRunner {
     private let inputActionService: any InputActionPerforming
     private let applicationController: any ApplicationControlling
     private let windowController: any WindowControlling
+    private let windowContentRefresher: any WindowContentRefreshing
     private let contentActionService: ContentActionService
     private let scriptTimeout: TimeInterval
     private let now: () -> Date
@@ -26,6 +27,7 @@ final class ActionRunner {
         inputActionService: any InputActionPerforming = InputActionService(),
         applicationController: any ApplicationControlling = ApplicationControlService(),
         windowController: any WindowControlling = WindowControlService(),
+        windowContentRefresher: any WindowContentRefreshing = WindowContentRefreshService(),
         contentActionService: ContentActionService = ContentActionService(),
         scriptTimeout: TimeInterval = 15,
         now: @escaping () -> Date = Date.init
@@ -39,6 +41,7 @@ final class ActionRunner {
         self.inputActionService = inputActionService
         self.applicationController = applicationController
         self.windowController = windowController
+        self.windowContentRefresher = windowContentRefresher
         self.contentActionService = contentActionService
         self.scriptTimeout = scriptTimeout
         self.now = now
@@ -135,6 +138,10 @@ final class ActionRunner {
                     modifiers: modifiers
                 )
                 message = "Atalho de teclado enviado."
+
+            case .refreshWindow:
+                try await windowContentRefresher.refreshFrontmostWindow()
+                message = "Comando de atualização solicitado ao aplicativo."
 
             case let .setClipboard(text):
                 try inputActionService.setClipboard(text)

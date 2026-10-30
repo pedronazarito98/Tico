@@ -12,7 +12,7 @@ struct ContentPanelFooterView: View {
     var body: some View {
         HStack {
             if session.isRunning {
-                Button(session.isCancelling ? "Cancelando…" : "Cancelar execução",
+                Button(session.isCancelling ? "Cancelando…" : session.isGenerating ? "Cancelar geração" : "Cancelar execução",
                        role: .cancel, action: session.cancel)
                     .disabled(session.isCancelling)
                     .accessibilityIdentifier("tico.content.cancel-execution")

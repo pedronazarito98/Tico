@@ -9,6 +9,7 @@ enum ShortcutAction: Hashable, Sendable {
     case macOSShortcut(name: String, input: String?)
     case content(ContentActionConfiguration)
     case keyboardShortcut(keyCode: UInt16, modifiers: Set<InputModifier>)
+    case refreshWindow
     case setClipboard(text: String)
     case application(target: ApplicationTarget, operation: ApplicationOperation)
     case window(target: ApplicationTarget, operation: WindowOperation)
@@ -48,6 +49,7 @@ extension ShortcutAction: Codable {
         case macOSShortcut
         case content
         case keyboardShortcut
+        case refreshWindow
         case setClipboard
         case application
         case window
@@ -86,6 +88,8 @@ extension ShortcutAction: Codable {
                 keyCode: try container.decode(UInt16.self, forKey: .keyCode),
                 modifiers: try container.decodeIfPresent(Set<InputModifier>.self, forKey: .modifiers) ?? []
             )
+        case .refreshWindow:
+            self = .refreshWindow
         case .setClipboard:
             self = .setClipboard(text: try container.decode(String.self, forKey: .text))
         case .application:
@@ -141,6 +145,8 @@ extension ShortcutAction: Codable {
             try container.encode(Kind.keyboardShortcut, forKey: .type)
             try container.encode(keyCode, forKey: .keyCode)
             try container.encode(modifiers, forKey: .modifiers)
+        case .refreshWindow:
+            try container.encode(Kind.refreshWindow, forKey: .type)
         case let .setClipboard(text):
             try container.encode(Kind.setClipboard, forKey: .type)
             try container.encode(text, forKey: .text)

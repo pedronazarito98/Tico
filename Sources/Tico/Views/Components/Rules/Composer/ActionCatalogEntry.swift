@@ -73,10 +73,15 @@ struct ActionCatalogEntry: Identifiable {
         result += RuleActionKind.allCases.filter {
             ![.openApplication, .controlApplication, .controlWindow, .content].contains($0)
         }.map {
-            Self(id: "kind.\($0.rawValue)", title: $0.title, detail: $0.summary,
-                 category: $0.isAdvanced ? .advanced : $0 == .keyboardShortcut ? .keyboard : .other,
-                 action: $0.makeAction(applications: applications), isSuggested: $0 == .openURL,
-                 keywords: "")
+            let category: Category
+            if $0.isAdvanced { category = .advanced }
+            else if $0 == .keyboardShortcut { category = .keyboard }
+            else if $0 == .refreshWindow { category = .windows }
+            else { category = .other }
+            return Self(id: "kind.\($0.rawValue)", title: $0.title, detail: $0.summary,
+                 category: category,
+                 action: $0.makeAction(applications: applications), isSuggested: $0 == .openURL || $0 == .refreshWindow,
+                 keywords: $0 == .refreshWindow ? "atualize recarregar recarregue páginas aba abas site navegador refresh reload" : "")
         }
         return result
     }

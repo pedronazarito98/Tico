@@ -28,6 +28,7 @@ final class AppController: ObservableObject {
     let companion: CompanionCoordinator
     let experiences: ContextualExperienceCoordinator
     let contentInteraction: ContentInteractionCoordinator
+    let localIntelligence: any LocalIntelligenceServicing
     @Published private(set) var captureResumesAt: Date?
     private var captureResumeTask: Task<Void, Never>?
 
@@ -70,8 +71,10 @@ final class AppController: ObservableObject {
         contextSnapshotService: (any ContextSnapshotProviding)? = nil,
         applicationCatalogService: ApplicationCatalogService? = nil,
         macOSShortcutCatalog: any MacOSShortcutRunning = MacOSShortcutRunner(),
+        localIntelligence: any LocalIntelligenceServicing = LocalIntelligenceService(),
         allowsAutomationExecution: Bool = true
     ) {
+        self.localIntelligence = localIntelligence
         self.shortcutStore = shortcutStore
         self.settings = settings
         self.eventLogStore = eventLogStore
@@ -122,7 +125,7 @@ final class AppController: ObservableObject {
         self.contentInteraction = ContentInteractionCoordinator(
             store: shortcutStore, automation: automationCoordinator,
             contextProvider: contextSnapshotService ?? ContextSnapshotService(),
-            allowsExecution: allowsAutomationExecution)
+            allowsExecution: allowsAutomationExecution, intelligence: localIntelligence)
         companion.onRequestContent = { [weak contentInteraction] in contentInteraction?.show() }
         companion.onRequestSelection = { [weak contentInteraction] in contentInteraction?.show(useSelection: true) }
         self.applicationCatalogService = applicationCatalogService ?? ApplicationCatalogService()

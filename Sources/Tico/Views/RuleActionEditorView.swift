@@ -108,6 +108,11 @@ struct RuleActionEditorView: View {
                 action = .keyboardShortcut(keyCode: code, modifiers: flags)
             }
 
+        case .refreshWindow:
+            Label("Usa o comando de atualização do app em uso e requer Acessibilidade. Alguns aplicativos não oferecem essa ação.",
+                  systemImage: "info.circle")
+                .font(.callout).foregroundStyle(.secondary)
+
         case let .setClipboard(text):
             TextField("Texto", text: Binding(
                 get: { text },

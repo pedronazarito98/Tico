@@ -1,7 +1,7 @@
 import Foundation
 
 struct ShortcutDocumentCodec {
-    static let currentVersion = 8
+    static let currentVersion = 9
 
     static func makeDocument(
         version: Int,

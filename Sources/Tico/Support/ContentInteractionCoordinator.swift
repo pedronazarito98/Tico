@@ -20,6 +20,8 @@ final class ContentInteractionCoordinator: ObservableObject {
     private let automation: AutomationCoordinator
     private let contextProvider: any ContextSnapshotProviding
     private let allowsExecution: Bool
+    private let intelligence: (any LocalIntelligenceServicing)?
+    private let inputActions = InputActionService()
     private let recipes: ContentRecipeStore
     private let contentService = ContentActionService()
     private let selection = SelectionCaptureService()
@@ -35,7 +37,10 @@ final class ContentInteractionCoordinator: ObservableObject {
     private var generation = UUID()
     private var subscriptions = Set<AnyCancellable>()
 
-    lazy var session = ContentPanelSession(execute: { [weak self] choice, content in
+    lazy var session = ContentPanelSession(intelligence: intelligence, copyText: { [weak self] text in
+        guard let self, allowsExecution, !interactionIsSuspended else { throw ContentActionError.cancelled }
+        try inputActions.setClipboard(text)
+    }, execute: { [weak self] choice, content in
         guard let self else { return .failed("O painel foi encerrado.") }
         return await execute(choice: choice, content: content)
     }, onCancel: { [weak self] in
@@ -44,11 +49,13 @@ final class ContentInteractionCoordinator: ObservableObject {
     })
 
     init(store: ShortcutStore, automation: AutomationCoordinator,
-         contextProvider: any ContextSnapshotProviding, allowsExecution: Bool) {
+         contextProvider: any ContextSnapshotProviding, allowsExecution: Bool,
+         intelligence: (any LocalIntelligenceServicing)? = nil) {
         self.store = store
         self.automation = automation
         self.contextProvider = contextProvider
         self.allowsExecution = allowsExecution
+        self.intelligence = intelligence
         recipes = ContentRecipeStore(repository: FileContentRecipeRepository(
             dataURL: store.fileURL.deletingLastPathComponent().appendingPathComponent("content-recipes.json")))
         store.$rules.receive(on: RunLoop.main).sink { [weak self] _ in
@@ -265,6 +272,8 @@ final class ContentInteractionCoordinator: ObservableObject {
             switch rule.workflow.steps[index].action {
             case .keyboardShortcut:
                 return reject("Use uma sequência sem envio de teclas no painel de conteúdo.", generation: token)
+            case .refreshWindow:
+                return reject("Use esta ação por gesto ou atalho fora do painel de conteúdo.", generation: token)
             case let .window(.frontmost, operation):
                 guard let target = originalContext?.frontmostApplicationBundleIdentifier,
                       target != Bundle.main.bundleIdentifier else { return reject("Escolha um aplicativo de destino na ação de janela.", generation: token) }

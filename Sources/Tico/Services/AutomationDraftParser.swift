@@ -16,7 +16,7 @@ struct AutomationDraftParser {
             case .unknownApplication:
                 "Não identifiquei um único aplicativo com esse nome. Use o nome completo de um app instalado ou ‘qualquer aplicativo’."
             case .unsupportedAction:
-                "Ações suportadas: coloque a janela na metade esquerda/direita, maximize a janela, centralize a janela, reabra a última aba, abra o [aplicativo] ou abra [link https]."
+                "Ações suportadas: coloque a janela na metade esquerda/direita, maximize a janela, centralize a janela, reabra a última aba, atualize a página ou janela, abra o [aplicativo] ou abra [link https]."
             }
         }
     }
@@ -71,6 +71,10 @@ struct AutomationDraftParser {
         case "maximize a janela": return .window(target: .frontmost, operation: .maximize)
         case "centralize a janela": return .window(target: .frontmost, operation: .center)
         case "reabra a ultima aba": return .keyboardShortcut(keyCode: 17, modifiers: [.command, .shift])
+        case "recarregue a pagina", "recarregue a aba", "atualize a pagina", "atualize a aba",
+             "recarregar a pagina", "recarregar a aba", "atualizar a pagina", "atualizar a aba",
+             "atualize a janela", "recarregue a janela", "atualizar a janela", "recarregar a janela":
+            return .refreshWindow
         default:
             if text.hasPrefix("abra o ") {
                 return .openApplication(bundleIdentifier: try applicationID(String(text.dropFirst(7)), in: applications))

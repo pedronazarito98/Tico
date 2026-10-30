@@ -243,6 +243,11 @@ struct ShortcutComposerView: View {
     private func chooseAction(_ action: ShortcutAction, _ title: String) {
         stopPreview()
         session.chooseAction(action, title: title)
+        // A atualização costuma começar por um gesto; a pessoa ainda pode trocar
+        // de dispositivo, e uma escolha já confirmada nunca é substituída.
+        if session.isNew, !session.hasChosenTrigger, capture.result == nil, action == .refreshWindow {
+            capture.device = .trackpad
+        }
         actionSelectionRevision += 1
     }
     private func navigate(_ next: Step) {

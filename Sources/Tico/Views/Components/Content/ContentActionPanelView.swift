@@ -39,6 +39,9 @@ struct ContentActionPanelView: View {
             if let issue = session.inputIssue {
                 Label(issue, systemImage: "info.circle").font(.caption).foregroundStyle(.secondary)
             }
+            if session.supportsTransformation, session.kind == .text {
+                ContentTextTransformationView(session: session)
+            }
             ContentPanelActionsView(session: session, actions: actions,
                 canManageRecipes: canManageRecipes, onCreate: onCreateRecipe,
                 onEdit: onEditRecipe, onDelete: onDeleteRecipe)

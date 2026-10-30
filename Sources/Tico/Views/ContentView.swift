@@ -118,7 +118,7 @@ struct ContentView: View {
             describedDraft = nil
             installDraft(draft)
         }) {
-            DescribeAutomationView(applications: controller.availableApplications,
+            DescribeAutomationView(intelligenceService: controller.localIntelligence, applications: controller.availableApplications,
                 latestEvent: controller.recordedEvent, recordingIsActive: controller.recordingIsActive,
                 captureMode: controller.trackpadCaptureMode, startupError: controller.trackpadStartupError,
                 snapshot: controller.laboratorySnapshot, onStartRecording: controller.beginRecording,

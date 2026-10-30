@@ -12,6 +12,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
     case macOSShortcut
     case content
     case keyboardShortcut
+    case refreshWindow
     case clipboard
     case continuousWindow
 
@@ -27,6 +28,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .macOSShortcut: self = .macOSShortcut
         case .content: self = .content
         case .keyboardShortcut: self = .keyboardShortcut
+        case .refreshWindow: self = .refreshWindow
         case .setClipboard: self = .clipboard
         case .application: self = .controlApplication
         case .window: self = .controlWindow
@@ -48,6 +50,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .macOSShortcut: "Use uma rotina do app Atalhos."
         case .content: "Pesquise ou execute Atalhos com texto, links e arquivos."
         case .keyboardShortcut: "Envie uma combinação de teclas."
+        case .refreshWindow: "Atualize o conteúdo no aplicativo em uso."
         case .clipboard: "Prepare um texto para colar."
         case .continuousWindow: "Mova a janela acompanhando o gesto."
         }
@@ -67,6 +70,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .macOSShortcut: .macOSShortcut(name: "", input: nil)
         case .content: .content(ContentActionConfiguration())
         case .keyboardShortcut: .keyboardShortcut(keyCode: 49, modifiers: [.command])
+        case .refreshWindow: .refreshWindow
         case .clipboard: .setClipboard(text: "")
         case .continuousWindow: .continuousWindow(target: .frontmost, operation: .moveHorizontal, curve: .linear)
         }
@@ -84,6 +88,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .macOSShortcut: "Executar Atalho do macOS"
         case .content: "Fazer com conteúdo"
         case .keyboardShortcut: "Enviar atalho de teclado"
+        case .refreshWindow: "Atualizar página ou janela"
         case .clipboard: "Copiar texto"
         case .continuousWindow: "Controlar janela continuamente"
         }
@@ -101,6 +106,7 @@ enum RuleActionKind: String, CaseIterable, Identifiable {
         case .macOSShortcut: "square.stack.3d.up.fill"
         case .content: "doc.text"
         case .keyboardShortcut: "keyboard"
+        case .refreshWindow: "arrow.clockwise"
         case .clipboard: "doc.on.clipboard"
         case .continuousWindow: "arrow.up.left.and.arrow.down.right"
         }

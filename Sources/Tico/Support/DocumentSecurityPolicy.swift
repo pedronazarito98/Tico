@@ -185,7 +185,7 @@ enum DocumentSecurityPolicy {
                 try validateString(search.queryParameter)
             case let .macOSShortcut(name): try validateString(name)
             }
-        case .keyboardShortcut:
+        case .keyboardShortcut, .refreshWindow:
             return
         case let .setClipboard(text):
             try validateString(text)

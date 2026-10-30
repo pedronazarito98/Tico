@@ -133,6 +133,8 @@ extension ShortcutAction {
             }
         case let .keyboardShortcut(keyCode, modifiers):
             return modifierPrefix(modifiers) + InputPresentation.label(keyCode)
+        case .refreshWindow:
+            return "Atualizar página ou janela"
         case .setClipboard:
             return "Atualizar clipboard"
         case let .application(target, operation):

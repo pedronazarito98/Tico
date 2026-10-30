@@ -53,6 +53,27 @@ ações. Ele pode atualizar o Laboratório e os diagnósticos sem disparar regra
 Esses nomes técnicos não devem ser alterados sem uma migração própria, com
 cópia atômica, validação e rollback.
 
+### Ação de atualização e migração dos dados
+
+A ação `refreshWindow` solicita o comando acessível de atualização do aplicativo
+e da janela em foco. A consulta é limitada a menus conhecidos e à barra de
+ferramentas, sem registrar seus títulos; não há envio de teclas nem garantia de
+que todos os aplicativos ofereçam um comando compatível. A execução revalida o
+foco antes do efeito e informa falha ou resultado incerto quando necessário.
+
+O documento de regras passou da versão 8 para a 9 para representar a nova ação.
+Na primeira leitura, o repositório preserva uma cópia do documento anterior e
+grava o novo formato atomicamente. Se já existir uma cópia da mesma versão,
+outra é criada com sufixo numérico. Regras anteriores que enviam `⌘R` continuam
+inalteradas, pois a mesma combinação pode ter outra intenção.
+
+O documento de registros de execução passou da versão 1 para a 2. A versão nova
+lê os registros anteriores e escreve o formato atualizado na próxima execução.
+Versões anteriores do Tico não entendem os novos dados: não as inicie com o
+mesmo diretório após a migração, pois uma falha de leitura seguida de gravação
+pode sobrescrever dados. O backup das regras representa o estado anterior à
+migração, não as alterações feitas depois dela.
+
 ## Estrutura efetivamente entregue na modernização
 
 A modernização foi aplicada por fronteiras internas, mantendo um único target

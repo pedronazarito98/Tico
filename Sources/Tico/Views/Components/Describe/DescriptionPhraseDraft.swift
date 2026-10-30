@@ -36,6 +36,7 @@ struct DescriptionPhraseDraft: Equatable {
         case .maximize: result = .window(target: .frontmost, operation: .maximize)
         case .center: result = .window(target: .frontmost, operation: .center)
         case .reopenTab: result = .keyboardShortcut(keyCode: 17, modifiers: [.command, .shift])
+        case .reloadPage: result = .refreshWindow
         case .openApplication:
             guard applications.contains(where: { $0.id == targetApplicationID }) else { throw DescriptionPhraseError.missingApp }
             result = .openApplication(bundleIdentifier: targetApplicationID)
@@ -46,7 +47,8 @@ struct DescriptionPhraseDraft: Equatable {
                   !value.contains(where: \.isWhitespace) else { throw DescriptionPhraseError.invalidURL }
             result = .openURL(url: url)
         }
-        return ShortcutRule(name: result.displayName, isEnabled: false, trigger: trigger,
+        let name = action == .reloadPage ? action.title : result.displayName
+        return ShortcutRule(name: name, isEnabled: false, trigger: trigger,
                             action: result, scope: scope)
     }
 

@@ -54,10 +54,16 @@ final class FileShortcutRepository: ShortcutRepository {
     }
 
     func backupCurrentDocument(_ data: Data, version: Int) throws {
-        let backupURL = fileURL
-            .deletingPathExtension()
-            .appendingPathExtension("v\(version).backup.json")
-        guard !fileManager.fileExists(atPath: backupURL.path) else { return }
+        let baseURL = fileURL.deletingPathExtension()
+        var backupURL = baseURL.appendingPathExtension("v\(version).backup.json")
+        var suffix = 0
+        // Um backup antigo da mesma versão pode conter regras diferentes. Nunca
+        // o substituímos nem o tratamos como cópia do documento atual.
+        while fileManager.fileExists(atPath: backupURL.path) {
+            suffix += 1
+            guard suffix <= 1_000 else { throw CocoaError(.fileWriteFileExists) }
+            backupURL = baseURL.appendingPathExtension("v\(version).backup-\(suffix).json")
+        }
         try data.write(to: backupURL, options: .atomic)
     }
 }

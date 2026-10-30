@@ -23,6 +23,7 @@ companheiro para conectar trackpad, teclado e mouse a automações no macOS.
 - Cria regras com gestos, teclado e mouse.
 - Reconhece taps, hold, swipes, pinça, rotação, TipTap e sequências.
 - Abre apps e links, organiza janelas e executa workflows locais.
+- Atualiza páginas e janelas de aplicativos compatíveis com um gesto ou atalho configurado.
 - Permite regras diferentes por aplicativo, condições e prioridades.
 - Mostra conflitos antes de salvar duas regras que competem entre si.
 - Oferece um Laboratório para visualizar, calibrar e testar gestos.
@@ -41,7 +42,10 @@ Tudo fica no Mac: regras, calibrações e histórico são locais.
   seleção explícita por Acessibilidade. As ações pesquisam em um destino HTTPS
   configurado ou enviam a entrada a um Atalho do macOS. Google e documentação Apple
   já aparecem como opções; novas receitas são configuradas no próprio painel,
-  preservando a entrada e sem exigir um gatilho.
+  preservando a entrada e sem exigir um gatilho. Com Apple Intelligence disponível,
+  textos curtos podem ser resumidos, revisados, encurtados ou transformados em
+  tarefas localmente. O resultado fica separado do original para revisão e edição;
+  usar no painel ou copiar exige uma escolha explícita e não executa uma receita.
 - **Aprender durante o uso:** um objetivo opcional no Mapa, progresso por execução
   real e dicas espaçadas depois de usar o painel contextual. Silenciar dicas não
   para a contagem; reiniciar um objetivo preserva o aprendizado dos outros atalhos.
@@ -59,12 +63,19 @@ Tudo fica no Mac: regras, calibrações e histórico são locais.
   CSV acompanha os filtros e limpar o histórico exige confirmação.
 - **Navegação:** Meus atalhos, Explorar, Cenas, Mapa e Atividade em destaque; ferramentas
   avançadas preservadas e pausa de captura por 15 minutos no menu de status.
-- **Descrever automação:** monte uma frase com escolhas ou use o parser local.
+- **Descrever automação:** monte uma frase com escolhas, use o parser local ou
+  escolha Linguagem natural para gerar uma proposta com o Foundation Models da Apple.
   A proposta abre um rascunho no mesmo criador, inicialmente desativado.
   Exemplo: “Quando eu fizer um swipe para a esquerda com
   3 dedos no Safari, coloque a janela na metade esquerda”.
 
-O parser usa uma gramática restrita, sem serviço de IA externo. A captura do layout
+O parser usa uma gramática restrita. A opção de IA usa somente o modelo local do
+Apple Intelligence, sem token, dependência de terceiros ou fallback remoto. Ela
+exige um Mac elegível, Apple Intelligence ativo e modelo pronto com suporte a
+português; a criação manual continua disponível. As propostas por IA passam pela
+validação das ações existentes e não guardam a frase nas notas da regra.
+Veja os [limites e a validação dos recursos locais de IA](outputs/foundation-models-local.md).
+A captura do layout
 é explícita e não lê títulos nem documentos. A recuperação cobre posição e tamanho
 na sessão atual; não reabre documentos ou aplicativos encerrados.
 Veja o [guia das experiências contextuais](outputs/experiencias-contextuais.md),
@@ -97,6 +108,11 @@ no próprio inspetor. Veja a [validação dos seletores visuais](.specs/features
 O Tico é um **preview técnico open source exclusivo para macOS 26+**. A forma
 recomendada de testar por enquanto é clonar o repositório e rodar o app
 localmente. Não há binário público assinado com Developer ID.
+
+A ação **Atualizar página ou janela** procura um comando de atualização
+acessível no aplicativo em uso e exige a permissão de Acessibilidade. O resultado
+depende do comando oferecido por cada aplicativo; falhas aparecem na última
+execução em Atividade. Gestos podem ser escolhidos no criador do atalho.
 
 Para compilar localmente, use macOS 26 e Xcode 26 ou uma versão posterior
 compatível. O aplicativo não oferece suporte a macOS 14–25.

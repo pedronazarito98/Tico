@@ -49,7 +49,7 @@ struct ExecutionLogEntry: Identifiable, Codable, Hashable, Sendable {
 }
 
 final class EventLogStore: ObservableObject {
-    static let currentDocumentVersion = 1
+    static let currentDocumentVersion = 2
 
     @Published private(set) var entries: [ExecutionLogEntry] = []
     @Published private(set) var lastError: String?

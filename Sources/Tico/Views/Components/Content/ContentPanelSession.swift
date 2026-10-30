@@ -15,7 +15,14 @@ final class ContentPanelSession: ObservableObject {
     @Published private(set) var status: String?
     @Published private(set) var resultSucceeded = false
     @Published private(set) var runningActionID: UUID?
+    @Published private(set) var intelligenceAvailability: LocalIntelligenceAvailability = .checking
+    @Published private(set) var transformation: ContentTransformation?
+    @Published var generatedText: String? { didSet { if !isUpdating { scheduleExpiry() } } }
     private(set) var inputGeneration = UUID()
+
+    private let intelligence: (any LocalIntelligenceServicing)?
+    private let copyText: @MainActor (String) throws -> Void
+    private var generationTimeout: Task<Void, Never>?
 
     private let execute: @MainActor (ContentActionChoice, AutomationContent) async -> ActionExecutionResult
     private let onCancel: @MainActor () -> Void
@@ -24,10 +31,109 @@ final class ContentPanelSession: ObservableObject {
     private var generation = UUID()
     private var isUpdating = false
 
-    init(execute: @escaping @MainActor (ContentActionChoice, AutomationContent) async -> ActionExecutionResult,
+    init(intelligence: (any LocalIntelligenceServicing)? = nil,
+         copyText: @escaping @MainActor (String) throws -> Void = { _ in throw ContentActionError.launchFailed },
+         execute: @escaping @MainActor (ContentActionChoice, AutomationContent) async -> ActionExecutionResult,
          onCancel: @escaping @MainActor () -> Void = {}) {
+        self.intelligence = intelligence
+        self.copyText = copyText
         self.execute = execute
         self.onCancel = onCancel
+    }
+
+    var supportsTransformation: Bool { intelligence != nil }
+    var isGenerating: Bool { isRunning && transformation != nil }
+
+    var generatedTextIsValid: Bool {
+        guard let generatedText else { return false }
+        return (try? AutomationContent.text(generatedText).validate()) != nil
+    }
+
+    func refreshIntelligenceAvailability() async {
+        guard let intelligence else { return }
+        let state = await intelligence.availability()
+        guard !Task.isCancelled else { return }
+        intelligenceAvailability = state
+    }
+
+    /// A inferência compartilha exclusão mútua com a execução, mas seu resultado
+    /// permanece separado da entrada. Só a revisão pode promovê-lo ao formulário.
+    func transform(_ transformation: ContentTransformation) {
+        guard !isRunning, kind == .text, let intelligence, let content,
+              case let .text(input) = content else { return }
+        guard intelligenceAvailability == .available else {
+            status = intelligenceAvailability.message
+            return
+        }
+        generatedText = nil
+        expiration?.cancel()
+        self.transformation = transformation
+        let token = UUID()
+        generation = token
+        isRunning = true
+        isCancelling = false
+        runningActionID = nil
+        status = nil
+        resultSucceeded = false
+        operation = Task { [weak self] in
+            do {
+                let output = try await intelligence.transform(input, operation: transformation)
+                guard let self, !Task.isCancelled, generation == token else { return }
+                generatedText = output
+                finishGeneration()
+                status = "Confira o texto gerado antes de usar."
+            } catch {
+                guard let self, !Task.isCancelled, generation == token else { return }
+                finishGeneration()
+                status = (error as? LocalIntelligenceError)?.localizedDescription
+                    ?? LocalIntelligenceError.failed.localizedDescription
+            }
+        }
+        generationTimeout = Task { [weak self] in
+            do { try await Task.sleep(for: .seconds(60)) } catch { return }
+            guard let self, generation == token, isGenerating else { return }
+            cancel()
+            status = LocalIntelligenceError.timedOut.localizedDescription
+        }
+    }
+
+    /// Aprovar altera somente a entrada do painel. Pesquisar, enviar ou executar
+    /// continua exigindo a escolha explícita de uma das ações existentes.
+    func useGeneratedText() {
+        guard !isRunning, generatedTextIsValid, let generatedText else { return }
+        setContent(.text(generatedText))
+        status = "Texto revisado no painel. Escolha uma ação quando quiser usá-lo."
+    }
+
+    func copyGeneratedText() {
+        guard !isRunning, generatedTextIsValid, let generatedText else { return }
+        do {
+            try copyText(generatedText)
+            status = "Texto revisado copiado."
+            resultSucceeded = true
+        } catch {
+            status = "Não foi possível copiar o texto revisado."
+            resultSucceeded = false
+        }
+        scheduleExpiry()
+    }
+
+    func discardGeneratedText() {
+        guard !isRunning else { return }
+        generatedText = nil
+        transformation = nil
+        status = nil
+        resultSucceeded = false
+        scheduleExpiry()
+    }
+
+    private func finishGeneration() {
+        isRunning = false
+        isCancelling = false
+        operation = nil
+        generationTimeout?.cancel()
+        generationTimeout = nil
+        scheduleExpiry()
     }
 
     var content: AutomationContent? {
@@ -125,6 +231,8 @@ final class ContentPanelSession: ObservableObject {
             status = ContentActionError.incompatibleContent.localizedDescription
             return
         }
+        generatedText = nil
+        transformation = nil
         expiration?.cancel()
         let token = UUID()
         generation = token
@@ -158,6 +266,21 @@ final class ContentPanelSession: ObservableObject {
 
     func cancel() {
         guard isRunning, !isCancelling else { return }
+        if isGenerating {
+            // O SDK pode terminar depois do cancelamento. A geração invalida
+            // esse retorno sem ressuscitar texto ao reabrir o painel.
+            generation = UUID()
+            operation?.cancel()
+            operation = nil
+            generationTimeout?.cancel()
+            generationTimeout = nil
+            isRunning = false
+            isCancelling = false
+            discardInput()
+            status = "Geração cancelada. O conteúdo foi removido do painel."
+            resultSucceeded = false
+            return
+        }
         isCancelling = true
         operation?.cancel()
         onCancel()
@@ -189,11 +312,15 @@ final class ContentPanelSession: ObservableObject {
         isUpdating = true
         text = ""
         files = []
+        generatedText = nil
+        transformation = nil
         isUpdating = false
     }
 
     private func resetResultAndExpiry() {
         guard !isRunning else { return }
+        generatedText = nil
+        transformation = nil
         status = nil
         resultSucceeded = false
         scheduleExpiry()
