@@ -14,6 +14,11 @@ MIN_SYSTEM_VERSION="26.0"
 APP_CATEGORY="public.app-category.productivity"
 RESOURCE_BUNDLE_NAME="Tico_Tico.bundle"
 HOST_ARCH="$(/usr/bin/uname -m)"
+SIGNING_ARGS=()
+if [[ "${TICO_CI_ADHOC_SIGNING:-0}" == "1" ]]; then
+  # O runner usa assinatura temporária sem depender da chave pessoal do autor.
+  SIGNING_ARGS+=("CODE_SIGN_IDENTITY=-" "DEVELOPMENT_TEAM=")
+fi
 
 [[ -d "$PROJECT_PATH" ]]
 [[ -f "$SCHEME_PATH" ]]
@@ -48,6 +53,7 @@ trap cleanup EXIT HUP INT TERM
   -configuration "$CONFIGURATION" \
   -destination "platform=macOS,arch=$HOST_ARCH" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
+  ${SIGNING_ARGS[@]+"${SIGNING_ARGS[@]}"} \
   build
 
 APP_BUNDLE="$DERIVED_DATA_PATH/Build/Products/$CONFIGURATION/$APP_NAME.app"
@@ -84,6 +90,7 @@ ARCHIVED_APP="$ARCHIVE_PATH/Products/Applications/$APP_NAME.app"
   -destination "generic/platform=macOS" \
   -derivedDataPath "$DERIVED_DATA_PATH" \
   -archivePath "$ARCHIVE_PATH" \
+  ${SIGNING_ARGS[@]+"${SIGNING_ARGS[@]}"} \
   archive
 
 ARCHIVED_INFO_PLIST="$ARCHIVED_APP/Contents/Info.plist"

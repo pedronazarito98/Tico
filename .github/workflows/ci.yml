@@ -26,6 +26,8 @@ jobs:
           swift --version
 
       - name: Run shared verification gate
+        env:
+          TICO_CI_ADHOC_SIGNING: "1"
         run: ./script/ci_verify.sh --package
 
       - name: Summarize coverage boundary
@@ -36,7 +38,7 @@ jobs:
             echo
             echo "- Runner: macos-26."
             echo "- Minimum supported system: macOS 26."
-            echo "- Automated coverage when signing is configured: SwiftPM build, Xcode builds, Swift tests, XCUITest, security regressions, and Developer ID ZIP/DMG verification."
+            echo "- Automated coverage: SwiftPM build, Xcode builds, Swift tests, XCUITest, security regressions, and ad hoc ZIP/DMG verification."
             echo "- Physical coverage: not exercised in CI; use the manual trackpad QA matrix."
-            echo "- Developer ID signing requires its identity and private key on the runner. Notarization and Gatekeeper acceptance are not claimed."
+            echo "- Distribution coverage: ad hoc CI artifacts only; Developer ID, notarization and Gatekeeper acceptance are not claimed."
           } >> "$GITHUB_STEP_SUMMARY"

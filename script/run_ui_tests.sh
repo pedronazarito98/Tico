@@ -5,6 +5,11 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_PATH="$ROOT_DIR/Tico.xcodeproj"
 SCHEME_NAME="Tico"
 HOST_ARCH="$(/usr/bin/uname -m)"
+SIGNING_ARGS=()
+if [[ "${TICO_CI_ADHOC_SIGNING:-0}" == "1" ]]; then
+  # A cópia isolada de UI testing não precisa da identidade de distribuição.
+  SIGNING_ARGS+=("CODE_SIGN_IDENTITY=-" "DEVELOPMENT_TEAM=")
+fi
 
 case "$HOST_ARCH" in
   arm64|x86_64) ;;
@@ -38,6 +43,7 @@ trap cleanup EXIT HUP INT TERM
   -derivedDataPath "$DERIVED_DATA_PATH" \
   -parallel-testing-enabled NO \
   -only-testing:TicoUITests \
+  ${SIGNING_ARGS[@]+"${SIGNING_ARGS[@]}"} \
   test
 
 echo "XCUITest end-to-end flow: PASS"

@@ -89,16 +89,26 @@ DESIGNATED_REQUIREMENT="$(
       -e '/^designated =>/p' \
     | /usr/bin/head -n 1
 )"
-if [[ "$SIGNING_AUTHORITY" != 'Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)' ]]; then
-  echo "error: package does not use the expected Developer ID Application identity" >&2
-  exit 5
+if [[ "${TICO_CI_ADHOC_SIGNING:-0}" == "1" ]]; then
+  # Ad hoc é aceito somente neste gate, com requisito específico do binário.
+  if [[ "$SIGNING_FLAGS_LINE" != *adhoc* || "$DESIGNATED_REQUIREMENT" != *cdhash* ]]; then
+    echo "error: CI package must use a build-specific ad hoc signature" >&2
+    exit 5
+  fi
+  SIGNING_MODE="ad-hoc/ci"
+  CODE_IDENTITY_SCOPE="build-specific"
+else
+  if [[ "$SIGNING_AUTHORITY" != 'Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)' ]]; then
+    echo "error: package does not use the expected Developer ID Application identity" >&2
+    exit 5
+  fi
+  if [[ "$DESIGNATED_REQUIREMENT" != *anchor* ]]; then
+    echo "error: designated requirement is not anchored to the signing identity" >&2
+    exit 5
+  fi
+  SIGNING_MODE="developer-id"
+  CODE_IDENTITY_SCOPE="signer-bound"
 fi
-if [[ "$DESIGNATED_REQUIREMENT" != *anchor* ]]; then
-  echo "error: designated requirement is not anchored to the signing identity" >&2
-  exit 5
-fi
-SIGNING_MODE="developer-id"
-CODE_IDENTITY_SCOPE="signer-bound"
 
 ENTITLEMENTS_FILE="$TEMP_ROOT/entitlements.plist"
 if /usr/bin/codesign -d --entitlements "$ENTITLEMENTS_FILE" "$EXTRACTED_APP" >/dev/null 2>&1 &&
@@ -135,7 +145,9 @@ echo "notarization: not-attempted (no notarytool acceptance evidence inspected)"
 echo "staple: not-validated"
 echo "clean-machine execution: not-run"
 
-if [[ "$HARDENED_RUNTIME" != "enabled" ]]; then
+if [[ "$SIGNING_MODE" == "ad-hoc/ci" ]]; then
+  echo "distribution decision: CI only; this artifact is not suitable for distribution"
+elif [[ "$HARDENED_RUNTIME" != "enabled" ]]; then
   echo "distribution decision: blocked; Developer ID artifact lacks confirmed Hardened Runtime"
 else
   echo "distribution decision: pending notarization, staple validation, and clean-machine execution"

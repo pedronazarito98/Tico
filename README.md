@@ -168,7 +168,9 @@ Para executar o gate completo:
 ```
 
 Esse gate compila os hosts SwiftPM e Xcode, executa a suíte e valida os
-artefatos assinados com Developer ID. O target Xcode também pode ser verificado isoladamente com
+artefatos assinados com Developer ID no ambiente local configurado. No GitHub
+Actions, usa assinatura ad hoc exclusiva do CI, sem notarização. O target Xcode
+também pode ser verificado isoladamente com
 `./script/verify_xcode_app.sh`.
 
 Na primeira execução, o macOS pode pedir Monitoramento de Entrada e, dependendo

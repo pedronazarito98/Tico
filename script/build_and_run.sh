@@ -112,14 +112,14 @@ PLIST
 
 /usr/bin/xattr -cr "$STAGED_APP_BUNDLE"
 /usr/bin/xattr -d com.apple.FinderInfo "$STAGED_APP_BUNDLE" 2>/dev/null || true
-CODESIGN_IDENTITY="Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)"
-codesign \
-  --force \
-  --deep \
-  --sign "$CODESIGN_IDENTITY" \
-  --options runtime \
-  --timestamp \
-  "$STAGED_APP_BUNDLE" >/dev/null
+if [[ "${TICO_CI_ADHOC_SIGNING:-0}" == "1" ]]; then
+  # O CI não tem a chave Developer ID; esta assinatura serve somente ao gate local.
+  codesign --force --deep --sign - --options runtime "$STAGED_APP_BUNDLE" >/dev/null
+else
+  CODESIGN_IDENTITY="Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)"
+  codesign --force --deep --sign "$CODESIGN_IDENTITY" --options runtime --timestamp \
+    "$STAGED_APP_BUNDLE" >/dev/null
+fi
 /usr/bin/xattr -d com.apple.FinderInfo "$STAGED_APP_BUNDLE" 2>/dev/null || true
 codesign --verify --deep --strict "$STAGED_APP_BUNDLE"
 
