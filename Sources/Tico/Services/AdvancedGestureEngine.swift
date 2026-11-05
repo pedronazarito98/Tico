@@ -1,18 +1,23 @@
 import Foundation
 
 struct GestureProcessingOutput: Sendable {
+    var pipelineTraceID: UUID? = nil
+    var processingEpoch: CaptureGeneration? = nil
     let event: GestureEvent?
     let laboratorySnapshot: TrackpadLaboratorySnapshot?
     let completedFeatures: GestureFeatures?
+    let activeTouchCount: Int?
 
     init(
         event: GestureEvent?,
         laboratorySnapshot: TrackpadLaboratorySnapshot?,
-        completedFeatures: GestureFeatures? = nil
+        completedFeatures: GestureFeatures? = nil,
+        activeTouchCount: Int? = nil
     ) {
         self.event = event
         self.laboratorySnapshot = laboratorySnapshot
         self.completedFeatures = completedFeatures
+        self.activeTouchCount = activeTouchCount
     }
 }
 
@@ -41,7 +46,13 @@ struct AdvancedGestureEngine {
         self.arbiter = arbiter
     }
 
-    mutating func process(_ frame: RawTrackpadFrame) -> GestureProcessingOutput {
+    /// O reconhecimento usa todos os quadros. A apresentação detalhada pode ser
+    /// omitida nos quadros intermediários sem consumidor; eventos e finais ainda
+    /// carregam o diagnóstico necessário ao relatório de validação.
+    mutating func process(
+        _ frame: RawTrackpadFrame,
+        includeLaboratorySnapshot: Bool = true
+    ) -> GestureProcessingOutput {
         guard let session = sessionEngine.process(frame),
               let features = featureExtractor.extract(from: session) else {
             return GestureProcessingOutput(event: nil, laboratorySnapshot: nil)
@@ -51,7 +62,14 @@ struct AdvancedGestureEngine {
             + directionalRecognizer.candidates(for: features)
             + pinchRotationRecognizer.candidates(for: features)
             + advancedFingerRecognizer.candidates(for: features)
-        let qualification = diagnosticBuilder.qualify(candidates, features: features)
+        let qualification = diagnosticBuilder.qualify(
+            candidates,
+            features: features,
+            includeReasons: includeLaboratorySnapshot || session.phase == .ended
+        )
+        let activeTouchCount = session.phase == .ended || session.phase == .cancelled
+            ? 0
+            : features.contacts.filter { $0.transition == .down || $0.transition == .move }.count
         if let activeEvent,
            activeEvent.sessionID == session.id,
            activeEvent.kind.supportsContinuousPhases,
@@ -79,20 +97,25 @@ struct AdvancedGestureEngine {
                 accepted: nil,
                 rejected: qualification.eligible
             )
-            let snapshot = TrackpadLaboratorySnapshot(
-                sessionID: session.id,
-                phase: session.phase,
-                contacts: features.contacts,
-                features: features,
-                acceptedCandidate: nil,
-                rejectedCandidates: qualification.eligible + qualification.rejected,
-                diagnostic: diagnosticBuilder.diagnostic(
+            let snapshot: TrackpadLaboratorySnapshot?
+            if includeLaboratorySnapshot || session.phase == .ended {
+                snapshot = TrackpadLaboratorySnapshot(
+                    sessionID: session.id,
+                    phase: session.phase,
+                    contacts: features.contacts,
                     features: features,
-                    candidates: candidates,
-                    qualification: qualification,
-                    decision: decision
+                    acceptedCandidate: nil,
+                    rejectedCandidates: qualification.eligible + qualification.rejected,
+                    diagnostic: diagnosticBuilder.diagnostic(
+                        features: features,
+                        candidates: candidates,
+                        qualification: qualification,
+                        decision: decision
+                    )
                 )
-            )
+            } else {
+                snapshot = nil
+            }
             if session.phase == .ended {
                 consumedSessionID = nil
                 self.activeEvent = nil
@@ -101,7 +124,8 @@ struct AdvancedGestureEngine {
             return GestureProcessingOutput(
                 event: event,
                 laboratorySnapshot: snapshot,
-                completedFeatures: session.phase == .ended ? features : nil
+                completedFeatures: session.phase == .ended ? features : nil,
+                activeTouchCount: activeTouchCount
             )
         }
         let decision: GestureArbitrationDecision
@@ -146,20 +170,25 @@ struct AdvancedGestureEngine {
             event = value
         }
 
-        let laboratorySnapshot = TrackpadLaboratorySnapshot(
-            sessionID: session.id,
-            phase: session.phase,
-            contacts: features.contacts,
-            features: features,
-            acceptedCandidate: decision.accepted,
-            rejectedCandidates: decision.rejected + qualification.rejected,
-            diagnostic: diagnosticBuilder.diagnostic(
+        let laboratorySnapshot: TrackpadLaboratorySnapshot?
+        if includeLaboratorySnapshot || event != nil || session.phase == .ended {
+            laboratorySnapshot = TrackpadLaboratorySnapshot(
+                sessionID: session.id,
+                phase: session.phase,
+                contacts: features.contacts,
                 features: features,
-                candidates: candidates,
-                qualification: qualification,
-                decision: decision
+                acceptedCandidate: decision.accepted,
+                rejectedCandidates: decision.rejected + qualification.rejected,
+                diagnostic: diagnosticBuilder.diagnostic(
+                    features: features,
+                    candidates: candidates,
+                    qualification: qualification,
+                    decision: decision
+                )
             )
-        )
+        } else {
+            laboratorySnapshot = nil
+        }
         if session.phase == .ended {
             consumedSessionID = nil
             activeEvent = nil
@@ -168,7 +197,8 @@ struct AdvancedGestureEngine {
         return GestureProcessingOutput(
             event: event,
             laboratorySnapshot: laboratorySnapshot,
-            completedFeatures: session.phase == .ended ? features : nil
+            completedFeatures: session.phase == .ended ? features : nil,
+            activeTouchCount: activeTouchCount
         )
     }
 

@@ -45,7 +45,7 @@ struct TapHoldGestureRecognizer: GestureCandidateRecognizing {
 
         if features.phase == .ended,
            features.duration <= tapMaximumDuration,
-           features.distance <= tapStationaryDistance,
+           features.maximumContactExcursion <= tapStationaryDistance,
            abs(features.relativeSpanChange) < pinchFloor,
            abs(features.rotation) < rotationFloor {
             let durationFit = 1 - features.duration / tapMaximumDuration
@@ -65,7 +65,7 @@ struct TapHoldGestureRecognizer: GestureCandidateRecognizing {
         let holdCalibration = configuration.calibration(for: .hold)
         if features.phase == .changed,
            features.duration >= configuration.holdMinimumDuration / holdCalibration.sensitivity,
-           features.distance <= configuration.stationaryDistance * holdCalibration.sensitivity,
+           features.maximumContactExcursion <= configuration.stationaryDistance * holdCalibration.sensitivity,
            abs(features.relativeSpanChange) < pinchFloor {
             return [
                 GestureCandidate(

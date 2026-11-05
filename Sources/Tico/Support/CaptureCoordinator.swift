@@ -18,7 +18,14 @@ protocol GlobalEventTapping {
         onStateChange: ((Bool) -> Void)?
     ) throws
 
+    func start(onInput: @escaping (CapturedInput) -> Void, onStateChange: ((Bool) -> Void)?) throws
     func stop()
+}
+
+extension GlobalEventTapping {
+    func start(onInput: @escaping (CapturedInput) -> Void, onStateChange: ((Bool) -> Void)?) throws {
+        try start(onEvent: { onInput(.activation($0)) }, onStateChange: onStateChange)
+    }
 }
 
 @MainActor
@@ -37,6 +44,7 @@ final class CaptureCoordinator: ObservableObject {
     @Published private(set) var detectedTrackpads: [TrackpadHardwareInfo] = []
 
     let trackpadGestures: TrackpadGestureService
+    var onTrackpadCaptureInterrupted: (() -> Void)?
 
     var isTrackpadObservationRunning: Bool {
         trackpadGestures.isRunning
@@ -49,7 +57,8 @@ final class CaptureCoordinator: ObservableObject {
         subsystem: Bundle.main.bundleIdentifier ?? "com.pedronazarito.Tico",
         category: "GlobalCapture"
     )
-    private var eventHandler: ((InputEventDescriptor) -> Void)?
+    private var eventHandler: ((CapturedInput) -> Void)?
+    private let readModifiers: () -> Set<InputModifier>
     private var cancellables = Set<AnyCancellable>()
     private var captureGeneration: UInt64 = 0
     private var stoppingGeneration: UInt64?
@@ -61,12 +70,16 @@ final class CaptureCoordinator: ObservableObject {
         trackpadGestures: TrackpadGestureService,
         permissions: PermissionCoordinator,
         hardwareDetector: TrackpadHardwareDetector,
-        detectHardware: (() -> [TrackpadHardwareInfo])? = nil
+        detectHardware: (() -> [TrackpadHardwareInfo])? = nil,
+        readModifiers: @escaping () -> Set<InputModifier> = GlobalEventTapService.currentModifiers
     ) {
         self.globalEventTap = globalEventTap
         self.trackpadGestures = trackpadGestures
         self.permissions = permissions
         self.detectHardware = detectHardware ?? { hardwareDetector.detect() }
+        self.readModifiers = readModifiers
+        trackpadGestures.onCaptureWillStart = { [weak self] in self?.resynchronizeModifiers() }
+        trackpadGestures.onCaptureInterrupted = { [weak self] in self?.onTrackpadCaptureInterrupted?() }
 
         trackpadGestures.$captureMode
             .removeDuplicates()
@@ -83,7 +96,20 @@ final class CaptureCoordinator: ObservableObject {
     }
 
     func setEventHandler(_ handler: @escaping (InputEventDescriptor) -> Void) {
+        eventHandler = { input in
+            if case let .activation(event) = input { handler(event) }
+        }
+    }
+
+    func setInputHandler(_ handler: @escaping (CapturedInput) -> Void) {
         eventHandler = handler
+    }
+
+    /// Reconsulta a plataforma em transições de captura, inclusive após gravação.
+    /// Não sintetiza uma tecla: nenhuma regra deve disparar por esta leitura.
+    func resynchronizeModifiers() {
+        eventHandler?(.modifierChange(ModifierChange(keyCode: nil,
+            modifiers: readModifiers(), timestamp: Date())))
     }
 
     @discardableResult
@@ -105,10 +131,11 @@ final class CaptureCoordinator: ObservableObject {
         guard !trackpadGestures.isRunning else { return true }
         trackpadObservationGeneration &+= 1
         let generation = trackpadObservationGeneration
+        resynchronizeModifiers()
         trackpadGestures.start { [weak self] event in
             guard let self else { return }
             guard self.trackpadObservationGeneration == generation else { return }
-            self.eventHandler?(event)
+            self.eventHandler?(.activation(event))
         }
         syncTrackpadState()
         return trackpadGestures.isRunning
@@ -159,8 +186,9 @@ final class CaptureCoordinator: ObservableObject {
         }
 
         do {
+            resynchronizeModifiers()
             try globalEventTap.start(
-                onEvent: { [weak self] event in
+                onInput: { [weak self] event in
                     Task { @MainActor [weak self] in
                         guard let self, self.captureGeneration == generation else { return }
                         self.eventHandler?(event)

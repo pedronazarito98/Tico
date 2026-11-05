@@ -41,6 +41,9 @@ struct ContactSessionSnapshot: Equatable, Sendable {
     var cohortContactIDs: Set<Int32>
     var cohortStartedAt: Date
     var cohortStartPositions: [Int32: TrackpadPoint]
+    /// Maior excursão de qualquer contato desde a base do cohort. Só reinicia
+    /// quando um dedo entra; retornar à origem não recupera tap/hold.
+    var maximumContactExcursion: Double
     var cohortCentroidPath: [TrackpadPoint]
     var maximumFingerCount: Int
     var initialFingerCount: Int

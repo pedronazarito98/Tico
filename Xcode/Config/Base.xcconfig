@@ -15,3 +15,7 @@ INFOPLIST_KEY_NSPrincipalClass = NSApplication
 SUPPORTED_PLATFORMS = macosx
 SDKROOT = macosx
 SWIFT_VERSION = 5.0
+
+#include? "Local.xcconfig"
+CODE_SIGN_IDENTITY = Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)
+DEVELOPMENT_TEAM = 63LS85SD8D

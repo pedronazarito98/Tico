@@ -9,10 +9,15 @@ final class CompanionCoordinator: ObservableObject {
     private let store: ShortcutStore
     private let automation: AutomationCoordinator
     private let contextProvider: any ContextSnapshotProviding
-    private let panel = ContextualPanelService()
+    private let panel: any ContextualPanelPresenting
     private let allowsExecution: Bool
     private var panelRules: [ShortcutRule] = []
     private var panelContext: ContextSnapshot?
+    // A identidade é revogada ao fechar/trocar o painel. AX tardio não pode
+    // reapresentar uma UI encerrada nem executar a escolha de outro contexto.
+    private var contextRequestToken = UUID()
+    private var contextTask: Task<Void, Never>?
+    private var pendingMap = false
     private var cancellables = Set<AnyCancellable>()
     @Published private(set) var context: ContextSnapshot?
     @Published private(set) var message: String?
@@ -23,25 +28,28 @@ final class CompanionCoordinator: ObservableObject {
     var lastReport: WorkflowExecutionReport? { automation.lastWorkflowReport }
     var runningIDs: Set<UUID> { automation.runningRuleIDs }
     var interactionIsSuspended = false {
-        didSet { if interactionIsSuspended { panel.close() } }
+        didSet { if interactionIsSuspended { closePanel() } }
     }
 
     init(store: ShortcutStore, automation: AutomationCoordinator,
-         contextProvider: any ContextSnapshotProviding, allowsExecution: Bool) {
+         contextProvider: any ContextSnapshotProviding, allowsExecution: Bool,
+         panel: (any ContextualPanelPresenting)? = nil) {
         self.store = store
         self.automation = automation
         self.contextProvider = contextProvider
         self.allowsExecution = allowsExecution
+        self.panel = panel ?? ContextualPanelService()
         automation.objectWillChange.sink { [weak self] in self?.objectWillChange.send() }.store(in: &cancellables)
-        panel.onRequestActions = { [weak self] in self?.showActions() }
-        panel.onRequestMap = { [weak self] in self?.showMap() }
+        self.panel.onRequestActions = { [weak self] in self?.showActions() }
+        self.panel.onRequestMap = { [weak self] in self?.showMap() }
+        self.panel.onClose = { [weak self] in self?.invalidateContextRequest() }
         NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.didActivateApplicationNotification)
             .sink { [weak self] _ in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     let snapshot = contextProvider.snapshot(modifiers: [], at: Date())
                     if snapshot.frontmostApplicationBundleIdentifier != panelContext?.frontmostApplicationBundleIdentifier {
-                        panel.close()
+                        closePanel()
                     }
                     if snapshot.frontmostApplicationBundleIdentifier != Bundle.main.bundleIdentifier {
                         context = snapshot
@@ -52,10 +60,22 @@ final class CompanionCoordinator: ObservableObject {
 
     func handle(_ event: InputEventDescriptor) -> Bool {
         guard !interactionIsSuspended else { return true }
+        if contextTask != nil, event.kind == .keyboard,
+           event.keyCode == 53 || (pendingMap && event.modifiers != [.command, .option]) {
+            closePanel()
+            return true
+        }
         return panel.handle(event)
     }
 
-    func closePanel() { panel.close() }
+    func closePanel() { invalidateContextRequest(); panel.close() }
+
+    private func invalidateContextRequest() {
+        contextRequestToken = UUID()
+        contextTask?.cancel()
+        contextTask = nil
+        pendingMap = false
+    }
 
     func showActions() { show(isMap: false) }
     func showMap() { show(isMap: true) }
@@ -88,7 +108,23 @@ final class CompanionCoordinator: ObservableObject {
 
     private func show(isMap: Bool) {
         guard !interactionIsSuspended else { return }
-        let snapshot = contextProvider.snapshot(modifiers: [], at: Date())
+        closePanel()
+        let request = contextProvider.makeRequest(modifiers: [], at: Date(), includeWindowContext: true)
+        let token = contextRequestToken
+        pendingMap = isMap
+        contextTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if contextRequestToken == token { contextTask = nil; pendingMap = false } }
+            guard let snapshot = await contextProvider.resolve(request),
+                  !Task.isCancelled, contextRequestToken == token, !interactionIsSuspended,
+                  contextProvider.isCurrent(request) else { return }
+            contextTask = nil
+            pendingMap = false
+            present(snapshot: snapshot, isMap: isMap)
+        }
+    }
+
+    private func present(snapshot: ContextSnapshot, isMap: Bool) {
         context = snapshot
         panelContext = snapshot
         let configured = store.rules.filter { rule in
@@ -109,27 +145,50 @@ final class CompanionCoordinator: ObservableObject {
             }
         }
         panelRules = isMap ? candidates : Array(candidates.prefix(4))
+        let token = contextRequestToken
         panel.show(appName: snapshot.frontmostApplicationName ?? "Aplicativo atual",
             items: panelRules.map { ContextualActionItem(id: $0.id, name: $0.name, trigger: $0.trigger.displayName) },
-            isMap: isMap, onSelect: { [weak self] id in self?.select(id) },
-            onContent: { [weak self] in self?.panel.close(); self?.onRequestContent?() },
-            onSelection: { [weak self] in self?.panel.close(); self?.onRequestSelection?() })
+            isMap: isMap, onSelect: { [weak self] id in
+                guard let self, contextRequestToken == token else { return }
+                select(id)
+            }, onContent: { [weak self] in
+                guard let self, contextRequestToken == token else { return }
+                closePanel(); onRequestContent?()
+            }, onSelection: { [weak self] in
+                guard let self, contextRequestToken == token else { return }
+                closePanel(); onRequestSelection?()
+            })
     }
 
     private func select(_ id: UUID) {
-        panel.close()
-        guard canExecute, var rule = panelRules.first(where: { $0.id == id }),
-              let originalContext = panelContext,
-              let appID = originalContext.frontmostApplicationBundleIdentifier else { return }
-        let current = contextProvider.snapshot(modifiers: [], at: Date())
-        guard current.frontmostApplicationBundleIdentifier == appID else {
-            message = "O aplicativo mudou. Abra o painel novamente para escolher uma ação."
-            return
+        closePanel()
+        guard canExecute, let selected = panelRules.first(where: { $0.id == id }),
+              let appID = panelContext?.frontmostApplicationBundleIdentifier else { return }
+        let request = contextProvider.makeRequest(modifiers: [], at: Date(), includeWindowContext: true)
+        let token = contextRequestToken
+        let wasSaved = store.rules.contains { $0.id == id }
+        contextTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if contextRequestToken == token { contextTask = nil } }
+            guard let current = await contextProvider.resolve(request),
+                  !Task.isCancelled, contextRequestToken == token, canExecute,
+                  contextProvider.isCurrent(request) else { return }
+            contextTask = nil
+            guard current.frontmostApplicationBundleIdentifier == appID else {
+                message = "O aplicativo mudou. Abra o painel novamente para escolher uma ação."
+                return
+            }
+            var rule = selected
+            if let saved = store.rules.first(where: { $0.id == id }) {
+                guard saved.updatedAt == selected.updatedAt, saved.matches(current) else { return }
+                rule = saved
+            } else if wasSaved { return }
+            execute(rule: rule, appID: appID)
         }
-        if let saved = store.rules.first(where: { $0.id == id }) {
-            guard saved.matches(current) else { return }
-            rule = saved
-        }
+    }
+
+    private func execute(rule selected: ShortcutRule, appID: String) {
+        var rule = selected
         // Fixe alvos relativos antes de fechar o painel; o foco não deve mudar o destino.
         for index in rule.workflow.steps.indices {
             switch rule.workflow.steps[index].action {

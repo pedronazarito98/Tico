@@ -33,7 +33,8 @@ final class TicoIdentityTests: XCTestCase {
         )
     }
 
-    func testTicoStoresCompleteInstallationInTicoDirectory() throws {
+    @MainActor
+    func testTicoStoresCompleteInstallationInTicoDirectory() async throws {
         let root = makeTemporaryDirectory()
         let ticoDirectory = root.appendingPathComponent(
             TicoBrand.applicationSupportDirectoryName,
@@ -76,7 +77,7 @@ final class TicoIdentityTests: XCTestCase {
         try shortcutStore.add(rule)
 
         let logStore = EventLogStore(fileURL: logURL)
-        try logStore.record(rule: rule, result: .succeeded("Executada"))
+        try await logStore.record(rule: rule, result: .succeeded("Executada"))
 
         let metricsStore = MetricsStore(fileURL: metricsURL)
         metricsStore.record(GestureMetricEvent(
@@ -87,6 +88,8 @@ final class TicoIdentityTests: XCTestCase {
             confidence: 0.91,
             latency: 0.012
         ))
+
+        try await metricsStore.flush()
 
         let ticoShortcutStore = ShortcutStore(fileURL: shortcutsURL, seedExamples: false)
         let ticoLogStore = EventLogStore(fileURL: logURL)

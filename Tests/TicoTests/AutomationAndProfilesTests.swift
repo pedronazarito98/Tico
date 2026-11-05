@@ -3,6 +3,45 @@ import XCTest
 @testable import Tico
 
 final class AutomationAndProfilesTests: XCTestCase {
+    func testPipelineMetricsUseMonotonicStagesAndSeparateIntentionalWait() throws {
+        var now: UInt64 = 1_000_000
+        let metrics = InputPipelineMetrics(isEnabled: true, now: { now })
+        let trace = metrics.begin()
+        now += 2_000_000
+        metrics.mark(.decision, trace: trace)
+        now += 3_000_000
+        metrics.mark(.delivery, trace: trace)
+        metrics.beginIntentionalWait(trace: trace)
+        now += 7_000_000
+        metrics.endIntentionalWait(trace: trace)
+        now += 5_000_000
+        metrics.mark(.effectStart, trace: trace)
+        now += 11_000_000
+        metrics.mark(.effectEnd, trace: trace)
+        metrics.observeQueue(depth: 128, ageNanoseconds: 99_000_000)
+        let result = metrics.snapshot()
+        XCTAssertEqual(result.milliseconds[.ingressToDecision], [2])
+        XCTAssertEqual(result.milliseconds[.decisionToDelivery], [3])
+        XCTAssertEqual(result.milliseconds[.deliveryToEffect], [12])
+        XCTAssertEqual(result.milliseconds[.effectDuration], [11])
+        XCTAssertEqual(result.milliseconds[.intentionalWait], [7])
+        XCTAssertEqual(result.milliseconds[.ingressToEffect], [17])
+        XCTAssertEqual(result.maximumQueueDepth, 128)
+        XCTAssertEqual(result.maximumQueueAgeMilliseconds, 99)
+        XCTAssertEqual(result.activeTraceCount, 0)
+    }
+
+    func testPipelineTelemetryIsBoundedAndDisabledByDefault() {
+        let disabled = InputPipelineMetrics()
+        XCTAssertNil(disabled.begin())
+        XCTAssertTrue(disabled.snapshot().milliseconds.isEmpty)
+        let metrics = InputPipelineMetrics(isEnabled: true, sampleLimit: 2, now: { 1 })
+        for _ in 0..<4 { let trace = metrics.begin(); metrics.mark(.decision, trace: trace); metrics.discard(trace) }
+        XCTAssertEqual(metrics.snapshot().milliseconds[.ingressToDecision], [0, 0])
+        XCTAssertEqual(metrics.snapshot().sampleCounts[.ingressToDecision], 4)
+        XCTAssertEqual(metrics.snapshot().activeTraceCount, 0)
+    }
+
     @MainActor
     func testAutomationCoordinatorExecutesMatchedRuleOnceAndPersistsFeedback() async throws {
         let directory = FileManager.default.temporaryDirectory
@@ -44,9 +83,12 @@ final class AutomationAndProfilesTests: XCTestCase {
             modifiers: [.command]
         )
 
-        for _ in 0..<50 where eventLogStore.entries.isEmpty {
-            await Task.yield()
+        // O IO agora cruza uma fila serial: yield não constitui confirmação.
+        for _ in 0..<500 where eventLogStore.entries.isEmpty {
+            try await Task.sleep(for: .milliseconds(1))
         }
+        try await eventLogStore.flush()
+        try await metricsStore.flush()
 
         XCTAssertEqual(notification.titles, ["Tico"])
         XCTAssertEqual(eventLogStore.entries.count, 1)
@@ -425,7 +467,8 @@ final class AutomationAndProfilesTests: XCTestCase {
         XCTAssertGreaterThan(recognition.confidence, 0.9)
     }
 
-    func testMetricsAreBoundedAndExportable() throws {
+    @MainActor
+    func testMetricsAreBoundedAndExportable() async throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("Tico-metrics-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -442,7 +485,7 @@ final class AutomationAndProfilesTests: XCTestCase {
             ))
         }
         let csvURL = directory.appendingPathComponent("metrics.csv")
-        try store.exportCSV(to: csvURL)
+        try await store.exportCSV(to: csvURL)
 
         XCTAssertEqual(store.events.count, 10)
         XCTAssertEqual(store.summary.successes, 5)
@@ -482,7 +525,7 @@ final class AutomationAndProfilesTests: XCTestCase {
         XCTAssertEqual(ActivitySummary(events: records, period: .all, now: now, calendar: calendar).events.count, 6)
         XCTAssertEqual(ActivitySummary(events: records, period: .week, search: "Nome atual", now: now, calendar: calendar).events.count, 2)
         let failures = week.history(outcome: .failure, subject: nil)
-        try store.exportCSV(to: csvURL, events: failures)
+        try await store.exportCSV(to: csvURL, events: failures)
         let filteredCSV = try String(contentsOf: csvURL, encoding: .utf8)
         XCTAssertEqual(filteredCSV.split(separator: "\n").count, 2)
         XCTAssertTrue(filteredCSV.contains("Outra"))

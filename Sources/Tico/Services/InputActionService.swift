@@ -22,6 +22,13 @@ enum InputActionError: LocalizedError {
 }
 
 final class InputActionService: InputActionPerforming {
+    private let postEvent: (CGEvent) -> Void
+
+    /// A fronteira de postagem permite verificar o par sem emitir teclas reais.
+    init(postEvent: @escaping (CGEvent) -> Void = { $0.post(tap: .cghidEventTap) }) {
+        self.postEvent = postEvent
+    }
+
     func sendKeyboardShortcut(keyCode: UInt16, modifiers: Set<InputModifier>) throws {
         guard let down = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: true),
               let up = CGEvent(keyboardEventSource: nil, virtualKey: keyCode, keyDown: false) else {
@@ -30,8 +37,10 @@ final class InputActionService: InputActionPerforming {
         let flags = modifiers.cgEventFlags
         down.flags = flags
         up.flags = flags
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
+        InputEventOrigin.mark(down)
+        InputEventOrigin.mark(up)
+        postEvent(down)
+        postEvent(up)
     }
 
     func setClipboard(_ text: String) throws {

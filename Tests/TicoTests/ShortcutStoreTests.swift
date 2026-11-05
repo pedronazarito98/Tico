@@ -337,14 +337,15 @@ final class ShortcutStoreTests: XCTestCase {
         }
     }
 
-    func testEventLogIsPersistedAndBounded() throws {
+    @MainActor
+    func testEventLogIsPersistedAndBounded() async throws {
         let fileURL = makeFileURL(fileName: "events.json")
         let store = EventLogStore(fileURL: fileURL, maximumEntryCount: 2)
         let rule = makeRule()
 
-        try store.record(rule: rule, result: .succeeded("one"))
-        try store.record(rule: rule, result: .failed("two"))
-        try store.record(rule: rule, result: .succeeded("three"))
+        try await store.record(rule: rule, result: .succeeded("one"))
+        try await store.record(rule: rule, result: .failed("two"))
+        try await store.record(rule: rule, result: .succeeded("three"))
 
         XCTAssertEqual(store.entries.map(\.result.message), ["three", "two"])
         let reloadedStore = EventLogStore(fileURL: fileURL, maximumEntryCount: 2)

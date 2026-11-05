@@ -36,6 +36,11 @@ final class GesturePracticeSession: ObservableObject {
     }
 
     func receive(_ event: InputEventDescriptor) {
+        receive(.activation(event))
+    }
+
+    func receive(_ input: CapturedInput) {
+        guard let event = input.event else { return }
         guard var candidate = rule, !isComplete else { return }
         if let gesture = event.gestureEvent {
             // Hold é um reconhecimento discreto emitido em began, sem ended posterior.
@@ -48,7 +53,7 @@ final class GesturePracticeSession: ObservableObject {
 
         candidate.conditions = []
         let evaluation = runtime.process(
-            event: event, rules: [candidate],
+            input: input, rules: [candidate],
             context: ContextSnapshot(modifiers: event.modifiers, capturedAt: event.timestamp)
         )
         lastInputMatched = !evaluation.matchedRules.isEmpty
@@ -56,7 +61,10 @@ final class GesturePracticeSession: ObservableObject {
             feedback = "Continue: procure repetir o gatilho mostrado acima."
             return
         }
-        guard event.timestamp.timeIntervalSince(lastAcceptedAt) >= 0.25 else { return }
+        // O recognizer de gestos conserva sua proteção temporal. Teclado e
+        // mouse já chegam como pressões distintas: debounce descartaria intenção.
+        guard event.kind != .trackpadGesture
+            || event.timestamp.timeIntervalSince(lastAcceptedAt) >= 0.25 else { return }
         lastSessionID = event.gestureEvent?.sessionID
         lastAcceptedAt = event.timestamp
         completedCount += 1

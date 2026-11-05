@@ -70,8 +70,10 @@ struct ActivityView: View {
         .onChange(of: subject?.id) { visibleCount = 50 }
         .confirmationDialog("Limpar todo o histórico de atividade?", isPresented: $confirmsClear, titleVisibility: .visible) {
             Button("Limpar histórico", role: .destructive) {
-                store.clear()
-                if store.lastError == nil { resetHistoryFilters() }
+                Task {
+                    do { try await store.clear(); resetHistoryFilters() }
+                    catch { self.error = error.localizedDescription }
+                }
             }
         } message: {
             Text("Remove todos os registros desta tela, inclusive os que estão fora dos filtros. Seus atalhos e o Log serão preservados.")
@@ -184,7 +186,9 @@ struct ActivityView: View {
 
     private func export(_ events: [GestureMetricEvent]) {
         guard let url = MetricsFilePanel.chooseExportURL() else { return }
-        do { try store.exportCSV(to: url, events: events) }
-        catch { self.error = error.localizedDescription }
+        Task {
+            do { try await store.exportCSV(to: url, events: events) }
+            catch { self.error = error.localizedDescription }
+        }
     }
 }

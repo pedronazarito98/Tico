@@ -24,6 +24,7 @@ struct ContentView: View {
     @State private var showsDescription = false
     @State private var describedDraft: ShortcutRule?
     @State private var newSceneRequest: UUID?
+    @State private var laboratoryObservationID = UUID()
 
     var body: some View {
         GeometryReader { geometry in
@@ -254,6 +255,8 @@ struct ContentView: View {
                 onSaveReusableWorkflow: shortcutStore.saveReusableWorkflow,
                 onSavePreset: shortcutStore.savePreset,
                 onPractice: practice,
+                onBeginContextObservation: controller.beginRuleContextObservation,
+                onEndContextObservation: controller.endRuleContextObservation,
                 captureIsRunning: controller.captureIsRunning
             )
 
@@ -273,8 +276,8 @@ struct ContentView: View {
                 lastRecording: controller.laboratoryLastRecording,
                 isReplaying: controller.laboratoryIsReplaying,
                 replayProgress: controller.laboratoryReplayProgress,
-                onStartObservation: { _ = controller.startTrackpadObservation() },
-                onStopObservation: controller.stopTrackpadObservationIfIdle,
+                onStartObservation: { controller.beginLaboratoryObservation(id: laboratoryObservationID) },
+                onStopObservation: { controller.endLaboratoryObservation(id: laboratoryObservationID) },
                 onStartRecording: controller.startLaboratoryRecording,
                 onStopRecording: controller.stopLaboratoryRecording,
                 onCancelRecording: controller.cancelLaboratoryRecording,

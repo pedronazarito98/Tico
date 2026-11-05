@@ -1,8 +1,8 @@
 import Foundation
 
-/// Every mutable recording field is read or written under `lock`. The recorder
-/// is therefore safe for frame callbacks and main-actor controls to share; the
-/// returned replay document is a value snapshot and cannot mutate the recorder.
+/// O lock protege o estado compartilhado pelo callback de quadros e pelo
+/// MainActor. O documento retornado é um valor independente; append informa se
+/// o quadro foi gravado para manter a contagem sem acordar a UI desnecessariamente.
 final class TrackpadSessionRecorder: @unchecked Sendable {
     private let lock = NSLock()
     private var name = "Sessão do Trackpad"
@@ -19,8 +19,10 @@ final class TrackpadSessionRecorder: @unchecked Sendable {
         lock.unlock()
     }
 
-    func append(_ frame: RawTrackpadFrame) {
+    @discardableResult
+    func append(_ frame: RawTrackpadFrame) -> Bool {
         lock.lock()
+        var didRecord = false
         if recording, frames.count < TrackpadReplayDocument.maximumFrameCount {
             var anonymized = frame
             anonymized.touches = Array(
@@ -30,8 +32,10 @@ final class TrackpadSessionRecorder: @unchecked Sendable {
                 anonymized.deviceID = "recorded-device"
             }
             frames.append(anonymized)
+            didRecord = true
         }
         lock.unlock()
+        return didRecord
     }
 
     func frameCount() -> Int {

@@ -45,6 +45,7 @@ struct GestureFeatureExtractor {
             centroidPath: session.cohortCentroidPath,
             displacement: displacement,
             distance: distance,
+            maximumContactExcursion: session.maximumContactExcursion,
             startSpan: startSpan,
             span: span,
             relativeSpanChange: relativeSpanChange,

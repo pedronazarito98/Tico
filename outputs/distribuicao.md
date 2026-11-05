@@ -2,15 +2,14 @@
 
 ## Estado atual
 
-O projeto está no modo **preview técnico open source**. A distribuição
-recomendada neste estágio é publicar o código e orientar pessoas técnicas a
-buildarem localmente.
+O projeto está no modo **preview técnico open source**. A [release 0.1.0
+(build 2)](https://github.com/pedronazarito98/Tico/releases/tag/v0.1.0-preview.2)
+oferece um DMG assinado e notarizado para macOS 26 ou posterior. A abertura
+desse pacote em outro Mac permanece pendente de validação.
 
-O projeto gera `dist/Tico.app`, `dist/Tico.zip` e `dist/Tico.dmg`. Sem uma
-identidade Developer ID configurada, o app recebe assinatura ad hoc e os dois
-arquivos de distribuição servem somente para desenvolvimento e QA local. O
-DMG facilita a instalação por arrastar para Aplicativos, mas não remove os
-alertas do Gatekeeper nem equivale a notarização.
+O projeto gera `dist/Tico.app`, `dist/Tico.zip` e `dist/Tico.dmg` assinados com
+o Developer ID de Pedro. O DMG facilita a instalação por arrastar para
+Aplicativos. A assinatura, por si só, não equivale a notarização.
 
 O scheme compartilhado `Tico` também suporta Run, Profile e Archive no Xcode.
 Seu target `TicoApp` reaproveita o package local e gera o mesmo produto público
@@ -18,15 +17,23 @@ Seu target `TicoApp` reaproveita o package local e gera o mesmo produto público
 automaticamente certificado, Team, Developer ID ou notarização; esses gates
 continuam obrigatórios para distribuição pública.
 
-A assinatura ad hoc usa a identidade padrão específica do build. Isso evita
-que outro binário ad hoc seja tratado como o Tico apenas por declarar o mesmo
-bundle identifier, mas pode fazer o macOS solicitar novamente permissões após
-uma recompilação. Continuidade de TCC no desenvolvimento exige uma identidade
-local estável configurada explicitamente em `TICO_CODESIGN_IDENTITY`.
+Os builds usam uma identidade de assinatura estável. A continuidade de
+permissões TCC precisa ser verificada no Mac em uso.
 
-Se no futuro houver uma release binária pública, o caminho previsto continua
-sendo distribuição direta fora da Mac App Store, porque a captura avançada usa
-um framework privado da Apple.
+## Assinatura local estável
+
+Os scripts e o Xcode usam o Developer ID Application de Pedro; a chave privada
+precisa estar disponível no ambiente de build e não deve entrar no repositório.
+O gate de pacote também requer essa identidade. A execução pelo script usa o
+caminho estável `dist/.run/Tico.app`; o Xcode mantém seu próprio local de build.
+
+A assinatura estável permite ao macOS reconhecer versões relacionadas, mas não
+garante a preservação das permissões em todos os cenários. Ao trocar de
+identidade, pode ser necessário concedê-las novamente. A
+notarização é separada e não é necessária para testar localmente essa continuidade.
+
+A distribuição é direta, fora da Mac App Store; a captura avançada usa um
+framework privado da Apple.
 
 ## O que já está automatizado
 
@@ -40,10 +47,9 @@ um framework privado da Apple.
   do DMG final em `script/notarize_release.sh`;
 - verificação local do ZIP ou DMG com `script/release_preflight.sh`.
 
-## Se houver release binária pública
+## Para uma nova release binária
 
-Estes passos dependem do proprietário e podem ser adiados enquanto o projeto
-for publicado apenas como código aberto:
+Estes passos dependem do proprietário da assinatura:
 
 1. Participar do Apple Developer Program.
 2. Instalar um certificado **Developer ID Application** no Keychain.
@@ -60,7 +66,6 @@ repositório.
 ## Comandos para uma release futura
 
 ```sh
-export TICO_CODESIGN_IDENTITY="Developer ID Application: NOME (TEAMID)"
 ./script/build_and_run.sh --release-package
 
 export TICO_NOTARYTOOL_PROFILE="TicoNotary"
@@ -77,8 +82,8 @@ spctl -a -vv --type execute dist/Tico.app
 spctl -a -vv --type open --context context:primary-signature dist/Tico.dmg
 ```
 
-Uma assinatura ad hoc aprovada por `codesign` não substitui Developer ID,
-notarização, Gatekeeper ou teste em máquina limpa.
+Uma assinatura aprovada por `codesign` não substitui notarização, Gatekeeper ou
+teste em máquina limpa.
 
 O script de notarização exige artefatos já assinados com Developer ID. Ele não
 procura certificados nem cria credenciais; usa o perfil do Keychain informado
@@ -91,7 +96,7 @@ explicitamente em `TICO_NOTARYTOOL_PROFILE`.
 ./script/ci_verify.sh --package
 ```
 
-O pacote ad hoc pode ser inspecionado com:
+O pacote assinado pode ser inspecionado com:
 
 ```sh
 ./script/release_preflight.sh dist/Tico.zip

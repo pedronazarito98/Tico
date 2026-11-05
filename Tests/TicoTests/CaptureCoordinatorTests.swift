@@ -67,7 +67,28 @@ final class CaptureCoordinatorTests: XCTestCase {
         XCTAssertEqual(received, [event])
     }
 
-    private func makeCoordinator(eventTap: FakeGlobalEventTap) -> CaptureCoordinator {
+    func testModifierStateIsResynchronizedOnStartResumeAndRecordingExit() {
+        let eventTap = FakeGlobalEventTap(stopLeavesRunning: false)
+        var flags: Set<InputModifier> = [.command]
+        let coordinator = makeCoordinator(eventTap: eventTap, readModifiers: { flags })
+        var states: [Set<InputModifier>] = []
+        coordinator.setInputHandler { states.append($0.modifiers) }
+        XCTAssertEqual(coordinator.startCapture(), .started)
+        XCTAssertEqual(states.last, [.command])
+        coordinator.stopCapture()
+        flags = [.shift]
+        XCTAssertEqual(coordinator.startCapture(), .started)
+        XCTAssertEqual(states.last, [.shift])
+        flags = [.option]
+        coordinator.resynchronizeModifiers()
+        XCTAssertEqual(states.last, [.option])
+        flags = [.control]
+        coordinator.trackpadGestures.restoreAdvancedCapture()
+        XCTAssertEqual(states.last, [.control])
+        coordinator.stopCapture()
+    }
+
+    private func makeCoordinator(eventTap: FakeGlobalEventTap, readModifiers: @escaping () -> Set<InputModifier> = { [] }) -> CaptureCoordinator {
         let permissions = PermissionCoordinator(
             accessibilityCheck: { true },
             inputMonitoringCheck: { .granted },
@@ -81,7 +102,8 @@ final class CaptureCoordinatorTests: XCTestCase {
             trackpadGestures: trackpadGestures,
             permissions: permissions,
             hardwareDetector: TrackpadHardwareDetector(),
-            detectHardware: { [] }
+            detectHardware: { [] },
+            readModifiers: readModifiers
         )
     }
 }

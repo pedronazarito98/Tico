@@ -9,9 +9,12 @@ struct GestureCandidateQualification {
 struct GestureDiagnosticBuilder {
     let configuration: GestureRecognizerConfiguration
 
+    /// As mesmas condições definem a elegibilidade mesmo sem texto de diagnóstico.
+    /// Formatar os motivos só é necessário para apresentação ou sessão encerrada.
     func qualify(
         _ candidates: [GestureCandidate],
-        features: GestureFeatures
+        features: GestureFeatures,
+        includeReasons: Bool = true
     ) -> GestureCandidateQualification {
         var eligible: [GestureCandidate] = []
         var rejected: [GestureCandidate] = []
@@ -20,31 +23,43 @@ struct GestureDiagnosticBuilder {
         for candidate in candidates {
             let calibration = configuration.calibration(for: candidate.kind)
             var candidateReasons: [String] = []
+            var isRejected = false
             if candidate.confidence < calibration.confidenceThreshold {
-                candidateReasons.append(
-                    "confiança \(candidate.confidence.percentText) abaixo de "
-                        + "\(calibration.confidenceThreshold.percentText)"
-                )
+                isRejected = true
+                if includeReasons {
+                    candidateReasons.append(
+                        "confiança \(candidate.confidence.percentText) abaixo de "
+                            + "\(calibration.confidenceThreshold.percentText)"
+                    )
+                }
             }
             if let minimumVelocity = calibration.minimumVelocity,
                features.motionVelocity < minimumVelocity {
-                candidateReasons.append(
-                    "velocidade \(features.motionVelocity.decimalText) abaixo do mínimo "
-                        + "\(minimumVelocity.decimalText)"
-                )
+                isRejected = true
+                if includeReasons {
+                    candidateReasons.append(
+                        "velocidade \(features.motionVelocity.decimalText) abaixo do mínimo "
+                            + "\(minimumVelocity.decimalText)"
+                    )
+                }
             }
             if let maximumVelocity = calibration.maximumVelocity,
                features.motionVelocity > maximumVelocity {
-                candidateReasons.append(
-                    "velocidade \(features.motionVelocity.decimalText) acima do máximo "
-                        + "\(maximumVelocity.decimalText)"
-                )
+                isRejected = true
+                if includeReasons {
+                    candidateReasons.append(
+                        "velocidade \(features.motionVelocity.decimalText) acima do máximo "
+                            + "\(maximumVelocity.decimalText)"
+                    )
+                }
             }
-            if candidateReasons.isEmpty {
+            if !isRejected {
                 eligible.append(candidate)
             } else {
                 rejected.append(candidate)
-                reasons.append("\(candidate.kind.displayName): \(candidateReasons.joined(separator: "; ")).")
+                if includeReasons {
+                    reasons.append("\(candidate.kind.displayName): \(candidateReasons.joined(separator: "; ")).")
+                }
             }
         }
         return GestureCandidateQualification(

@@ -48,130 +48,69 @@ struct ExecutionLogEntry: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+/// Projeção MainActor do histórico confirmado, nunca da intenção de gravar.
+/// Paralelo com React: revisões impedem que um efeito assíncrono antigo publique
+/// sobre um resultado novo; o writer serial mantém a ordem real no disco.
+@MainActor
 final class EventLogStore: ObservableObject {
-    static let currentDocumentVersion = 2
-
-    @Published private(set) var entries: [ExecutionLogEntry] = []
+    nonisolated static let currentDocumentVersion = 2
+    @Published private(set) var entries: [ExecutionLogEntry]
     @Published private(set) var lastError: String?
-
     let fileURL: URL
     let maximumEntryCount: Int
+    private let repository: any EventLogPersisting
+    private var nextRevision: UInt64 = 0
+    private var durableRevision: UInt64 = 0
+    private var statusRevision: UInt64 = 0
 
-    private let fileManager: FileManager
-
-    init(
-        fileURL: URL? = nil,
-        maximumEntryCount: Int = 100,
-        fileManager: FileManager = .default
-    ) {
-        self.fileManager = fileManager
+    init(fileURL: URL? = nil, maximumEntryCount: Int = 100,
+         fileManager: FileManager = .default, repository: (any EventLogPersisting)? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL(fileManager: fileManager)
         self.maximumEntryCount = max(1, maximumEntryCount)
-
-        do {
-            try load()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        let repository = repository ?? EventLogRepository(fileURL: self.fileURL,
+            maximumEntryCount: self.maximumEntryCount, fileManager: fileManager)
+        self.repository = repository
+        entries = repository.initialEntries
+        lastError = repository.initialError
     }
 
-    static func defaultFileURL(fileManager: FileManager = .default) -> URL {
-        let applicationSupport = fileManager.urls(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask
-        ).first ?? fileManager.temporaryDirectory
-
-        return applicationSupport
-            .appendingPathComponent(
-                TicoBrand.applicationSupportDirectoryName,
-                isDirectory: true
-            )
-            .appendingPathComponent("execution-log.json", isDirectory: false)
+    nonisolated static func defaultFileURL(fileManager: FileManager = .default) -> URL {
+        let applicationSupport = fileManager.urls(for: .applicationSupportDirectory,
+            in: .userDomainMask).first ?? fileManager.temporaryDirectory
+        return applicationSupport.appendingPathComponent(TicoBrand.applicationSupportDirectoryName,
+            isDirectory: true).appendingPathComponent("execution-log.json", isDirectory: false)
     }
 
-    func load() throws {
-        guard fileManager.fileExists(atPath: fileURL.path) else {
-            entries = []
-            lastError = nil
-            return
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .millisecondsSince1970
-            let document = try decoder.decode(EventLogDocument.self, from: Data(contentsOf: fileURL))
-            guard document.version <= Self.currentDocumentVersion else {
-                throw ShortcutStoreError.unsupportedVersion(document.version)
-            }
-            entries = Array(document.entries.prefix(maximumEntryCount))
-            lastError = nil
-        } catch {
-            lastError = error.localizedDescription
-            throw error
-        }
-    }
-
-    func record(_ entry: ExecutionLogEntry) throws {
-        try commit { entries in
-            entries.insert(entry, at: 0)
-            if entries.count > maximumEntryCount {
-                entries.removeLast(entries.count - maximumEntryCount)
-            }
-        }
-    }
+    func record(_ entry: ExecutionLogEntry) async throws { try await commit(.record(entry)) }
 
     @discardableResult
-    func record(
-        rule: ShortcutRule,
-        result: ActionExecutionResult,
-        stepExecutions: [WorkflowStepExecution] = []
-    ) throws -> ExecutionLogEntry {
-        let entry = ExecutionLogEntry(
-            ruleID: rule.id,
-            ruleName: rule.name,
-            action: rule.action,
-            result: result,
-            stepExecutions: stepExecutions
-        )
-        try record(entry)
+    func record(rule: ShortcutRule, result: ActionExecutionResult,
+                stepExecutions: [WorkflowStepExecution] = []) async throws -> ExecutionLogEntry {
+        let entry = ExecutionLogEntry(ruleID: rule.id, ruleName: rule.name, action: rule.action,
+            result: result, stepExecutions: stepExecutions)
+        try await record(entry)
         return entry
     }
 
-    func clear() throws {
-        try commit { $0.removeAll() }
-    }
+    func clear() async throws { try await commit(.clear) }
+    func flush() async throws { try await commit(.flush) }
 
-    private func commit(_ mutation: (inout [ExecutionLogEntry]) -> Void) throws {
-        let previousEntries = entries
-
-        do {
-            mutation(&entries)
-            try save()
-            lastError = nil
-        } catch {
-            entries = previousEntries
-            lastError = error.localizedDescription
+    private func commit(_ mutation: EventLogMutation) async throws {
+        nextRevision &+= 1
+        let revision = nextRevision
+        let result = await withCheckedContinuation { continuation in
+            repository.submit(mutation, revision: revision) { continuation.resume(returning: $0) }
+        }
+        switch result {
+        case let .success(receipt):
+            if receipt.revision >= durableRevision {
+                durableRevision = receipt.revision
+                entries = receipt.entries
+            }
+            if revision >= statusRevision { statusRevision = revision; lastError = nil }
+        case let .failure(error):
+            if revision >= statusRevision { statusRevision = revision; lastError = error.localizedDescription }
             throw error
         }
     }
-
-    private func save() throws {
-        try fileManager.createDirectory(
-            at: fileURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .millisecondsSince1970
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let document = EventLogDocument(
-            version: Self.currentDocumentVersion,
-            entries: entries
-        )
-        try encoder.encode(document).write(to: fileURL, options: .atomic)
-    }
-}
-
-private struct EventLogDocument: Codable {
-    let version: Int
-    let entries: [ExecutionLogEntry]
 }

@@ -129,6 +129,13 @@ enum TrackpadRegion: String, Codable, CaseIterable, Hashable, Sendable {
 }
 
 struct InputEventDescriptor: Codable, Hashable, Sendable {
+    /// Correlação apenas em memória; excluída explicitamente do formato persistido.
+    var pipelineTraceID: UUID? = nil
+    private enum CodingKeys: String, CodingKey {
+        case kind, keyCode, modifiers, mouseButton, gesture, fingerCount, trackpadRegion
+        case gestureEvent, advancedGesture, trackpadPath, timestamp
+    }
+
     let kind: InputEventKind
     let keyCode: UInt16?
     let modifiers: Set<InputModifier>
@@ -222,7 +229,7 @@ struct InputEventDescriptor: Codable, Hashable, Sendable {
     }
 
     func withModifiers(_ modifiers: Set<InputModifier>) -> Self {
-        Self(
+        var result = Self(
             kind: kind,
             keyCode: keyCode,
             modifiers: modifiers,
@@ -235,5 +242,13 @@ struct InputEventDescriptor: Codable, Hashable, Sendable {
             trackpadPath: trackpadPath,
             timestamp: timestamp
         )
+        result.pipelineTraceID = pipelineTraceID
+        return result
+    }
+
+    func withPipelineTrace(_ id: UUID?) -> Self {
+        var result = self
+        result.pipelineTraceID = id
+        return result
     }
 }

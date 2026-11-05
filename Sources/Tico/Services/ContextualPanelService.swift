@@ -1,11 +1,27 @@
 import AppKit
 import SwiftUI
 
+/// Fronteira de apresentação usada pelo owner; permite validar callbacks e
+/// cancelamento com um painel inerte, sem abrir janelas nem executar ações.
+@MainActor
+protocol ContextualPanelPresenting: AnyObject {
+    var onRequestActions: (() -> Void)? { get set }
+    var onRequestMap: (() -> Void)? { get set }
+    var onClose: (() -> Void)? { get set }
+    func handle(_ event: InputEventDescriptor) -> Bool
+    func show(appName: String, items: [ContextualActionItem], isMap: Bool,
+              onSelect: @escaping (UUID) -> Void, onContent: @escaping () -> Void, onSelection: @escaping () -> Void)
+    func close(notifyOwner: Bool)
+}
+extension ContextualPanelPresenting {
+    func close() { close(notifyOwner: true) }
+}
+
 /// Fronteira nativa: posiciona um painel sem ativar o Tico nem roubar o app de destino.
 /// O owner é CompanionCoordinator. Monitores de clique existem só enquanto visível;
 /// eventos de teclado já normalizados chegam pelo capturador existente, sem outro tap.
 @MainActor
-final class ContextualPanelService {
+final class ContextualPanelService: ContextualPanelPresenting {
     private var panel: CompanionPanel?
     private var outsideClickMonitor: Any?
     private var localClickMonitor: Any?
@@ -15,6 +31,7 @@ final class ContextualPanelService {
     var isVisible: Bool { panel?.isVisible == true }
     var onRequestActions: (() -> Void)?
     var onRequestMap: (() -> Void)?
+    var onClose: (() -> Void)?
 
     func handle(_ event: InputEventDescriptor) -> Bool {
         guard event.kind == .keyboard else { return isVisible }
@@ -49,7 +66,7 @@ final class ContextualPanelService {
     func show(appName: String, items: [ContextualActionItem], isMap: Bool,
               onSelect: @escaping (UUID) -> Void,
               onContent: @escaping () -> Void = {}, onSelection: @escaping () -> Void = {}) {
-        close()
+        close(notifyOwner: false)
         mapIsVisible = isMap
         let panel = CompanionPanel(contentRect: NSRect(x: 0, y: 0, width: 370, height: isMap ? 390 : 440),
             styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -83,7 +100,8 @@ final class ContextualPanelService {
         }
     }
 
-    func close() {
+    func close(notifyOwner: Bool = true) {
+        if notifyOwner { onClose?() }
         holdTask?.cancel()
         holdTask = nil
         holdIsPending = false

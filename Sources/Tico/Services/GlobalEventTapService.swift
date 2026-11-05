@@ -26,6 +26,7 @@ enum GlobalEventTapError: LocalizedError, Equatable {
 final class GlobalEventTapService {
     typealias EventHandler = (InputEventDescriptor) -> Void
     typealias StateHandler = (Bool) -> Void
+    typealias InputHandler = (CapturedInput) -> Void
 
     private let lock = NSLock()
     private let logger = Logger(
@@ -35,12 +36,13 @@ final class GlobalEventTapService {
     private let permissionCheck: () -> Bool
     private let deliveryQueue: DispatchQueue
     private let clock: () -> Date
+    private let pipelineMetrics: InputPipelineMetrics
 
     private var eventTap: CFMachPort?
     private var runLoop: CFRunLoop?
     private var workerThread: Thread?
     private var workerFinished: DispatchSemaphore?
-    private var eventHandler: EventHandler?
+    private var eventHandler: InputHandler?
     private var stateHandler: StateHandler?
 
     init(
@@ -48,11 +50,13 @@ final class GlobalEventTapService {
             CGPreflightListenEventAccess() || AXIsProcessTrusted()
         },
         deliveryQueue: DispatchQueue = .main,
-        clock: @escaping () -> Date = Date.init
+        clock: @escaping () -> Date = Date.init,
+        pipelineMetrics: InputPipelineMetrics = InputPipelineMetrics()
     ) {
         self.permissionCheck = permissionCheck
         self.deliveryQueue = deliveryQueue
         self.clock = clock
+        self.pipelineMetrics = pipelineMetrics
     }
 
     deinit {
@@ -69,6 +73,15 @@ final class GlobalEventTapService {
         onEvent: @escaping EventHandler,
         onStateChange: StateHandler? = nil
     ) throws {
+        try start(onInput: { input in
+            if case let .activation(event) = input { onEvent(event) }
+        }, onStateChange: onStateChange)
+    }
+
+    func start(
+        onInput: @escaping InputHandler,
+        onStateChange: StateHandler? = nil
+    ) throws {
         guard permissionCheck() else {
             logger.error("Global capture refused: Input Monitoring is unavailable")
             throw GlobalEventTapError.inputMonitoringPermissionRequired
@@ -80,7 +93,7 @@ final class GlobalEventTapService {
             throw GlobalEventTapError.alreadyRunning
         }
 
-        eventHandler = onEvent
+        eventHandler = onInput
         stateHandler = onStateChange
         let installation = EventTapInstallation()
         let workerFinished = DispatchSemaphore(value: 0)
@@ -144,7 +157,7 @@ final class GlobalEventTapService {
             return Unmanaged.passUnretained(event)
         }
 
-        guard let descriptor = Self.normalize(type: type, event: event, timestamp: clock()) else {
+        guard let descriptor = Self.normalizeInput(type: type, event: event, timestamp: clock()) else {
             return Unmanaged.passUnretained(event)
         }
 
@@ -153,11 +166,35 @@ final class GlobalEventTapService {
         lock.unlock()
 
         if let handler {
-            deliveryQueue.async {
-                handler(descriptor)
+            let trace = pipelineMetrics.begin()
+            pipelineMetrics.mark(.decision, trace: trace)
+            let measured: CapturedInput
+            if case let .activation(event) = descriptor {
+                measured = .activation(event.withPipelineTrace(trace))
+            } else { measured = descriptor; pipelineMetrics.discard(trace) }
+            deliveryQueue.async { [pipelineMetrics] in
+                pipelineMetrics.mark(.delivery, trace: trace)
+                handler(measured)
             }
         }
         return Unmanaged.passUnretained(event)
+    }
+
+    /// A classificação preserva flagsChanged para o mapa e regras explícitas,
+    /// sem apresentá-lo ao runtime como uma pressão comum.
+    static func normalizeInput(
+        type: CGEventType, event: CGEvent, timestamp: Date = Date()
+    ) -> CapturedInput? {
+        guard let descriptor = normalize(type: type, event: event, timestamp: timestamp) else { return nil }
+        if type == .flagsChanged {
+            return .modifierChange(ModifierChange(keyCode: descriptor.keyCode,
+                modifiers: descriptor.modifiers, timestamp: timestamp))
+        }
+        return .activation(descriptor)
+    }
+
+    static func currentModifiers() -> Set<InputModifier> {
+        normalizedModifiers(from: CGEventSource.flagsState(.combinedSessionState))
     }
 
     static func normalize(
@@ -165,6 +202,10 @@ final class GlobalEventTapService {
         event: CGEvent,
         timestamp: Date = Date()
     ) -> InputEventDescriptor? {
+        guard !InputEventOrigin.isOwn(event) else { return nil }
+        // Repeat pertence à mesma pressão física; não reinicia workflows nem
+        // completa o segundo passo de uma sequência A → A.
+        if type == .keyDown, event.getIntegerValueField(.keyboardEventAutorepeat) != 0 { return nil }
         let modifiers = normalizedModifiers(from: event.flags)
 
         switch type {

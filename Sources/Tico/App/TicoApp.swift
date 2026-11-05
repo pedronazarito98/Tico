@@ -12,7 +12,9 @@ public struct TicoApp: App {
     @StateObject private var validationStore: TrackpadValidationStore
     @StateObject private var controller: AppController
     @StateObject private var commandRouter: AppCommandRouter
-    private let lifecycle: any ApplicationLifecycleControlling
+    // O delegate e o menu usam a mesma instância; o quit nativo passa pelo
+    // coordenador configurado aqui, sem singleton nem outra lifecycle paralela.
+    private var lifecycle: any ApplicationLifecycleControlling { appDelegate.lifecycle }
     private let validationColorScheme: ColorScheme?
 
     public init() {
@@ -37,30 +39,28 @@ public struct TicoApp: App {
         let capabilityStore = TrackpadCapabilityStore(defaults: launchConfiguration.defaults)
         let approvalStore = AutomationApprovalStore(defaults: launchConfiguration.defaults)
         let commandRouter: AppCommandRouter = AppCommandRouter()
-        let lifecycle: any ApplicationLifecycleControlling = ApplicationLifecycleService()
         _shortcutStore = StateObject(wrappedValue: shortcutStore)
         _settings = StateObject(wrappedValue: settings)
         _eventLogStore = StateObject(wrappedValue: eventLogStore)
         _permissions = StateObject(wrappedValue: permissions)
         _calibrationStore = StateObject(wrappedValue: calibrationStore)
         _validationStore = StateObject(wrappedValue: validationStore)
-        _controller = StateObject(
-            wrappedValue: AppController(
-                shortcutStore: shortcutStore,
-                settings: settings,
-                eventLogStore: eventLogStore,
-                permissions: permissions,
-                calibrationStore: calibrationStore,
-                validationStore: validationStore,
-                metricsStore: metricsStore,
-                capabilityStore: capabilityStore,
-                approvalStore: approvalStore,
-                macOSShortcutCatalog: launchConfiguration.makeMacOSShortcutCatalog(),
-                allowsAutomationExecution: !launchConfiguration.isUITesting
-            )
+        let controller = AppController(
+            shortcutStore: shortcutStore,
+            settings: settings,
+            eventLogStore: eventLogStore,
+            permissions: permissions,
+            calibrationStore: calibrationStore,
+            validationStore: validationStore,
+            metricsStore: metricsStore,
+            capabilityStore: capabilityStore,
+            approvalStore: approvalStore,
+            macOSShortcutCatalog: launchConfiguration.makeMacOSShortcutCatalog(),
+            allowsAutomationExecution: !launchConfiguration.isUITesting
         )
+        _controller = StateObject(wrappedValue: controller)
         _commandRouter = StateObject(wrappedValue: commandRouter)
-        self.lifecycle = lifecycle
+        appDelegate.lifecycle.configureTermination(controller.makeTerminationCoordinator())
     }
 
     public var body: some Scene {

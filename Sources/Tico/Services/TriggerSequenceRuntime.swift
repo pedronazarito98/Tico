@@ -28,6 +28,17 @@ struct TriggerSequenceRuntime {
         rules: [ShortcutRule],
         context: ContextSnapshot
     ) -> TriggerRuntimeEvaluation {
+        process(input: .activation(event), rules: rules, context: context)
+    }
+
+    /// Flags não pertinentes preservam progresso. Um passo explicitamente de
+    /// modificador mantém sua correspondência exata, inclusive código/flags.
+    mutating func process(
+        input: CapturedInput, rules: [ShortcutRule], context: ContextSnapshot
+    ) -> TriggerRuntimeEvaluation {
+        guard let event = input.event else {
+            return TriggerRuntimeEvaluation(matchedRules: [], nextDeadline: pendingMatches.values.map(\.deadline).min())
+        }
         var matched = flushExpired(rules: rules, at: event.timestamp)
         let eligibleRules = rules.filter {
             $0.matches(context)
@@ -68,6 +79,12 @@ struct TriggerSequenceRuntime {
                 event.timestamp.timeIntervalSince($0.lastEventAt) > sequence.maximumInterval
             } ?? false
             var stepIndex = hasExpired ? 0 : (oldProgress?.stepIndex ?? 0)
+
+            if input.isModifierChange,
+               !matcher.matchesStep(sequence.steps[stepIndex], event: event),
+               !matcher.matchesStep(sequence.steps[0], event: event) {
+                continue
+            }
 
             if matcher.matchesStep(sequence.steps[stepIndex], event: event) {
                 stepIndex += 1

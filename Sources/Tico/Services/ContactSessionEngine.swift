@@ -50,6 +50,7 @@ struct ContactSessionEngine {
                 cohortStartPositions: Dictionary(
                     uniqueKeysWithValues: activeTouches.map { ($0.identifier, $0.position) }
                 ),
+                maximumContactExcursion: 0,
                 cohortCentroidPath: [Self.centroid(of: activeTouches)],
                 maximumFingerCount: activeTouches.count,
                 initialFingerCount: activeTouches.count,
@@ -131,18 +132,27 @@ struct ContactSessionEngine {
         session.activeContactIDs = activeIDs
         session.maximumFingerCount = max(session.maximumFingerCount, activeIDs.count)
 
-        // A newly added contact starts a fresh recognition cohort so its
-        // arrival is not mistaken for a centroid jump. Sequential finger lifts
-        // keep the original cohort until the session ends.
+        // Entrada inicia uma base nova; saída conserva o cohort original.
+        // A excursão é incremental por contato, sem percorrer a trajetória.
         if !activeIDs.subtracting(previousActiveIDs).isEmpty {
             session.cohortContactIDs = activeIDs
             session.cohortStartedAt = frame.receivedAt
             session.cohortStartPositions = Dictionary(
                 uniqueKeysWithValues: activeTouches.map { ($0.identifier, $0.position) }
             )
+            session.maximumContactExcursion = 0
             session.cohortCentroidPath = [Self.centroid(of: activeTouches)]
         } else {
-            let point = Self.centroid(of: activeTouches)
+            for touch in activeTouches {
+                guard let origin = session.cohortStartPositions[touch.identifier] else { continue }
+                session.maximumContactExcursion = max(
+                    session.maximumContactExcursion, origin.distance(to: touch.position)
+                )
+            }
+            // Mesmos contatos das features: um dedo que saiu conserva sua última
+            // posição, evitando que a remoção crie um segmento artificial.
+            let cohortPositions = session.cohortContacts.map(\.position)
+            let point = Self.centroid(of: cohortPositions)
             if session.cohortCentroidPath.last?.distance(to: point) ?? .greatestFiniteMagnitude >= 0.002 {
                 session.cohortCentroidPath.append(point)
             }
@@ -180,10 +190,14 @@ struct ContactSessionEngine {
     }
 
     private static func centroid(of touches: [RawTrackpadTouch]) -> TrackpadPoint {
-        let total = touches.reduce((x: 0.0, y: 0.0)) {
-            ($0.x + $1.position.x, $0.y + $1.position.y)
+        centroid(of: touches.map(\.position))
+    }
+
+    private static func centroid(of points: [TrackpadPoint]) -> TrackpadPoint {
+        let total = points.reduce((x: 0.0, y: 0.0)) {
+            ($0.x + $1.x, $0.y + $1.y)
         }
-        let count = Double(max(touches.count, 1))
+        let count = Double(max(points.count, 1))
         return TrackpadPoint(x: total.x / count, y: total.y / count)
     }
 }

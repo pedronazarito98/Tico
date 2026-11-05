@@ -17,12 +17,18 @@ enum TrackpadCaptureMode: String, Sendable {
     }
 }
 
-/// Coordinates provider lifecycle and publishes only semantic events or
-/// coalesced laboratory snapshots to the main actor.
+/// Coordena o provedor e entrega eventos semânticos ao MainActor. Os snapshots
+/// visuais são limitados e só permanecem ativos enquanto há consumidor; o
+/// reconhecimento e a validação seguem independentes da tela.
 @MainActor
 final class TrackpadGestureService: ObservableObject {
     typealias EventHandler = (InputEventDescriptor) -> Void
     typealias LaboratoryHandler = (TrackpadLaboratorySnapshot) -> Void
+    /// O coordenador ressincroniza flags antes de aceitar frames de uma captura,
+    /// incluindo a retomada após sleep e mudanças de provedor.
+    var onCaptureWillStart: (() -> Void)?
+    /// Controle de ciclo de vida; não é um resultado do reconhecimento.
+    var onCaptureInterrupted: (() -> Void)?
     static let fallbackEventMask: NSEvent.EventTypeMask = [.magnify, .rotate, .swipe]
 
     @Published private(set) var isRunning = false
@@ -49,15 +55,18 @@ final class TrackpadGestureService: ObservableObject {
     private let validationStore: TrackpadValidationStore
     private var calibrationSet: GestureCalibrationSet
     private var frameProvider: (any TrackpadFrameProvider)?
-    private var localMonitor: Any?
-    private var globalMonitor: Any?
+    private let systemGestureMonitor: any SystemGestureMonitoring
+    private var captureGeneration: CaptureGeneration?
     private var eventHandler: EventHandler?
     private var laboratoryHandler: LaboratoryHandler?
     private var accumulatedMagnification: CGFloat = 0
     private var accumulatedRotation: CGFloat = 0
     private var shouldResumeAfterWake = false
+    private var resumeCaptureMode: TrackpadCaptureMode?
     private var didReceiveRawFrame = false
     private var lastLaboratoryPublishAt = Date.distantPast
+    private var laboratorySnapshotsRequested = true
+    private var deferredLaboratorySnapshot: TrackpadLaboratorySnapshot?
     private var replayTask: Task<Void, Never>?
     private var replayGeneration: UInt64 = 0
     private var cancellables = Set<AnyCancellable>()
@@ -69,12 +78,14 @@ final class TrackpadGestureService: ObservableObject {
         },
         worker: GestureProcessingWorker = GestureProcessingWorker(),
         calibrationSet: GestureCalibrationSet = GestureCalibrationSet(),
-        validationStore: TrackpadValidationStore = TrackpadValidationStore()
+        validationStore: TrackpadValidationStore = TrackpadValidationStore(),
+        systemGestureMonitor: (any SystemGestureMonitoring)? = nil
     ) {
         self.providerFactory = providerFactory
         self.worker = worker
         self.calibrationSet = calibrationSet
         self.validationStore = validationStore
+        self.systemGestureMonitor = systemGestureMonitor ?? SystemGestureMonitor()
         worker.updateCalibration(calibrationSet)
         replayWorker.updateCalibration(calibrationSet)
         let notifications = NSWorkspace.shared.notificationCenter
@@ -96,6 +107,7 @@ final class TrackpadGestureService: ObservableObject {
     ) {
         eventHandler = onEvent
         laboratoryHandler = onLaboratoryUpdate
+        updateLaboratorySnapshotDemand()
         guard !isRunning else { return }
 
         if startAdvancedGlobalCapture() {
@@ -114,20 +126,19 @@ final class TrackpadGestureService: ObservableObject {
     }
 
     func stop() {
+        invalidateCapture()
         frameProvider?.stop()
-        if let localMonitor { NSEvent.removeMonitor(localMonitor) }
-        if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
+        systemGestureMonitor.stop()
         frameProvider = nil
-        localMonitor = nil
-        globalMonitor = nil
         eventHandler = nil
         laboratoryHandler = nil
-        worker.cancel()
+        updateLaboratorySnapshotDemand()
         cancelReplay()
         accumulatedMagnification = 0
         accumulatedRotation = 0
         activeTouchCount = 0
         shouldResumeAfterWake = false
+        resumeCaptureMode = nil
         didReceiveRawFrame = false
         tapCountComposer.reset()
         captureMode = .stopped
@@ -144,6 +155,25 @@ final class TrackpadGestureService: ObservableObject {
     func setContinuousPhasesEnabled(_ isEnabled: Bool) {
         worker.setContinuousPhasesEnabled(isEnabled)
         replayWorker.setContinuousPhasesEnabled(isEnabled)
+    }
+
+    /// O laboratório e a gravação de gatilho são consumidores explícitos. Sem
+    /// eles, guardamos apenas o último resultado útil para quando a tela voltar.
+    func setLaboratorySnapshotsEnabled(_ isEnabled: Bool) {
+        guard laboratorySnapshotsRequested != isEnabled else { return }
+        laboratorySnapshotsRequested = isEnabled
+        updateLaboratorySnapshotDemand()
+    }
+
+    private func updateLaboratorySnapshotDemand() {
+        let enabled = laboratorySnapshotsRequested || laboratoryHandler != nil
+        worker.setLaboratorySnapshotsEnabled(enabled)
+        if enabled, !isReplaying, let snapshot = deferredLaboratorySnapshot {
+            deferredLaboratorySnapshot = nil
+            laboratorySnapshot = snapshot
+            laboratoryHandler?(snapshot)
+            lastLaboratoryPublishAt = snapshot.features.occurredAt
+        }
     }
 
     func startSessionRecording(name: String) {
@@ -218,9 +248,9 @@ final class TrackpadGestureService: ObservableObject {
     }
 
     func activateSystemFallbackForValidation() {
+        invalidateCapture()
         frameProvider?.stop()
         frameProvider = nil
-        worker.cancel()
         removeSystemGestureMonitors()
         installSystemGestureFallback()
         startupError = "Fallback público ativado manualmente para validação."
@@ -230,10 +260,10 @@ final class TrackpadGestureService: ObservableObject {
     }
 
     func restoreAdvancedCapture() {
+        invalidateCapture()
         removeSystemGestureMonitors()
         frameProvider?.stop()
         frameProvider = nil
-        worker.cancel()
         if startAdvancedGlobalCapture() {
             startupError = nil
             captureMode = .advancedGlobal
@@ -248,26 +278,45 @@ final class TrackpadGestureService: ObservableObject {
     }
 
     private func startAdvancedGlobalCapture() -> Bool {
+        let generation = beginCaptureGeneration()
         let provider = providerFactory()
         let worker = self.worker
         let recorder = self.recorder
         let owner = WeakTrackpadGestureServiceBox(self)
+        let delivery = GestureOutputDelivery(worker: worker, generation: generation,
+            onInterruption: {
+                guard let service = owner.value, service.isCurrentCapture(generation) else { return }
+                service.onCaptureInterrupted?()
+                service.tapCountComposer.reset()
+                service.activeTouchCount = 0
+                service.laboratorySnapshot = nil
+                service.deferredLaboratorySnapshot = nil
+            }, onRearmed: {
+                guard let service = owner.value, service.isCurrentCapture(generation) else { return }
+                service.onCaptureWillStart?()
+            }, consume: { output in
+                guard let service = owner.value, service.isCurrentCapture(generation) else {
+                    worker.pipelineMetrics.discard(output.pipelineTraceID)
+                    return
+                }
+                service.handleRawOutput(output)
+                service.noteRawFrame()
+            })
+        worker.prepareForCapture(generation: generation,
+            onInterruption: { [weak delivery] in delivery?.interrupt() },
+            onRearmed: { [weak delivery] in delivery?.rearm() })
         do {
             try provider.start { frame in
-                recorder.append(frame)
-                worker.process(frame) { output in
-                    Task { @MainActor in
-                        owner.value?.handleRawOutput(output)
-                    }
-                }
-                Task { @MainActor in
-                    owner.value?.noteRawFrame()
+                guard let didRecord = generation.whileValid({ recorder.append(frame) }) else { return }
+                worker.process(frame, generation: generation, deliverOnlyWhenNeeded: !didRecord) { output in
+                    delivery.append(output)
                 }
             }
             frameProvider = provider
             startupError = nil
             return true
         } catch {
+            invalidateCapture()
             startupError = error.localizedDescription
             provider.stop()
             return false
@@ -275,26 +324,43 @@ final class TrackpadGestureService: ObservableObject {
     }
 
     private func installSystemGestureFallback() {
-        localMonitor = NSEvent.addLocalMonitorForEvents(
-            matching: Self.fallbackEventMask
-        ) { [weak self] event in
-            MainActor.assumeIsolated { self?.processSystemGesture(event) }
-            return event
-        }
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(
-            matching: Self.fallbackEventMask
-        ) { [weak self] event in
-            Task { @MainActor in self?.processSystemGesture(event) }
+        let generation = beginCaptureGeneration()
+        systemGestureMonitor.start { [weak self] sample in
+            guard let self, self.isCurrentCapture(generation) else { return }
+            self.processSystemGesture(sample)
         }
     }
 
     private func removeSystemGestureMonitors() {
-        if let localMonitor { NSEvent.removeMonitor(localMonitor) }
-        if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
-        localMonitor = nil
-        globalMonitor = nil
+        systemGestureMonitor.stop()
         accumulatedMagnification = 0
         accumulatedRotation = 0
+    }
+
+    private func beginCaptureGeneration() -> CaptureGeneration {
+        let generation = CaptureGeneration()
+        captureGeneration = generation
+        onCaptureWillStart?()
+        return generation
+    }
+
+    private func isCurrentCapture(_ generation: CaptureGeneration) -> Bool {
+        generation === captureGeneration && generation.isValid
+    }
+
+    /// Revoga primeiro, antes de parar o produtor. O controle cancela efeitos
+    /// vigentes sem permitir que um output antigo volte ao handler de regras.
+    private func invalidateCapture() {
+        guard let generation = captureGeneration else { return }
+        generation.invalidate()
+        captureGeneration = nil
+        worker.cancel()
+        onCaptureInterrupted?()
+        tapCountComposer.reset()
+        deferredLaboratorySnapshot = nil
+        laboratorySnapshot = nil
+        activeTouchCount = 0
+        didReceiveRawFrame = false
     }
 
     private func noteRawFrame() {
@@ -311,26 +377,36 @@ final class TrackpadGestureService: ObservableObject {
     }
 
     private func handleRawOutput(_ output: GestureProcessingOutput) {
+        worker.pipelineMetrics.mark(.delivery, trace: output.pipelineTraceID)
+        var emitted = false
+        defer { if !emitted { worker.pipelineMetrics.discard(output.pipelineTraceID) } }
+        if let count = output.activeTouchCount, count != activeTouchCount {
+            activeTouchCount = count
+        }
         if let snapshot = output.laboratorySnapshot {
             validationStore.record(snapshot, acceptedEvent: output.event)
-            activeTouchCount = snapshot.phase == .ended || snapshot.phase == .cancelled
-                ? 0
-                : snapshot.contacts.filter {
-                    $0.transition == .down || $0.transition == .move
-                }.count
+            // Cancelamentos produzidos pelo worker não passam por process(frame).
+            if output.activeTouchCount == nil, snapshot.phase == .cancelled, activeTouchCount != 0 {
+                activeTouchCount = 0
+            }
             let shouldPublish = snapshot.phase == .ended
                 || snapshot.phase == .cancelled
                 || snapshot.features.occurredAt.timeIntervalSince(lastLaboratoryPublishAt) >= 1 / 60
-            if shouldPublish, !isReplaying {
-                laboratorySnapshot = snapshot
-                laboratoryHandler?(snapshot)
-                lastLaboratoryPublishAt = snapshot.features.occurredAt
+            if laboratorySnapshotsRequested || laboratoryHandler != nil {
+                if shouldPublish, !isReplaying {
+                    laboratorySnapshot = snapshot
+                    laboratoryHandler?(snapshot)
+                    lastLaboratoryPublishAt = snapshot.features.occurredAt
+                }
+            } else {
+                deferredLaboratorySnapshot = snapshot
             }
         }
         if let event = output.event {
             let composedEvent = tapCountComposer.process(event)
             latestGestureEvent = composedEvent
-            emit(.trackpad(composedEvent))
+            emitted = true
+            emit(InputEventDescriptor.trackpad(composedEvent).withPipelineTrace(output.pipelineTraceID))
             return
         }
         if let features = output.completedFeatures,
@@ -339,11 +415,12 @@ final class TrackpadGestureService: ObservableObject {
                features.centroidPath,
                pointCount: CustomGestureTemplate.defaultPointCount
            ) != nil {
-            emit(.unclassifiedTrackpadPath(features))
+            emitted = true
+            emit(InputEventDescriptor.unclassifiedTrackpadPath(features).withPipelineTrace(output.pipelineTraceID))
         }
     }
 
-    private func processSystemGesture(_ event: NSEvent) {
+    private func processSystemGesture(_ event: SystemGestureSample) {
         let descriptor: InputEventDescriptor?
         switch event.type {
         case .swipe:
@@ -353,18 +430,27 @@ final class TrackpadGestureService: ObservableObject {
                 timestamp: Date()
             )
         case .magnify:
+            // Cancelamento é terminal sem reconhecimento, mesmo acima do limiar.
+            if event.phase.contains(.cancelled) {
+                accumulatedMagnification = 0
+                return
+            }
             if event.phase.contains(.began) { accumulatedMagnification = 0 }
             accumulatedMagnification += event.magnification
-            if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            if event.phase.contains(.ended) {
                 descriptor = Self.classifyMagnification(accumulatedMagnification, timestamp: Date())
                 accumulatedMagnification = 0
             } else {
                 descriptor = nil
             }
         case .rotate:
+            if event.phase.contains(.cancelled) {
+                accumulatedRotation = 0
+                return
+            }
             if event.phase.contains(.began) { accumulatedRotation = 0 }
             accumulatedRotation += CGFloat(event.rotation)
-            if event.phase.contains(.ended) || event.phase.contains(.cancelled) {
+            if event.phase.contains(.ended) {
                 descriptor = Self.classifyRotation(accumulatedRotation, timestamp: Date())
                 accumulatedRotation = 0
             } else {
@@ -397,27 +483,28 @@ final class TrackpadGestureService: ObservableObject {
     }
 
     private func suspendForSleep() {
-        guard frameProvider != nil else { return }
-        shouldResumeAfterWake = isRunning
+        guard isRunning else { return }
+        shouldResumeAfterWake = true
+        resumeCaptureMode = captureMode
+        invalidateCapture()
         frameProvider?.stop()
         frameProvider = nil
-        let owner = WeakTrackpadGestureServiceBox(self)
-        worker.cancel { output in
-            Task { @MainActor in
-                owner.value?.handleRawOutput(output)
-            }
-        }
-        activeTouchCount = 0
-        didReceiveRawFrame = false
+        removeSystemGestureMonitors()
         captureMode = .stopped
         isRunning = false
-        logger.info("Raw trackpad capture suspended for system sleep")
+        logger.info("Trackpad capture suspended for system sleep")
     }
 
     private func resumeAfterWake() {
         guard shouldResumeAfterWake else { return }
         shouldResumeAfterWake = false
-        if startAdvancedGlobalCapture() {
+        let mode = resumeCaptureMode
+        resumeCaptureMode = nil
+        if mode == .systemGestureFallback {
+            installSystemGestureFallback()
+            captureMode = .systemGestureFallback
+            isRunning = true
+        } else if startAdvancedGlobalCapture() {
             captureMode = .advancedGlobal
             isRunning = true
             validationStore.setCheck(.sleepWake, completed: true)

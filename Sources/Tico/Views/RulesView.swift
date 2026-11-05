@@ -26,12 +26,15 @@ struct RulesView: View {
     let onSaveReusableWorkflow: (ActionWorkflow) throws -> Void
     let onSavePreset: (GesturePreset) throws -> Void
     let onPractice: (ShortcutRule) -> Void
+    let onBeginContextObservation: (UUID) -> Void
+    let onEndContextObservation: (UUID) -> Void
     var captureIsRunning = true
 
     @State private var presentedError: String?
     @State private var rulePendingDeletion: ShortcutRule?
     @State private var inputFilter = RuleInputFilter.all
     @State private var detailedEditorPresented = false
+    @State private var contextObservationID = UUID()
 
     var body: some View {
         AdaptiveSplitView(breakpoint: 760, minPrimaryWidth: 240, idealPrimaryWidth: 300, maxPrimaryWidth: 420) {
@@ -122,6 +125,8 @@ struct RulesView: View {
                 Divider()
                 inspector
             }.adaptiveSheetFrame(idealWidth: 600, idealHeight: 720)
+                .onAppear { onBeginContextObservation(contextObservationID) }
+                .onDisappear { onEndContextObservation(contextObservationID) }
         }
         .onChange(of: selectedRuleID, initial: true) {
             prepareSelectedSession()

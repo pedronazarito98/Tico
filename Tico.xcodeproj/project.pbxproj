@@ -248,7 +248,6 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 000000000000000000000014 /* Base.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = NO;
@@ -264,7 +263,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 000000000000000000000014 /* Base.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -279,7 +278,8 @@
 		000000000000000000000055 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)";
+				DEVELOPMENT_TEAM = 63LS85SD8D;
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				ENABLE_TESTABILITY = YES;
@@ -299,7 +299,8 @@
 		000000000000000000000056 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_IDENTITY = "Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)";
+				DEVELOPMENT_TEAM = 63LS85SD8D;
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				GENERATE_INFOPLIST_FILE = YES;

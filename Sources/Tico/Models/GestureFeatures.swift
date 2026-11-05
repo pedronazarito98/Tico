@@ -16,6 +16,7 @@ struct GestureFeatures: Equatable, Sendable {
     let centroidPath: [TrackpadPoint]
     let displacement: TrackpadPoint
     let distance: Double
+    let maximumContactExcursion: Double
     let startSpan: Double?
     let span: Double?
     let relativeSpanChange: Double

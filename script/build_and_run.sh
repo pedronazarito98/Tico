@@ -30,7 +30,7 @@ STAGED_MACOS="$STAGED_CONTENTS/MacOS"
 STAGED_RESOURCES="$STAGED_CONTENTS/Resources"
 STAGED_BINARY="$STAGED_MACOS/$EXECUTABLE_NAME"
 INFO_PLIST="$STAGED_CONTENTS/Info.plist"
-RUN_DIR="$TEMP_ROOT/run"
+RUN_DIR="$DIST_DIR/.run"
 RUN_APP_BUNDLE="$RUN_DIR/$PUBLIC_APP_NAME.app"
 VERIFY_DIR="$TEMP_ROOT/verify"
 VERIFY_APP_BUNDLE="$VERIFY_DIR/$PUBLIC_APP_NAME.app"
@@ -112,36 +112,14 @@ PLIST
 
 /usr/bin/xattr -cr "$STAGED_APP_BUNDLE"
 /usr/bin/xattr -d com.apple.FinderInfo "$STAGED_APP_BUNDLE" 2>/dev/null || true
-CODESIGN_IDENTITY="${TICO_CODESIGN_IDENTITY:--}"
-if [[ "$CODESIGN_IDENTITY" == "-" ]]; then
-  # Keep the default build-specific designated requirement. A stable local
-  # signing identity must be configured explicitly when TCC continuity matters.
-  if [[ "$BUILD_CONFIGURATION" == "release" ]]; then
-    echo "warning: no Developer ID identity configured; producing a local-only release candidate" >&2
-    codesign \
-      --force \
-      --deep \
-      --sign - \
-      --options runtime \
-      --identifier "$BUNDLE_ID" \
-      "$STAGED_APP_BUNDLE" >/dev/null
-  else
-    codesign \
-      --force \
-      --deep \
-      --sign - \
-      --identifier "$BUNDLE_ID" \
-      "$STAGED_APP_BUNDLE" >/dev/null
-  fi
-else
-  codesign \
-    --force \
-    --deep \
-    --sign "$CODESIGN_IDENTITY" \
-    --options runtime \
-    --timestamp \
-    "$STAGED_APP_BUNDLE" >/dev/null
-fi
+CODESIGN_IDENTITY="Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)"
+codesign \
+  --force \
+  --deep \
+  --sign "$CODESIGN_IDENTITY" \
+  --options runtime \
+  --timestamp \
+  "$STAGED_APP_BUNDLE" >/dev/null
 /usr/bin/xattr -d com.apple.FinderInfo "$STAGED_APP_BUNDLE" 2>/dev/null || true
 codesign --verify --deep --strict "$STAGED_APP_BUNDLE"
 
@@ -161,9 +139,10 @@ codesign --verify --deep --strict "$VERIFY_APP_BUNDLE"
 
 "$ROOT_DIR/script/create_dmg.sh" "$STAGED_APP_BUNDLE" "$DMG_ARCHIVE"
 open_app() {
-  # Launch Services may attach more metadata to the opened bundle. Run from a
-  # clean temporary copy so the distributable zip stays untouched.
+  # O caminho estável ajuda o macOS a reconhecer o app entre execuções;
+  # a cópia separada protege os arquivos destinados à distribuição.
   mkdir -p "$RUN_DIR"
+  rm -rf -- "$RUN_APP_BUNDLE"
   /usr/bin/ditto --norsrc "$APP_BUNDLE" "$RUN_APP_BUNDLE"
   /usr/bin/xattr -cr "$RUN_APP_BUNDLE"
   codesign --verify --deep --strict "$RUN_APP_BUNDLE"

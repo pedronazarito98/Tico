@@ -79,7 +79,10 @@ final class ContentInteractionCoordinator: ObservableObject {
         } else if let requestedRule, store.reusableWorkflows.contains(where: { $0.id == requestedRule.workflow.id }) {
             requestOwner = .scene(requestedRule.workflow.id, requestedRule.workflow)
         } else { requestOwner = .transient }
-        originalContext = allowsExecution ? contextProvider.snapshot(modifiers: [], at: Date()) : ContextSnapshot()
+        let contextRequest = allowsExecution
+            ? contextProvider.makeRequest(modifiers: [], at: Date(), includeWindowContext: true)
+            : ContextSnapshotRequest(base: ContextSnapshot())
+        originalContext = contextRequest.base
         originalSelectionTarget = allowsExecution ? selection.frontmostTarget(
             expectedBundleIdentifier: originalContext?.frontmostApplicationBundleIdentifier
         ) : nil
@@ -87,6 +90,11 @@ final class ContentInteractionCoordinator: ObservableObject {
         generation = token
         captureTask = Task { [weak self] in
             guard let self else { return }
+            defer { if generation == token { captureTask = nil } }
+            let resolvedContext = allowsExecution ? await contextProvider.resolve(contextRequest) : contextRequest.base
+            guard !Task.isCancelled, generation == token, !interactionIsSuspended else { return }
+            guard let resolvedContext else { clearSession(); return }
+            originalContext = resolvedContext
             var captured: AutomationContent?
             var captureError: Error?
             let needsSnapshot = requestedRule?.workflow.enabledSteps.contains {
@@ -112,7 +120,10 @@ final class ContentInteractionCoordinator: ObservableObject {
             if useSelection, let captured { session.setContent(captured) }
             if let captureError { session.reportCaptureError(captureError) }
             presenter.show(ContentInteractionPanelView(coordinator: self), purpose: .content,
-                onClose: { [weak self] in self?.clearSession() })
+                onClose: { [weak self] in
+                    guard let self, generation == token else { return }
+                    clearSession()
+                })
             captureTask = nil
         }
     }

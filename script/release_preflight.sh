@@ -89,28 +89,16 @@ DESIGNATED_REQUIREMENT="$(
       -e '/^designated =>/p' \
     | /usr/bin/head -n 1
 )"
-UNSCOPED_AD_HOC_REQUIREMENT="designated => identifier \"$BUNDLE_ID\""
-
-if [[ "$SIGNING_AUTHORITY" == Developer\ ID\ Application:* ]]; then
-  SIGNING_MODE="developer-id"
-else
-  SIGNING_MODE="ad-hoc/development"
-fi
-
-if [[ "$SIGNING_MODE" == "ad-hoc/development" &&
-      "$DESIGNATED_REQUIREMENT" == "$UNSCOPED_AD_HOC_REQUIREMENT" ]]; then
-  echo "error: ad hoc designated requirement is scoped only by bundle identifier" >&2
-  echo "rebuild without a custom requirement or use an explicit signing identity" >&2
+if [[ "$SIGNING_AUTHORITY" != 'Developer ID Application: Pedro Henrique Lopes Nazarito (63LS85SD8D)' ]]; then
+  echo "error: package does not use the expected Developer ID Application identity" >&2
   exit 5
 fi
-
-if [[ "$SIGNING_MODE" == "developer-id" ]]; then
-  CODE_IDENTITY_SCOPE="signer-bound"
-elif [[ "$DESIGNATED_REQUIREMENT" == *cdhash* ]]; then
-  CODE_IDENTITY_SCOPE="build-specific ad hoc"
-else
-  CODE_IDENTITY_SCOPE="custom development identity"
+if [[ "$DESIGNATED_REQUIREMENT" != *anchor* ]]; then
+  echo "error: designated requirement is not anchored to the signing identity" >&2
+  exit 5
 fi
+SIGNING_MODE="developer-id"
+CODE_IDENTITY_SCOPE="signer-bound"
 
 ENTITLEMENTS_FILE="$TEMP_ROOT/entitlements.plist"
 if /usr/bin/codesign -d --entitlements "$ENTITLEMENTS_FILE" "$EXTRACTED_APP" >/dev/null 2>&1 &&
@@ -147,9 +135,7 @@ echo "notarization: not-attempted (no notarytool acceptance evidence inspected)"
 echo "staple: not-validated"
 echo "clean-machine execution: not-run"
 
-if [[ "$SIGNING_MODE" == "ad-hoc/development" ]]; then
-  echo "distribution decision: development-only; Gatekeeper acceptance and notarization are not claimed"
-elif [[ "$HARDENED_RUNTIME" != "enabled" ]]; then
+if [[ "$HARDENED_RUNTIME" != "enabled" ]]; then
   echo "distribution decision: blocked; Developer ID artifact lacks confirmed Hardened Runtime"
 else
   echo "distribution decision: pending notarization, staple validation, and clean-machine execution"

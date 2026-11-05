@@ -3,6 +3,121 @@ import XCTest
 @testable import Tico
 
 final class AdvancedGestureEngineTests: XCTestCase {
+    // CAP-06.A: retornar ao início não torna o mesmo cohort estacionário novamente.
+    func testTapAndHoldRejectAnyContactExcursionAfterReturnAndRest() throws {
+        for isHold in [false, true] {
+            var sessions = ContactSessionEngine()
+            let start = Date(timeIntervalSince1970: 500)
+            let original = [touch(id: 1, x: 0.25, y: 0.5), touch(id: 2, x: 0.75, y: 0.5)]
+            _ = sessions.process(frame(at: start, number: 1, touches: original))
+            _ = sessions.process(frame(at: start.addingTimeInterval(0.05), number: 2,
+                touches: [touch(id: 1, x: 0.35, y: 0.5), original[1]]))
+            _ = sessions.process(frame(at: start.addingTimeInterval(0.1), number: 3, touches: original))
+            let final = try XCTUnwrap(sessions.process(frame(
+                at: start.addingTimeInterval(isHold ? 0.8 : 0.2), number: 4,
+                touches: isHold ? original : [])))
+            let features = try XCTUnwrap(GestureFeatureExtractor().extract(from: final))
+            XCTAssertEqual(features.distance, 0, accuracy: 0.000001)
+            XCTAssertTrue(TapHoldGestureRecognizer(configuration: .init()).candidates(for: features).isEmpty)
+        }
+    }
+
+    // CAP-06.B: limite calibrado inclusivo, com duração e geometria válidas.
+    func testTapAndHoldPreserveInclusiveStationaryLimit() throws {
+        for isHold in [false, true] {
+            for (excursion, accepted) in [(0.124, true), (0.125, true), (0.126, false)] {
+                var sessions = ContactSessionEngine()
+                var configuration = GestureRecognizerConfiguration()
+                configuration.stationaryDistance = 0.125
+                let start = Date(timeIntervalSince1970: 510)
+                _ = sessions.process(frame(at: start, number: 1, touches: [
+                    touch(id: 1, x: 0.25, y: 0.5), touch(id: 2, x: 0.5, y: 0.5)]))
+                let moved = [touch(id: 1, x: 0.25 + excursion, y: 0.5),
+                             touch(id: 2, x: 0.5 + excursion, y: 0.5)]
+                _ = sessions.process(frame(at: start.addingTimeInterval(0.05), number: 2, touches: moved))
+                let final = try XCTUnwrap(sessions.process(frame(
+                    at: start.addingTimeInterval(isHold ? 0.8 : 0.2), number: 3,
+                    touches: isHold ? moved : [])))
+                let features = try XCTUnwrap(GestureFeatureExtractor().extract(from: final))
+                let candidates = TapHoldGestureRecognizer(configuration: configuration).candidates(for: features)
+                XCTAssertEqual(candidates.map(\.kind), accepted ? [isHold ? .hold : .tap] : [])
+            }
+        }
+    }
+
+    func testSequentialLiftsKeepCohortCentroidAndPathStable() throws {
+        for firstRemoved in [Int32(1), Int32(2)] {
+            var sessions = ContactSessionEngine()
+            let start = Date(timeIntervalSince1970: 520)
+            let points = [touch(id: 1, x: 0.2, y: 0.5), touch(id: 2, x: 0.8, y: 0.5)]
+            _ = sessions.process(frame(at: start, number: 1, touches: points))
+            let remaining = points.filter { $0.identifier != firstRemoved }
+            let lifted = try XCTUnwrap(sessions.process(frame(at: start.addingTimeInterval(0.1), number: 2, touches: remaining)))
+            let ended = try XCTUnwrap(sessions.process(frame(at: start.addingTimeInterval(0.2), number: 3, touches: [])))
+            for session in [lifted, ended] {
+                let features = try XCTUnwrap(GestureFeatureExtractor().extract(from: session))
+                XCTAssertEqual(features.centroid, TrackpadPoint(x: 0.5, y: 0.5))
+                XCTAssertEqual(features.centroidPath, [TrackpadPoint(x: 0.5, y: 0.5)])
+                XCTAssertEqual(features.distance, 0)
+            }
+        }
+    }
+
+    func testRemainingContactUsesLastPositionOfLiftedContactAndEntryResetsCohort() throws {
+        var sessions = ContactSessionEngine()
+        let start = Date(timeIntervalSince1970: 530)
+        _ = sessions.process(frame(at: start, number: 1, touches: [
+            touch(id: 1, x: 0.2, y: 0.5), touch(id: 2, x: 0.8, y: 0.5)]))
+        _ = sessions.process(frame(at: start.addingTimeInterval(0.1), number: 2,
+            touches: [touch(id: 2, x: 0.8, y: 0.5)]))
+        let moved = try XCTUnwrap(sessions.process(frame(at: start.addingTimeInterval(0.2), number: 3,
+            touches: [touch(id: 2, x: 1, y: 0.5)])))
+        let features = try XCTUnwrap(GestureFeatureExtractor().extract(from: moved))
+        XCTAssertEqual(features.centroid, TrackpadPoint(x: 0.6, y: 0.5))
+        XCTAssertEqual(features.centroidPath.last, features.centroid)
+        let entered = try XCTUnwrap(sessions.process(frame(at: start.addingTimeInterval(0.3), number: 4,
+            touches: [touch(id: 2, x: 1, y: 0.5), touch(id: 3, x: 0.5, y: 0.5)])))
+        XCTAssertEqual(entered.cohortContactIDs, [2, 3])
+        XCTAssertEqual(entered.cohortCentroidPath, [TrackpadPoint(x: 0.75, y: 0.5)])
+        XCTAssertEqual(entered.maximumContactExcursion, 0)
+    }
+
+    func testContinuousPresentationDemandPreservesEventsAndTerminalDiagnostics() throws {
+        var visible = AdvancedGestureEngine(configuration: GestureRecognizerConfiguration(emitsContinuousPhases: true))
+        var hidden = visible
+        let start = Date(timeIntervalSince1970: 540)
+        var frames: [RawTrackpadFrame] = []
+        for index in 0..<6 {
+            let offset = Double(index) * 0.1
+            let points: [RawTrackpadTouch] = index == 5 ? [] : [
+                touch(id: 1, x: 0.2 + offset, y: 0.5),
+                touch(id: 2, x: 0.4 + offset, y: 0.5)]
+            frames.append(frame(at: start.addingTimeInterval(Double(index) * 0.05),
+                number: Int32(index), touches: points))
+        }
+        var hiddenPhases: [GesturePhase] = []
+        for frame in frames {
+            let lhs = visible.process(frame, includeLaboratorySnapshot: true)
+            let rhs = hidden.process(frame, includeLaboratorySnapshot: false)
+            XCTAssertEqual(lhs.event?.kind, rhs.event?.kind)
+            XCTAssertEqual(lhs.event?.phase, rhs.event?.phase)
+            XCTAssertEqual(lhs.event?.progress, rhs.event?.progress)
+            XCTAssertEqual(lhs.event?.path, rhs.event?.path)
+            XCTAssertEqual(lhs.event?.confidence, rhs.event?.confidence)
+            if let phase = rhs.event?.phase { hiddenPhases.append(phase) }
+            if rhs.event?.phase == .changed {
+                XCTAssertNil(rhs.laboratorySnapshot)
+                XCTAssertNotNil(lhs.laboratorySnapshot)
+            }
+            if rhs.event?.phase == .ended {
+                XCTAssertEqual(rhs.laboratorySnapshot?.phase, .ended)
+                XCTAssertEqual(rhs.completedFeatures?.centroidPath, lhs.completedFeatures?.centroidPath)
+                XCTAssertEqual(rhs.laboratorySnapshot?.diagnostic, lhs.laboratorySnapshot?.diagnostic)
+            }
+        }
+        XCTAssertEqual(hiddenPhases, [.began, .changed, .changed, .ended])
+    }
+
     func testContactSessionTracksFingerEntryWithoutEndingSession() throws {
         var engine = ContactSessionEngine()
         let start = Date(timeIntervalSince1970: 10)

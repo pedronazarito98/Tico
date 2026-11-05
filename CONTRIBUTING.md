@@ -44,8 +44,9 @@ duplicar código do produto. Não extraia `TicoCore` nem adicione dependências
 sem uma análise de grafo e um gate próprios.
 
 O gate automatizado cobre compilação, testes, regressões de segurança,
-replay, o bundle do target Xcode e empacotamento ad hoc em ZIP e DMG no macOS
-26. Ele não comprova hardware físico, Developer ID ou notarização.
+replay, o bundle do target Xcode e empacotamento com Developer ID em ZIP e DMG
+no macOS 26. Exige a identidade de assinatura disponível no ambiente e não
+comprova hardware físico, notarização ou abertura em outro Mac.
 Os metadados do bundle vêm de `version.env`; mudanças de release devem atualizar
 `MARKETING_VERSION` e sempre incrementar `BUILD_NUMBER`.
 

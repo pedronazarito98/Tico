@@ -74,7 +74,7 @@ step "Running security regression suite"
 swift test ${SWIFT_ARGS[@]+"${SWIFT_ARGS[@]}"} --filter SecurityRegressionTests
 
 if [[ "$PACKAGE_MODE" -eq 1 ]]; then
-  step "Building and verifying local ad hoc package"
+  step "Building and verifying Developer ID package"
   ./script/build_and_run.sh --package
   [[ -f "$ARCHIVE_PATH" ]]
   [[ -f "$DMG_ARCHIVE_PATH" ]]
@@ -130,7 +130,7 @@ echo "Xcode app target: verified"
 echo "XCUITest end-to-end flow: verified"
 echo "Local app path: $ROOT_DIR/dist/$PUBLIC_APP_NAME.app"
 if [[ "$PACKAGE_MODE" -eq 1 ]]; then
-  echo "Verified ad hoc archive: $ARCHIVE_PATH"
+  echo "Verified Developer ID archive: $ARCHIVE_PATH"
   echo "Verified DMG: $DMG_ARCHIVE_PATH"
 else
   echo "Package verification: not requested (use --package)"

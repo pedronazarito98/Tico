@@ -105,9 +105,15 @@ no próprio inspetor. Veja a [validação dos seletores visuais](.specs/features
 
 ## Estado atual
 
-O Tico é um **preview técnico open source exclusivo para macOS 26+**. A forma
-recomendada de testar por enquanto é clonar o repositório e rodar o app
-localmente. Não há binário público assinado com Developer ID.
+O Tico é um **preview técnico open source exclusivo para macOS 26+**. A versão
+0.1.0 (build 2) está disponível para download, assinada com Developer ID e
+notarizada pela Apple.
+
+[Baixar o Tico para macOS](https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg) · [Ver a release e suas notas](https://github.com/pedronazarito98/Tico/releases/tag/v0.1.0-preview.2)
+
+Abra o DMG, arraste o Tico para Aplicativos e conceda as permissões solicitadas
+conforme os recursos que desejar usar. Esta versão ainda precisa ser validada em
+outro Mac; recursos de captura e dispositivos externos têm limitações conhecidas.
 
 A ação **Atualizar página ou janela** procura um comando de atualização
 acessível no aplicativo em uso e exige a permissão de Acessibilidade. O resultado
@@ -130,6 +136,18 @@ garantida. Quando houver um, o procedimento curto está no
 Os gestos globais avançados usam uma integração experimental com o macOS. Se
 ela não estiver disponível, o Tico usa um fallback público com menos recursos.
 
+Atalhos de teclado contam uma ativação por pressão: manter a tecla pressionada
+não repete a automação, e duas pressões rápidas continuam sendo duas entradas.
+Soltar e pressionar Command entre os passos de uma sequência preserva seu
+progresso. As teclas emitidas pelo próprio Tico não realimentam a captura.
+
+Se a captura acumular trabalho obsoleto, a sessão de gesto é cancelada e só
+recomeça depois que todos os dedos saem do trackpad. O fim de uma automação
+libera o próximo acionamento após a limpeza dos seus efeitos, sem esperar a
+gravação do histórico. Ao sair, o app aguarda limpeza e gravações por até dois
+segundos; falha ou timeout mantém o Tico aberto para uma nova tentativa.
+Os cenários físicos ainda pendentes estão na [matriz manual](outputs/macos-26-manual-matrix.md).
+
 ## Como testar
 
 Para desenvolver pelo Xcode, abra `Tico.xcodeproj`, selecione o scheme
@@ -150,20 +168,18 @@ Para executar o gate completo:
 ```
 
 Esse gate compila os hosts SwiftPM e Xcode, executa a suíte e valida os
-artefatos ad hoc. O target Xcode também pode ser verificado isoladamente com
+artefatos assinados com Developer ID. O target Xcode também pode ser verificado isoladamente com
 `./script/verify_xcode_app.sh`.
 
 Na primeira execução, o macOS pode pedir Monitoramento de Entrada e, dependendo
 da automação, Acessibilidade.
 
-O projeto também gera `dist/Tico.zip` e `dist/Tico.dmg`. O DMG oferece o fluxo
-convencional de arrastar o Tico para Aplicativos, mas usa a mesma assinatura do
-app: ad hoc quando não há Developer ID instalado. ZIP e DMG servem para preview
-técnico, desenvolvimento e QA local; não são releases públicas notarizadas.
-Por segurança, a identidade ad hoc é específica de cada build e o macOS pode
-pedir novamente permissões de privacidade após uma recompilação. Quem precisar
-de continuidade local deve configurar explicitamente uma identidade de assinatura
-própria; não existe requisito ad hoc compartilhado apenas pelo bundle identifier.
+O projeto também gera `dist/Tico.zip` e `dist/Tico.dmg` para validação local.
+Esses arquivos usam o Developer ID configurado no projeto, mas precisam passar
+pelo fluxo de notarização antes de uma distribuição. A primeira troca de
+assinatura pode exigir nova concessão de permissões. O app executado pelo script
+permanece no mesmo caminho `dist/.run/Tico.app`. A assinatura dos pacotes exige
+a identidade e sua chave no Mac; nenhuma credencial entra no repositório.
 
 A versão do pacote fica em `version.env`. Antes de preparar uma nova versão,
 atualize `MARKETING_VERSION` e incremente `BUILD_NUMBER`.

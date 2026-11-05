@@ -3,6 +3,21 @@ import XCTest
 @testable import Tico
 
 final class SecurityRegressionTests: XCTestCase {
+    func testPipelineCorrelationNeverChangesPersistedEventSchema() throws {
+        let event = InputEventDescriptor.keyboard(keyCode: 12, timestamp: Date(timeIntervalSince1970: 10))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        XCTAssertEqual(try encoder.encode(event), try encoder.encode(event.withPipelineTrace(UUID())))
+        let decoded = try JSONDecoder().decode(InputEventDescriptor.self, from: encoder.encode(event.withPipelineTrace(UUID())))
+        XCTAssertNil(decoded.pipelineTraceID)
+        let metrics = InputPipelineMetrics(isEnabled: true, now: { 1 })
+        let trace = metrics.begin()
+        metrics.mark(.decision, trace: trace)
+        metrics.discard(trace)
+        let labels = Set(Mirror(reflecting: metrics.snapshot()).children.compactMap(\.label))
+        XCTAssertEqual(labels, ["milliseconds", "sampleCounts", "maximumQueueDepth", "maximumQueueAgeMilliseconds", "droppedFrames", "cancellations", "activeTraceCount"])
+    }
+
     private var temporaryDirectories: [URL] = []
     private var defaultsSuites: [String] = []
 
@@ -180,7 +195,8 @@ final class SecurityRegressionTests: XCTestCase {
         XCTAssertEqual(opened, [webURL])
     }
 
-    func testMetricsCSVNeutralizesSpreadsheetFormulaPrefixes() throws {
+    @MainActor
+    func testMetricsCSVNeutralizesSpreadsheetFormulaPrefixes() async throws {
         let directory = makeTemporaryDirectory()
         let store = MetricsStore(
             fileURL: directory.appendingPathComponent("metrics.json")
@@ -192,7 +208,7 @@ final class SecurityRegressionTests: XCTestCase {
             outcome: .success
         ))
 
-        try store.exportCSV(to: exportURL)
+        try await store.exportCSV(to: exportURL)
         let csv = try String(contentsOf: exportURL, encoding: .utf8)
         XCTAssertTrue(csv.contains("\"'=HYPERLINK"))
         XCTAssertTrue(csv.contains("\"'+cmd\""))

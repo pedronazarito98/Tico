@@ -56,8 +56,9 @@ struct MetricsSummary: Equatable {
     }
 }
 
+@MainActor
 final class MetricsStore: ObservableObject {
-    static let currentVersion = 1
+    nonisolated static let currentVersion = 1
 
     @Published private(set) var events: [GestureMetricEvent] = []
     @Published private(set) var lastError: String?
@@ -65,24 +66,20 @@ final class MetricsStore: ObservableObject {
     let fileURL: URL
     let maximumEventCount: Int
 
-    private let fileManager: FileManager
+    private let repository: MetricsRepository
 
-    init(
-        fileURL: URL? = nil,
-        maximumEventCount: Int = 1_000,
-        fileManager: FileManager = .default
-    ) {
-        self.fileManager = fileManager
+    init(fileURL: URL? = nil, maximumEventCount: Int = 1_000,
+         fileManager: FileManager = .default, scheduler: (any MetricsWriteScheduling)? = nil) {
         self.fileURL = fileURL ?? Self.defaultFileURL(fileManager: fileManager)
         self.maximumEventCount = max(10, maximumEventCount)
-        do {
-            try load()
-        } catch {
-            lastError = error.localizedDescription
-        }
+        repository = MetricsRepository(fileURL: self.fileURL, maximumEventCount: self.maximumEventCount,
+            fileManager: fileManager, scheduler: scheduler)
+        events = repository.events
+        lastError = repository.lastError
+        repository.onChange = { [weak self] in self?.publishRepository() }
     }
 
-    static func defaultFileURL(fileManager: FileManager = .default) -> URL {
+    nonisolated    static func defaultFileURL(fileManager: FileManager = .default) -> URL {
         let root = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
@@ -112,82 +109,21 @@ final class MetricsStore: ObservableObject {
     }
 
     func record(_ event: GestureMetricEvent) {
-        events.insert(event, at: 0)
-        if events.count > maximumEventCount {
-            events.removeLast(events.count - maximumEventCount)
-        }
-        persist()
+        repository.record(event)
+        publishRepository()
     }
 
-    func clear() {
-        let previous = events
-        events.removeAll()
-        persist()
-        // Uma falha de disco não deve aparentar que o histórico foi removido.
-        if lastError != nil { events = previous }
+    func clear() async throws { try await repository.clear(); publishRepository() }
+    func flush() async throws { try await repository.flush(); publishRepository() }
+
+    /// O recorte é imutável desde a solicitação; a barreira confirma as revisões
+    /// anteriores antes de exportar, mesmo se novos eventos chegarem durante IO.
+    func exportCSV(to url: URL, events selection: [GestureMetricEvent]? = nil) async throws {
+        try await repository.export(to: url, selection: selection ?? events)
     }
 
-    /// Exporta o recorte apresentado, inclusive registros além da página visível.
-    /// O comportamento sem recorte permanece compatível com os consumidores atuais.
-    func exportCSV(to url: URL, events selection: [GestureMetricEvent]? = nil) throws {
-        var lines = ["date,rule,gesture,device,outcome,confidence,latency_ms"]
-        let formatter = ISO8601DateFormatter()
-        for event in selection ?? events {
-            let confidenceText = event.confidence.map { String($0) } ?? ""
-            let row: [String] = [
-                formatter.string(from: event.occurredAt),
-                csv(event.ruleName ?? ""),
-                event.gesture?.rawValue ?? "",
-                csv(event.deviceID ?? ""),
-                event.outcome.rawValue,
-                confidenceText,
-                String(format: "%.2f", event.latency * 1_000)
-            ]
-            lines.append(row.joined(separator: ","))
-        }
-        try Data(lines.joined(separator: "\n").utf8).write(to: url, options: .atomic)
+    private func publishRepository() {
+        events = repository.events
+        lastError = repository.lastError
     }
-
-    private func load() throws {
-        guard fileManager.fileExists(atPath: fileURL.path) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .millisecondsSince1970
-        let document = try decoder.decode(
-            MetricsDocument.self,
-            from: Data(contentsOf: fileURL)
-        )
-        guard document.version <= Self.currentVersion else {
-            throw ShortcutStoreError.unsupportedVersion(document.version)
-        }
-        events = Array(document.events.prefix(maximumEventCount))
-    }
-
-    private func persist() {
-        do {
-            try fileManager.createDirectory(
-                at: fileURL.deletingLastPathComponent(),
-                withIntermediateDirectories: true
-            )
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .millisecondsSince1970
-            let document = MetricsDocument(version: Self.currentVersion, events: events)
-            try encoder.encode(document).write(to: fileURL, options: .atomic)
-            lastError = nil
-        } catch {
-            lastError = error.localizedDescription
-        }
-    }
-
-    private func csv(_ value: String) -> String {
-        let firstNonWhitespace = value.first { !$0.isWhitespace }
-        let neutralized = firstNonWhitespace.map { "=+-@".contains($0) } == true
-            ? "'\(value)"
-            : value
-        return "\"\(neutralized.replacingOccurrences(of: "\"", with: "\"\""))\""
-    }
-}
-
-private struct MetricsDocument: Codable {
-    var version: Int
-    var events: [GestureMetricEvent]
 }

@@ -7,7 +7,9 @@ final class AppController: ObservableObject {
     @Published private(set) var lastEvent: InputEventDescriptor?
     @Published private(set) var recordedEvent: InputEventDescriptor?
     @Published private(set) var captureIsRunning = false
-    @Published private(set) var recordingIsActive = false
+    @Published private(set) var recordingIsActive = false {
+        didSet { updateLaboratorySnapshotDemand() }
+    }
     @Published private(set) var trackpadCaptureMode: TrackpadCaptureMode = .stopped
     @Published private(set) var trackpadStartupError: String?
     @Published private(set) var laboratorySnapshot: TrackpadLaboratorySnapshot?
@@ -51,6 +53,7 @@ final class AppController: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var captureWasRunningBeforeRecording = false
     private var trackpadWasRunningBeforeRecording = false
+    private var laboratoryObservationIDs: Set<UUID> = []
 
     init(
         shortcutStore: ShortcutStore,
@@ -59,9 +62,9 @@ final class AppController: ObservableObject {
         permissions: PermissionCoordinator,
         calibrationStore: TrackpadCalibrationStore = TrackpadCalibrationStore(),
         validationStore: TrackpadValidationStore = TrackpadValidationStore(),
-        metricsStore: MetricsStore = MetricsStore(),
+        metricsStore: MetricsStore? = nil,
         capabilityStore: TrackpadCapabilityStore = TrackpadCapabilityStore(),
-        globalEventTap: GlobalEventTapService = GlobalEventTapService(),
+        globalEventTap: GlobalEventTapService? = nil,
         trackpadGestures: TrackpadGestureService? = nil,
         matcher: TriggerMatcher = TriggerMatcher(),
         actionRunner: ActionRunner = ActionRunner(),
@@ -72,9 +75,12 @@ final class AppController: ObservableObject {
         applicationCatalogService: ApplicationCatalogService? = nil,
         macOSShortcutCatalog: any MacOSShortcutRunning = MacOSShortcutRunner(),
         localIntelligence: any LocalIntelligenceServicing = LocalIntelligenceService(),
-        allowsAutomationExecution: Bool = true
+        allowsAutomationExecution: Bool = true,
+        pipelineMetrics: InputPipelineMetrics = InputPipelineMetrics(),
+        readModifiers: @escaping () -> Set<InputModifier> = GlobalEventTapService.currentModifiers
     ) {
         self.localIntelligence = localIntelligence
+        let metricsStore = metricsStore ?? MetricsStore()
         self.shortcutStore = shortcutStore
         self.settings = settings
         self.eventLogStore = eventLogStore
@@ -84,14 +90,17 @@ final class AppController: ObservableObject {
         self.metricsStore = metricsStore
         self.capabilityStore = capabilityStore
         let resolvedTrackpadGestures = trackpadGestures ?? TrackpadGestureService(
+            worker: GestureProcessingWorker(pipelineMetrics: pipelineMetrics),
             calibrationSet: calibrationStore.calibrationSet,
             validationStore: validationStore
         )
+        resolvedTrackpadGestures.setLaboratorySnapshotsEnabled(false)
         let resolvedCaptureCoordinator = CaptureCoordinator(
-            globalEventTap: globalEventTap,
+            globalEventTap: globalEventTap ?? GlobalEventTapService(pipelineMetrics: pipelineMetrics),
             trackpadGestures: resolvedTrackpadGestures,
             permissions: permissions,
-            hardwareDetector: hardwareDetector
+            hardwareDetector: hardwareDetector,
+            readModifiers: readModifiers
         )
         self.captureCoordinator = resolvedCaptureCoordinator
         self.laboratoryCoordinator = LaboratoryCoordinator(
@@ -110,6 +119,7 @@ final class AppController: ObservableObject {
             contextSnapshotService: contextSnapshotService,
             sceneLayouts: sceneLayouts,
             allowsExecution: allowsAutomationExecution,
+            pipelineMetrics: pipelineMetrics,
             setContinuousPhasesEnabled: { [weak resolvedCaptureCoordinator] isEnabled in
                 resolvedCaptureCoordinator?.setContinuousPhasesEnabled(isEnabled)
             }
@@ -131,7 +141,10 @@ final class AppController: ObservableObject {
         self.applicationCatalogService = applicationCatalogService ?? ApplicationCatalogService()
         self.macOSShortcutCatalog = macOSShortcutCatalog
 
-        captureCoordinator.setEventHandler { [weak self] event in
+        captureCoordinator.onTrackpadCaptureInterrupted = { [weak self] in
+            self?.automationCoordinator.cancelContinuousSessions()
+        }
+        captureCoordinator.setInputHandler { [weak self] event in
             self?.receive(event)
         }
         captureCoordinator.$isRunning
@@ -251,6 +264,27 @@ final class AppController: ObservableObject {
         captureCoordinator.refreshTrackpadHardware()
     }
 
+    /// Cada janela identifica sua observação; fechar uma delas não interrompe
+    /// a apresentação do laboratório ou a gravação ativa em outra janela.
+    func beginLaboratoryObservation(id: UUID) {
+        laboratoryObservationIDs.insert(id)
+        updateLaboratorySnapshotDemand()
+        _ = startTrackpadObservation()
+    }
+
+    func endLaboratoryObservation(id: UUID) {
+        guard laboratoryObservationIDs.remove(id) != nil else { return }
+        updateLaboratorySnapshotDemand()
+        guard laboratoryObservationIDs.isEmpty else { return }
+        stopTrackpadObservationIfIdle()
+    }
+
+    private func updateLaboratorySnapshotDemand() {
+        captureCoordinator.trackpadGestures.setLaboratorySnapshotsEnabled(
+            recordingIsActive || !laboratoryObservationIDs.isEmpty
+        )
+    }
+
     func refreshApplicationCatalog() {
         availableApplications = applicationCatalogService.applications()
     }
@@ -265,6 +299,14 @@ final class AppController: ObservableObject {
             }
             contentInteraction.updateMacOSShortcuts(availableMacOSShortcuts)
         }
+    }
+
+    func beginRuleContextObservation(id: UUID) {
+        automationCoordinator.beginContextObservation(id: id, modifiers: activeModifiers)
+    }
+
+    func endRuleContextObservation(id: UUID) {
+        automationCoordinator.endContextObservation(id: id)
     }
 
     func stopTrackpadObservationIfIdle() {
@@ -386,11 +428,12 @@ final class AppController: ObservableObject {
             }
             if permissions.status.canCaptureGlobalInput { startCapture() }
         }
-        localInputCapture.start(onEvent: { [weak self] event in
+        localInputCapture.start(onInput: { [weak self] input in
             guard let self, self.recordingIsActive else { return }
-            self.recordedEvent = event
-            self.practiceSession.receive(event)
-        }, onModifiers: { [weak self] in self?.activeModifiers = $0 }, onCancel: { [weak self] in
+            self.activeModifiers = input.modifiers
+            if case let .activation(event) = input { self.recordedEvent = event }
+            self.practiceSession.receive(input)
+        }, onCancel: { [weak self] in
             guard let self else { return }
             if let id = self.practiceSession.sessionID { self.endPractice(sessionID: id) }
             else { self.endRecording() }
@@ -402,7 +445,7 @@ final class AppController: ObservableObject {
         guard recordingIsActive else { return }
         recordingIsActive = false
         localInputCapture.stop()
-        activeModifiers = []
+        captureCoordinator.resynchronizeModifiers()
         if !captureWasRunningBeforeRecording {
             captureCoordinator.stopGlobalCapture()
         }
@@ -429,11 +472,14 @@ final class AppController: ObservableObject {
         practiceSession.end()
     }
 
+    func makeTerminationCoordinator() -> ApplicationTerminationCoordinator {
+        ApplicationTerminationCoordinator(target: automationCoordinator)
+    }
+
     func clearLog() {
-        do {
-            try eventLogStore.clear()
-        } catch {
-            presentedError = error.localizedDescription
+        Task {
+            do { try await eventLogStore.clear() }
+            catch { presentedError = error.localizedDescription }
         }
     }
 
@@ -449,6 +495,21 @@ final class AppController: ObservableObject {
         presentedError = permissions.status.inputMonitoring == .denied
             ? "O Monitoramento de Entrada foi negado. Abra os Ajustes do Sistema, habilite o \(TicoBrand.displayName) e reabra o app."
             : "Conceda Monitoramento de Entrada e reabra o \(TicoBrand.displayName) para observar contatos globais."
+    }
+
+    /// A mudança de flags alimenta estado e atalhos reservados. Só o runtime
+    /// tipado pode oferecê-la a uma regra explicitamente de modificador.
+    private func receive(_ input: CapturedInput) {
+        if case let .activation(event) = input {
+            receive(event)
+            return
+        }
+        guard !recordingIsActive else { return }
+        activeModifiers = input.modifiers
+        guard let event = input.event, !laboratoryCoordinator.isReplaying,
+              !laboratoryCoordinator.isRecording, captureCoordinator.isRunning else { return }
+        if companion.handle(event) { return }
+        automationCoordinator.handle(event: event, modifiers: activeModifiers, isModifierChange: true)
     }
 
     private func receive(_ incomingEvent: InputEventDescriptor) {
