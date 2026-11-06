@@ -4,46 +4,140 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f8f7fc">
-  <meta name="description" content="Crie gestos e atalhos para automatizar o seu Mac. Conheça o Tico, um companheiro open source para macOS.">
-  <meta property="og:title" content="Tico — automatize sem interromper seu fluxo">
-  <meta property="og:description" content="Seus gestos, seus atalhos e seu jeito de trabalhar no Mac.">
+  <meta name="description" content="Crie gestos no trackpad e atalhos para organizar janelas, abrir apps e automatizar tarefas no Mac com o Tico.">
+  <meta property="og:title" content="Tico — seus gestos, suas automações no Mac">
+  <meta property="og:description" content="Use gestos, teclado e mouse para fazer o seu Mac trabalhar do seu jeito.">
   <meta property="og:type" content="website">
   <link rel="icon" href="assets/tico-icon.png" type="image/png">
   <link rel="stylesheet" href="styles.css">
-  <title>Tico — automatize sem interromper seu fluxo</title>
+  <title>Tico — seus gestos, suas automações no Mac</title>
 </head>
 <body>
   <a class="skip" href="#conteudo">Ir para o conteúdo</a>
-  <header class="header wrap">
-    <a class="brand" href="#inicio" aria-label="Tico, início"><img src="assets/tico-symbol.png" alt=""><span>tico</span></a>
-    <nav aria-label="Navegação principal"><a href="#como-funciona">Como funciona</a><a href="#feito-para-voce">Conheça o Tico</a><a class="nav-github" href="https://github.com/pedronazarito98/Tico">GitHub <span aria-hidden="true">↗</span></a></nav>
-    <a class="header-cta" href="https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg">Baixar para Mac <span aria-hidden="true">↗</span></a>
+  <header class="header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#inicio" aria-label="Tico, início"><img src="assets/tico-symbol.png" alt=""><span>tico</span></a>
+      <nav aria-label="Navegação principal">
+        <a href="#exemplos">O que posso fazer?</a>
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#perguntas">Perguntas</a>
+      </nav>
+      <a class="header-cta" href="https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg">Baixar para Mac</a>
+    </div>
   </header>
+
   <main id="conteudo">
     <section class="hero wrap" id="inicio">
       <div class="hero-copy">
-        <p class="eyebrow"><span class="dot"></span> UM PEQUENO COMPANHEIRO PARA O SEU MAC</p>
-        <h1>Seu fluxo.<br><em>Seu gesto.</em></h1>
-        <p class="lead">Um gesto no trackpad, um atalho no teclado e pronto: o Tico cuida das pequenas ações para você seguir no que importa.</p>
-        <div class="actions"><a class="button button-primary" href="https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg"><span class="download-icon" aria-hidden="true">↓</span> Baixar o Tico <span class="button-arrow" aria-hidden="true">↗</span></a><a class="text-link" href="#como-funciona">Conhecer o Tico <span aria-hidden="true">↓</span></a></div>
-        <p class="micro">macOS 26 ou posterior <span>·</span> Open source <span>·</span> Preview técnico</p>
+        <p class="eyebrow"><span class="dot"></span> FEITO PARA MACOS · OPEN SOURCE</p>
+        <h1>Seu Mac,<br>ao seu <em>gesto.</em></h1>
+        <p class="hero-description">Crie seus próprios gestos no trackpad e atalhos para organizar janelas, abrir apps e automatizar as pequenas tarefas do dia.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg">Baixar o Tico <span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="#exemplos">Ver o que ele faz <span aria-hidden="true">↓</span></a>
+        </div>
+        <p class="download-note">Grátis e open source <span>·</span> macOS 26 ou posterior</p>
       </div>
-      <div class="hero-art" aria-label="Ilustração de um gesto que organiza uma janela">
-        <div class="art-top"><span>UM GESTO, UMA AÇÃO</span><span>✳</span></div>
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="gesture-card"><div class="card-label"><span class="mini-dot"></span> SEU GESTO</div><div class="gesture-symbol" aria-hidden="true"><span></span><span></span><span></span><i>↗</i></div><strong>Deslizar para cima</strong><small>3 dedos no trackpad</small></div>
-        <div class="connector" aria-hidden="true"><span>✦</span></div>
-        <div class="action-card"><div class="card-label"><span class="mini-dot coral"></span> SUA AÇÃO</div><div class="window-symbol" aria-hidden="true"><span></span><i></i></div><strong>Organizar janela</strong><small>Do seu jeito</small></div>
-        <div class="art-caption"><span>Feito para o seu ritmo.</span><span>01 / 03</span></div>
+      <div class="hero-product">
+        <div class="hero-product-top"><span>SEU MAC. SUAS REGRAS.</span><span>CONHEÇA O TICO</span></div>
+        <figure class="product-screen hero-screen">
+          <img src="assets/tico-explorar.jpg" alt="Tela Explorar do Tico com ideias para mover e ampliar janelas usando gestos de três dedos.">
+        </figure>
+        <div class="hero-product-bottom"><span>Ideias para começar, liberdade para personalizar.</span><span>O TICO EM AÇÃO</span></div>
       </div>
-      <div class="hero-bottom"><span>MENOS CLIQUES. MAIS FLUXO.</span><span>Role para descobrir <b aria-hidden="true">↓</b></span></div>
     </section>
-    <section class="intro section-pad" id="como-funciona"><div class="wrap intro-grid"><p class="section-index"><span>01 / A IDEIA</span><span aria-hidden="true">✳</span></p><div><h2>Seu Mac acompanha<br>o seu <em>jeito de fazer.</em></h2><p>Você já tem seus próprios movimentos. O Tico ajuda a transformá-los em atalhos que fazem sentido para o seu dia.</p></div></div></section>
-    <section class="steps section-pad" id="feito-para-voce"><div class="wrap"><div class="section-heading"><div><p class="eyebrow">PEQUENAS AÇÕES, GRANDES FLUXOS</p><h2>Do seu jeito.<br><em>Em poucos passos.</em></h2></div><p>Escolha o que deve acontecer e como quer chamar essa ação. O Tico conecta as duas coisas.</p></div>
-      <div class="steps-grid"><article class="step"><div class="step-visual gesture-visual"><span class="visual-badge">01</span><div class="fingerprints" aria-hidden="true"><i></i><i></i><i></i><b>↗</b></div><span class="visual-note">UM GESTO SEU</span></div><h3>Escolha um gesto</h3><p>Use trackpad, teclado ou mouse para criar uma forma mais natural de acionar seus atalhos.</p></article><article class="step"><div class="step-visual action-visual"><span class="visual-badge">02</span><div class="mini-window" aria-hidden="true"><div><i></i><i></i><i></i></div><span></span><span></span><b>↗</b></div><span class="visual-note">UMA AÇÃO ÚTIL</span></div><h3>Conecte uma ação</h3><p>Abra um app ou link, organize janelas e monte sequências para tarefas recorrentes.</p></article><article class="step"><div class="step-visual flow-visual"><span class="visual-badge">03</span><img src="assets/tico-symbol.png" alt=""><span class="flow-spark one">✳</span><span class="flow-spark two">✦</span><span class="visual-note">CONTINUE NO FLUXO</span></div><h3>Faça acontecer</h3><p>Acione seus atalhos quando precisar e siga trabalhando sem perder o ritmo.</p></article></div></div></section>
-    <section class="privacy section-pad"><div class="wrap privacy-box"><div class="privacy-mark" aria-hidden="true">⌁</div><div><p class="eyebrow">SEU MAC, SUAS REGRAS</p><h2>O controle continua<br><em>com você.</em></h2><p>Regras, calibrações e histórico ficam no seu Mac. O Tico é open source para você conhecer como ele funciona.</p><a class="text-link" href="https://github.com/pedronazarito98/Tico">Explorar o código <span aria-hidden="true">↗</span></a></div></div></section>
-    <section class="final section-pad"><div class="wrap final-inner"><div><p class="eyebrow"><span class="dot"></span> PRONTO PARA COMEÇAR?</p><h2>Um gesto muda<br><em>o seu dia.</em></h2><p>Um pequeno companheiro para deixar o seu Mac mais seu.</p><a class="button button-light" href="https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg"><span aria-hidden="true">↓</span> Baixar para macOS <span class="button-arrow" aria-hidden="true">↗</span></a><p class="final-note">Preview técnico · macOS 26+ · Assinado e notarizado pela Apple</p></div><img src="assets/tico-icon.png" alt="Ícone do Tico"></div></section>
+
+    <section class="intro-band">
+      <div class="wrap intro-band-inner">
+        <p>UM ATALHO PODE COMEÇAR COM</p>
+        <div><span>Trackpad</span><span>Teclado</span><span>Mouse</span></div>
+        <p>E TERMINAR COM MUITO MENOS CLIQUES.</p>
+      </div>
+    </section>
+
+    <section class="section examples wrap" id="exemplos">
+      <div class="section-heading">
+        <div><p class="eyebrow">MENOS REPETIÇÃO, MAIS POSSIBILIDADES</p><h2>Coisas que você<br>pode fazer <em>com o Tico.</em></h2></div>
+        <p>O acionamento é seu. A ação também. Combine os dois para criar atalhos que fazem sentido no seu dia.</p>
+      </div>
+      <div class="examples-list" aria-label="Exemplos de automações que você pode configurar">
+        <article class="example-row">
+          <div class="example-number">01</div>
+          <div class="example-main"><p class="example-category">ORGANIZAR JANELAS</p><h3>Deslize com 3 dedos.<br>Coloque a janela à esquerda.</h3><p>Deixe duas janelas lado a lado sem arrastar e ajustar tudo manualmente.</p></div>
+          <div class="example-recipe"><span>QUANDO EU USAR</span><strong>3 dedos · deslizar à esquerda</strong><span>O TICO VAI</span><strong>Posicionar a janela à esquerda</strong></div>
+        </article>
+        <article class="example-row">
+          <div class="example-number">02</div>
+          <div class="example-main"><p class="example-category">ATUALIZAR SEM PROCURAR</p><h3>Gire dois dedos.<br>Atualize a página.</h3><p>Crie um gesto para acionar o comando de atualização em apps compatíveis.</p></div>
+          <div class="example-recipe"><span>QUANDO EU USAR</span><strong>2 dedos · girar</strong><span>O TICO VAI</span><strong>Atualizar página ou janela</strong></div>
+        </article>
+        <article class="example-row">
+          <div class="example-number">03</div>
+          <div class="example-main"><p class="example-category">ABRIR O QUE VOCÊ USA</p><h3>Um atalho seu.<br>O app ou site que você precisa.</h3><p>Abra um aplicativo, um endereço favorito ou conecte uma sequência de ações.</p></div>
+          <div class="example-recipe"><span>QUANDO EU USAR</span><strong>Seu atalho de teclado ou mouse</strong><span>O TICO VAI</span><strong>Abrir um app, link ou sequência</strong></div>
+        </article>
+      </div>
+      <p class="examples-note">Essas são ideias para configurar, não gestos obrigatórios. Você escolhe o acionamento e o resultado.</p>
+    </section>
+
+    <section class="section create-section" id="como-funciona">
+      <div class="wrap">
+        <div class="section-heading create-heading">
+          <div><p class="eyebrow light-eyebrow">CRIADO PARA SER SEU</p><h2>Uma ideia vira<br>um atalho <em>em três passos.</em></h2></div>
+          <p>Você não precisa começar do zero: explore uma sugestão ou monte o seu próprio atalho no criador.</p>
+        </div>
+        <div class="create-grid">
+          <div class="create-copy">
+            <div class="create-step"><span>01</span><div><h3>Escolha o resultado</h3><p>Comece pelo que você quer fazer: abrir algo, organizar uma janela ou preparar uma sequência.</p></div></div>
+            <div class="create-step"><span>02</span><div><h3>Escolha como ativar</h3><p>Grave um atalho ou selecione visualmente um gesto do trackpad, tecla ou botão do mouse.</p></div></div>
+            <div class="create-step"><span>03</span><div><h3>Confira antes de salvar</h3><p>Veja o acionamento e a ação juntos. Você pode testar o reconhecimento sem executar a ação.</p></div></div>
+          </div>
+          <figure class="product-screen create-screen"><img src="assets/tico-criar-acionamento.jpg" loading="lazy" alt="Criador de atalhos do Tico mostrando opções visuais de gestos e quantidade de dedos."><figcaption>Escolha o movimento e ajuste a quantidade de dedos.</figcaption></figure>
+        </div>
+        <div class="review-row">
+          <figure class="product-screen create-screen"><img src="assets/tico-conferir-atalho.jpg" loading="lazy" alt="Revisão de um atalho que abre a documentação SwiftUI ao deslizar três dedos para a esquerda."><figcaption>Confira o gesto e o resultado antes de criar o atalho.</figcaption></figure>
+          <div><p class="feature-index">UM EXEMPLO REAL NO CRIADOR</p><h3>Seu gesto de um lado.<br>O resultado do outro.</h3><p>Na revisão, veja o que vai acontecer, escolha em quais apps o atalho estará disponível e decida se ele será ativado ao salvar.</p></div>
+        </div>
+        <div class="create-footnote">O reconhecimento depende das permissões de privacidade e da disponibilidade da captura no Mac.</div>
+      </div>
+    </section>
+
+    <section class="section features wrap" id="recursos">
+      <div class="section-heading"><div><p class="eyebrow">MAIS DO QUE UM ATALHO</p><h2>Um jeito mais pessoal<br>de usar <em>o seu Mac.</em></h2></div><p>O Tico reúne ferramentas para criar, lembrar e adaptar suas automações conforme você trabalha.</p></div>
+      <article class="feature feature-scenes">
+        <div class="feature-copy"><p class="feature-index">01 / CENAS</p><h3>Seu espaço de trabalho,<br>do seu jeito.</h3><p>Crie uma cena com uma sequência de ações e, se quiser, salve uma disposição de janelas para restaurar durante a sessão atual.</p><p class="feature-detail">Por exemplo: prepare suas janelas para começar a trabalhar e organize o espaço com uma cena nomeada.</p></div>
+        <figure class="feature-image"><img src="assets/tico-cenas.jpg" loading="lazy" alt="Editor de cena do Tico com a disposição de uma janela do Finder e opções de posicionamento."><figcaption>Capture e ajuste posições de janelas em uma cena.</figcaption></figure>
+      </article>
+      <article class="feature feature-content">
+        <div class="feature-copy"><p class="feature-index">02 / FAZER COM CONTEÚDO</p><h3>Texto, links e arquivos<br>ganham um próximo passo.</h3><p>Forneça conteúdo no painel para pesquisar em um destino configurado ou enviá-lo a um Atalho do macOS.</p><p class="feature-detail">Quer pesquisar uma frase? Escolha o destino e confira para onde o conteúdo será enviado.</p></div>
+        <figure class="feature-image content-image"><img src="assets/tico-conteudo.jpg" loading="lazy" alt="Painel Fazer com conteúdo com opções de pesquisar no Google ou na documentação Apple."><figcaption>Escolha explicitamente o que fazer com o conteúdo.</figcaption></figure>
+      </article>
+      <div class="feature-strip">
+        <article><p class="feature-index">MAPA E PRÁTICA</p><h3>Seus gestos, à vista.</h3><p>Consulte seus atalhos e pratique o reconhecimento sem executar as ações.</p></article>
+        <article><p class="feature-index">POR APLICATIVO</p><h3>O contexto faz diferença.</h3><p>Defina onde uma regra está disponível e revise possíveis conflitos antes de salvar.</p></article>
+        <article><p class="feature-index">EXPLORAR</p><h3>Uma ajudinha para começar.</h3><p>Encontre ideias por objetivo e personalize as sugestões para seu jeito de usar o Mac.</p></article>
+      </div>
+    </section>
+
+    <section class="section privacy-section">
+      <div class="wrap privacy-grid"><div><p class="eyebrow">CONTROLE E TRANSPARÊNCIA</p><h2>Suas regras ficam<br><em>no seu Mac.</em></h2></div><div><p>Atalhos, calibrações e histórico são armazenados localmente. O Tico é open source: você pode conhecer o código e acompanhar o projeto.</p><p>Ao escolher uma ação de pesquisa, o conteúdo é enviado ao destino escolhido. Você decide quando usar cada ação.</p><a class="text-link" href="https://github.com/pedronazarito98/Tico">Conhecer o projeto no GitHub <span aria-hidden="true">↗</span></a></div></div>
+    </section>
+
+    <section class="section faq wrap" id="perguntas">
+      <div class="section-heading"><div><p class="eyebrow">ANTES DE COMEÇAR</p><h2>Algumas coisas<br>boas de <em>saber.</em></h2></div></div>
+      <div class="faq-list">
+        <details><summary>O que é o Tico?</summary><p>É um aplicativo open source para macOS que transforma gestos do trackpad, atalhos de teclado e botões do mouse em ações e automações que você configura.</p></details>
+        <details><summary>O que eu preciso para usar?</summary><p>Um Mac com macOS 26 ou posterior. Baixe o DMG, arraste o Tico para Aplicativos e abra o app. Algumas funções pedem permissões de Monitoramento de Entrada e Acessibilidade.</p></details>
+        <details><summary>O Tico é gratuito?</summary><p>Sim. O Tico é open source e está disponível gratuitamente como preview técnico. Você pode consultar o código e as notas da versão no GitHub.</p></details>
+        <details><summary>Funciona com qualquer trackpad?</summary><p>Há validações manuais anteriores no trackpad interno, mas a captura avançada é experimental. Magic Trackpad e outros dispositivos externos ainda não têm compatibilidade garantida.</p></details>
+        <details><summary>Ele funciona em todos os aplicativos?</summary><p>Você pode definir regras por aplicativo. Algumas ações dependem do que o app em uso oferece: atualizar uma página, por exemplo, precisa de um comando de atualização acessível.</p></details>
+      </div>
+    </section>
+
+    <section class="download-section">
+      <div class="wrap download-inner"><div><p class="eyebrow light-eyebrow"><span class="dot"></span> VAMOS COMEÇAR?</p><h2>Seu próximo atalho<br>começa <em>aqui.</em></h2><p>Baixe o Tico e descubra um jeito mais seu de usar o Mac.</p><a class="button button-light" href="https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg">Baixar o Tico para macOS <span aria-hidden="true">↗</span></a><p class="download-note">Preview técnico · macOS 26+ · Assinado e notarizado pela Apple</p></div><img src="assets/tico-icon.png" alt="Ícone do aplicativo Tico" loading="lazy"></div>
+    </section>
   </main>
-  <footer class="footer wrap"><a class="brand" href="#inicio"><img src="assets/tico-symbol.png" alt=""><span>tico</span></a><p>Feito para acompanhar o seu fluxo.</p><div><a href="https://github.com/pedronazarito98/Tico/releases/tag/v0.1.0-preview.2">Notas da versão ↗</a><a href="https://github.com/pedronazarito98/Tico">GitHub ↗</a></div></footer>
+  <footer class="footer wrap"><a class="brand" href="#inicio"><img src="assets/tico-symbol.png" alt=""><span>tico</span></a><p>Seu Mac, ao seu gesto.</p><div><a href="https://github.com/pedronazarito98/Tico/releases/tag/v0.1.0-preview.2">Notas da versão</a><a href="https://github.com/pedronazarito98/Tico">GitHub</a></div></footer>
 </body>
 </html>
