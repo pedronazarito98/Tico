@@ -109,7 +109,7 @@ O Tico é um **preview técnico open source exclusivo para macOS 26+**. A versã
 0.1.0 (build 2) está disponível para download, assinada com Developer ID e
 notarizada pela Apple.
 
-[Baixar o Tico para macOS](https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg) · [Ver a release e suas notas](https://github.com/pedronazarito98/Tico/releases/tag/v0.1.0-preview.2)
+[Conhecer o Tico](https://tico-macos.vercel.app/) · [Baixar para macOS](https://github.com/pedronazarito98/Tico/releases/download/v0.1.0-preview.2/Tico.dmg) · [Ver a release e suas notas](https://github.com/pedronazarito98/Tico/releases/tag/v0.1.0-preview.2)
 
 Abra o DMG, arraste o Tico para Aplicativos e conceda as permissões solicitadas
 conforme os recursos que desejar usar. Esta versão ainda precisa ser validada em
