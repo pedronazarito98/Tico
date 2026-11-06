@@ -52,9 +52,17 @@ Os metadados do bundle vêm de `version.env`; mudanças de release devem atualiz
 `MARKETING_VERSION` e sempre incrementar `BUILD_NUMBER`.
 
 Para uma mudança que altere o comportamento do trackpad, execute também o
-trecho aplicável do [checklist manual](outputs/qa-checklist.md). O relatório
+trecho aplicável do [checklist manual](docs/qa-checklist.md). O relatório
 sanitizado de hardware é opcional e útil apenas para investigar uma regressão
 ou registrar uma combinação específica de macOS e dispositivo.
+
+## Documentação e artefatos locais
+
+Mantenha guias e decisões que continuam úteis em [`docs/`](docs/README.md).
+Relatórios pontuais, capturas de auditoria e saídas de ferramentas devem ficar
+em `outputs/`, ignorado pelo Git, ou fora do repositório. Não versione caches
+de build, planos temporários ou logs de execução. As regras de privacidade
+também se aplicam aos artefatos locais.
 
 ## Segurança
 

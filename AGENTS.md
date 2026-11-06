@@ -5,7 +5,7 @@ Estas regras valem para todo o repositório. Um `AGENTS.md` mais próximo do arq
 ## Antes de alterar
 
 1. Leia `Package.swift`, `README.md`, `CONTRIBUTING.md` e os arquivos diretamente envolvidos.
-2. Para trabalho arquitetural, leia `.specs/STATE.md` e `.specs/features/architecture-modernization/{spec,design,tasks}.md`.
+2. Para trabalho arquitetural, leia `docs/arquitetura.md` e os contratos das camadas envolvidas neste arquivo.
 3. Verifique `git status --short`; preserve mudanças do usuário e não misture escopo não relacionado.
 4. Entenda o padrão existente antes de criar arquivos, tipos ou pastas.
 
