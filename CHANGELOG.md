@@ -49,8 +49,8 @@ Baseline desta iniciativa: `27e0650`. Consolidação integrada em `87f65ef`.
 ```bash
 ./script/ci_verify.sh --package
 ./script/release_preflight.sh dist/Tico.zip
-./script/validate_hardware_report.sh outputs/hardware-validation/report-AAAA-MM-DD.md
+./script/validate_hardware_report.sh outputs/report-AAAA-MM-DD.md
 ```
 
-Consulte `outputs/roadmap.md` para o estado atual e `outputs/distribuicao.md`
+Consulte `docs/roadmap.md` para o estado atual e `docs/distribuicao.md`
 para a estratégia de preview atual e os gates de uma release binária futura.

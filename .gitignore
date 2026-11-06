@@ -7,3 +7,9 @@ xcuserdata/
 DerivedData/
 .codex/
 Xcode/Config/Local.xcconfig
+
+# Planos temporários, relatórios e evidências de trabalho local.
+/.specs/
+/outputs/
+/design-qa.md
+*.log

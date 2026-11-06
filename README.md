@@ -74,13 +74,11 @@ Apple Intelligence, sem token, dependência de terceiros ou fallback remoto. Ela
 exige um Mac elegível, Apple Intelligence ativo e modelo pronto com suporte a
 português; a criação manual continua disponível. As propostas por IA passam pela
 validação das ações existentes e não guardam a frase nas notas da regra.
-Veja os [limites e a validação dos recursos locais de IA](outputs/foundation-models-local.md).
+Veja os [limites e a validação dos recursos locais de IA](docs/foundation-models-local.md).
 A captura do layout
 é explícita e não lê títulos nem documentos. A recuperação cobre posição e tamanho
 na sessão atual; não reabre documentos ou aplicativos encerrados.
-Veja o [guia das experiências contextuais](outputs/experiencias-contextuais.md),
-a [validação desta integração](.specs/features/contextual-experiences/validation.md)
-e a [evidência histórica da V2](.specs/features/tico-v2/validation.md).
+Veja o [guia das experiências contextuais](docs/experiencias-contextuais.md).
 
 Meus atalhos usa uma **lista com resumo compacto e detalhes expansíveis**. O criador
 configura o resultado no próprio passo, separa **Gravar** de **Escolher** o
@@ -90,18 +88,17 @@ Cancelar a criação não persiste uma regra provisória.
 Apps e Mais ajustes são opcionais; horário, monitor, título da janela e modificadores
 ficam em Avançado. Rascunhos de edição permanecem na janela, e salvar é explícito,
 também por `⌘S`. O editor completo continua no menu contextual da biblioteca.
-Veja a [implementação e validação das dez telas aprovadas](.specs/features/tico-v2/figma-approved-flow.md).
+Veja o [guia de uso](docs/guia-de-uso.md) para os fluxos de criação e edição.
 
 As receitas manuais de conteúdo são configuração local em `content-recipes.json`,
 separada do documento de regras. A entrada pessoal permanece somente na sessão,
 expira após cinco minutos sem uso e é removida ao fechar, limpar, cancelar uma
 execução ou concluir com sucesso. O import/export atual de regras não inclui
-essas receitas. Consulte o [roteiro da revisão de UX](outputs/ux-continuity/guia.md)
-e a [validação desta fase](.specs/features/ux-continuity/validation.md).
+essas receitas. Consulte o [guia de uso](docs/guia-de-uso.md#fazer-com-conteúdo).
 
 A escolha de ações usa uma galeria de resultados: aplicativos com ícones reais,
 posições de janela ilustradas e operações diretas. Busca e seleção de apps ficam
-no próprio inspetor. Veja a [validação dos seletores visuais](.specs/features/tico-v2/visual-selection.md).
+no próprio inspetor.
 
 ## Estado atual
 
@@ -131,7 +128,7 @@ registrados separadamente na matriz manual.
 
 Magic Trackpad e outros dispositivos externos ainda não têm compatibilidade
 garantida. Quando houver um, o procedimento curto está no
-[checklist de QA](outputs/qa-checklist.md#hardware-externo).
+[checklist de QA](docs/qa-checklist.md#hardware-externo).
 
 Os gestos globais avançados usam uma integração experimental com o macOS. Se
 ela não estiver disponível, o Tico usa um fallback público com menos recursos.
@@ -146,7 +143,7 @@ recomeça depois que todos os dedos saem do trackpad. O fim de uma automação
 libera o próximo acionamento após a limpeza dos seus efeitos, sem esperar a
 gravação do histórico. Ao sair, o app aguarda limpeza e gravações por até dois
 segundos; falha ou timeout mantém o Tico aberto para uma nova tentativa.
-Os cenários físicos ainda pendentes estão na [matriz manual](outputs/macos-26-manual-matrix.md).
+Os cenários físicos ainda pendentes estão na [matriz manual](docs/macos-26-manual-matrix.md).
 
 ## Como testar
 
@@ -188,14 +185,14 @@ atualize `MARKETING_VERSION` e incremente `BUILD_NUMBER`.
 
 ## Documentação
 
-- [O que está pronto e o que falta](outputs/roadmap.md)
-- [Como o projeto funciona](outputs/arquitetura.md)
-- [Capacidades e limites do trackpad](outputs/trackpad.md)
-- [Checklist de QA](outputs/qa-checklist.md)
-- [Auditoria de compatibilidade com macOS 26](outputs/macos-26-compatibility-audit.md)
-- [Matriz manual para macOS 26, trackpad e TCC](outputs/macos-26-manual-matrix.md)
-- [Segurança](outputs/seguranca.md)
-- [Distribuição](outputs/distribuicao.md)
+- [Guia de uso](docs/guia-de-uso.md)
+- [O que está pronto e o que falta](docs/roadmap.md)
+- [Como o projeto funciona](docs/arquitetura.md)
+- [Capacidades e limites do trackpad](docs/trackpad.md)
+- [Checklist de QA](docs/qa-checklist.md)
+- [Matriz manual para macOS 26, trackpad e TCC](docs/macos-26-manual-matrix.md)
+- [Segurança](docs/seguranca.md)
+- [Distribuição](docs/distribuicao.md)
 
 ## Licença
 
