@@ -47,8 +47,7 @@ struct ContentView: View {
                 scopedApplications: scopedApplications,
                 enabledRuleCount: shortcutStore.rules.filter(\.isEnabled).count,
                 totalRuleCount: shortcutStore.rules.count,
-                captureIsRunning: controller.captureIsRunning,
-                onToggleCapture: controller.toggleCapture
+                captureIsRunning: controller.captureIsRunning
             )
         } detail: {
             detail
@@ -61,11 +60,35 @@ struct ContentView: View {
         // duplicando esse item no AppKit. Os controles mantêm seus IDs acessíveis.
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 10) {
+                    Text(controller.captureIsRunning ? "Captura ativa" : "Captura pausada")
+                    Toggle("Captura", isOn: Binding(
+                        get: { controller.captureIsRunning },
+                        set: { enabled in
+                            if enabled != controller.captureIsRunning { controller.toggleCapture() }
+                        }
+                    ))
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("tico.toolbar.capture")
+                }
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Color.primary.opacity(0.05), in: .capsule)
+                .help("Ativa ou pausa a captura global de gestos e atalhos.")
+            }
+            .sharedBackgroundVisibility(.hidden)
+            if selectedSection == .scenes || [.rules, .explore, .library, .activity].contains(selectedSection) {
+                ToolbarSpacer(.fixed, placement: .primaryAction)
+            }
+            ToolbarItem(placement: .primaryAction) {
                 if selectedSection == .scenes {
                     Button("Nova cena", systemImage: "plus") { newSceneRequest = UUID() }
+                        .labelStyle(.titleAndIcon)
                         .accessibilityIdentifier("tico.scenes.new")
                 } else if [.rules, .explore, .library, .activity].contains(selectedSection) {
                     Button("Novo atalho", systemImage: "plus") { createRule() }
+                        .labelStyle(.titleAndIcon)
                         .accessibilityIdentifier("tico.toolbar.new-rule")
                 }
             }
@@ -245,6 +268,10 @@ struct ContentView: View {
                 trackpadSnapshot: controller.laboratorySnapshot,
                 applications: controller.availableApplications,
                 macOSShortcuts: controller.availableMacOSShortcuts,
+                // Registros antigos sem ID não podem ser associados com segurança pelo nome.
+                latestExecution: eventLogStore.entries
+                    .filter { $0.ruleID == selectedRuleID && $0.ruleID != nil }
+                    .max { $0.result.executedAt < $1.result.executedAt }?.result,
                 reusableWorkflows: shortcutStore.reusableWorkflows,
                 presets: shortcutStore.presets,
                 detectedTrackpads: controller.detectedTrackpads,

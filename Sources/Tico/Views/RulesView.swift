@@ -15,6 +15,7 @@ struct RulesView: View {
     let trackpadSnapshot: TrackpadLaboratorySnapshot?
     let applications: [ApplicationChoice]
     let macOSShortcuts: [String]
+    let latestExecution: ActionExecutionResult?
 
     let reusableWorkflows: [ActionWorkflow]
     let presets: [GesturePreset]
@@ -37,7 +38,7 @@ struct RulesView: View {
     @State private var contextObservationID = UUID()
 
     var body: some View {
-        AdaptiveSplitView(breakpoint: 760, minPrimaryWidth: 240, idealPrimaryWidth: 300, maxPrimaryWidth: 420) {
+        AdaptiveSplitView(breakpoint: 760, minPrimaryWidth: 240, idealPrimaryWidth: 330, maxPrimaryWidth: 440) {
           VStack(spacing: 0) {
             // O filtro vira menu quando os quatro segmentos não cabem na coluna.
             // ViewThatFits escolhe pelo tamanho real dos controles, sem medir texto.
@@ -52,29 +53,43 @@ struct RulesView: View {
             .padding(.horizontal, 16).padding(.vertical, 12)
             List(selection: $selectedRuleID) {
                 ForEach(visibleRules) { rule in
-                    HStack(spacing: 10) {
+                    HStack(alignment: .center, spacing: 10) {
                         ShortcutActionIcon(action: rule.action, applications: applications, size: 30)
-                        VStack(alignment: .leading, spacing: 5) {
-                            Text(rule.name).font(.callout.weight(.medium)).lineLimit(1)
-                            Text(RuleEditorSummary.trigger(rule.trigger)).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                        }
-                        Spacer(minLength: 0)
-                        Image(systemName: rule.isEnabled && captureIsRunning ? "circle.fill" : "pause.circle")
-                            .font(.system(size: 9))
-                            .foregroundStyle(rule.isEnabled && captureIsRunning ? TicoBrand.Palette.primary : .secondary)
-                            .accessibilityLabel(status(for: rule))
-                            .help(status(for: rule))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(rule.name).font(.callout.weight(.semibold)).lineLimit(2)
+                            Text(RuleEditorSummary.trigger(rule.trigger))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                        Toggle("Ativar \(rule.name)", isOn: Binding(
+                            get: { rule.isEnabled }, set: { setEnabled(rule.id, $0) }
+                        ))
+                        .labelsHidden().toggleStyle(.switch).controlSize(.mini).fixedSize()
+                        .accessibilityLabel("Ativar \(rule.name)")
+                        .accessibilityIdentifier("tico.rule.row.enabled.\(rule.id)")
+                        .help(status(for: rule))
                         Menu {
-                            Button("Editar atalho") { workspace.edit(rule) }
-                            Button(rule.isEnabled ? "Pausar atalho" : "Ativar atalho") { setEnabled(rule.id, !rule.isEnabled) }
-                            Button("Duplicar") { workspace.duplicate(rule) }
-                            Button("Testar acionamento") { onPractice(rule) }
+                            Button("Editar atalho", systemImage: "pencil") { workspace.edit(rule) }
+                            Button("Testar acionamento", systemImage: "hand.draw") { onPractice(rule) }
+                            Button("Duplicar", systemImage: "plus.square.on.square") { workspace.duplicate(rule) }
+                            Button("Editor completo…", systemImage: "slider.horizontal.3") {
+                                selectedRuleID = rule.id; detailedEditorPresented = true
+                            }
+                            Button(rule.isEnabled ? "Pausar atalho" : "Ativar atalho",
+                                   systemImage: rule.isEnabled ? "pause.circle" : "play.circle") {
+                                setEnabled(rule.id, !rule.isEnabled)
+                            }
                             Divider()
-                            Button("Excluir…", role: .destructive) { requestDeletion(rule.id) }
-                        } label: { Image(systemName: "ellipsis") }
-                            .menuStyle(.borderlessButton).fixedSize().accessibilityLabel("Opções de \(rule.name)")
+                            Button("Excluir…", systemImage: "trash", role: .destructive) { requestDeletion(rule.id) }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                                .font(.system(size: 16)).frame(width: 24, height: 24)
+                        }
+                        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                        .accessibilityLabel("Opções de \(rule.name)")
                     }
-                    .padding(.vertical, 5).tag(rule.id)
+                    .padding(.vertical, 7)
+                    .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+                    .tag(rule.id)
                     .accessibilityElement(children: .contain).accessibilityLabel(rule.name)
                     .accessibilityIdentifier("tico.rule.row.\(rule.id)")
                     .contextMenu {
@@ -108,6 +123,7 @@ struct RulesView: View {
             if let rule = selectedRule {
                 ShortcutLibraryDetailView(rule: rule, applications: applications,
                     wasJustCreated: workspace.recentlyCreatedID == rule.id,
+                    latestExecution: latestExecution,
                     onSetEnabled: { setEnabled(rule.id, $0) },
                     onEdit: { workspace.edit(rule) }, onPractice: { onPractice(rule) },
                     captureIsRunning: captureIsRunning)
@@ -221,7 +237,6 @@ struct RulesView: View {
     }
 
     /// Ativação pertence à regra; a captura é um estado independente do aplicativo.
-    /// O indicador comunica os dois sem criar outro controle de ativação na linha.
     private func status(for rule: ShortcutRule) -> String {
         if !rule.isEnabled { return "Atalho pausado" }
         return captureIsRunning ? "Atalho ativado · captura ativa" : "Atalho ativado · captura pausada"

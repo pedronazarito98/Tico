@@ -6,7 +6,7 @@ enum SidebarDestination: Hashable {
     case application(String)
 }
 
-/// Navegação estável e controle global de captura no rodapé. A busca pertence
+/// Navegação estável e estado global de captura no rodapé. A busca pertence
 /// ao conteúdo da seção e não substitui destinos na lista nativa.
 struct SidebarView: View {
     @Binding var selection: TicoSection?
@@ -16,7 +16,6 @@ struct SidebarView: View {
     let enabledRuleCount: Int
     let totalRuleCount: Int
     let captureIsRunning: Bool
-    let onToggleCapture: () -> Void
     @SceneStorage("sidebar.advancedToolsExpanded") private var advancedToolsExpanded = false
 
     private let primarySections: [TicoSection] = [
@@ -60,17 +59,8 @@ struct SidebarView: View {
             VStack(alignment: .leading, spacing: 12) {
                 SettingsLink { Label("Ajustes…", systemImage: "gearshape") }
                     .buttonStyle(.plain)
-                HStack(spacing: 6) {
-                    SidebarStatusRow(captureIsRunning: captureIsRunning,
-                        enabledRuleCount: enabledRuleCount, totalRuleCount: totalRuleCount)
-                    Menu {
-                        Button(captureIsRunning ? "Pausar captura" : "Retomar captura", action: onToggleCapture)
-                        Button("Conferir permissões") { selection = .permissions }
-                    } label: { Image(systemName: "ellipsis.circle") }
-                        .menuStyle(.borderlessButton).fixedSize()
-                        .accessibilityLabel("Controlar captura")
-                        .help("Pausar, retomar ou conferir permissões")
-                }
+                SidebarStatusRow(captureIsRunning: captureIsRunning,
+                    enabledRuleCount: enabledRuleCount, totalRuleCount: totalRuleCount)
             }
             .padding(14)
         }
