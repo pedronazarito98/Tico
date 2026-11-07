@@ -11,7 +11,7 @@ A revisão mantém ações, sequências, condições, perfis, gestos personaliza
 5. Confira destino, acionamento e escopo. **Testar acionamento** ensaia o reconhecimento, sem executar efeitos reais. **Ativar ao salvar** é uma decisão separada.
 6. Salve. Cancelar antes disso não cria uma regra. Editar e personalizar modelos usam esse mesmo criador.
 
-No detalhe do atalho, **Ativado** significa que a regra está habilitada. Se a captura global estiver pausada, a mensagem explica que ainda é necessário retomá-la. O menu no rodapé da barra lateral controla essa captura.
+Na lista e no detalhe, **Ativado** significa que a regra está habilitada. Se a captura global estiver pausada, a mensagem explica que ainda é necessário retomá-la. Use **Captura** na barra superior para ativar ou pausar a captura global; as permissões ficam em **Ferramentas → Permissões**.
 
 ## Fazer com conteúdo
 

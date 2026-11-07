@@ -80,7 +80,9 @@ A captura do layout
 na sessão atual; não reabre documentos ou aplicativos encerrados.
 Veja o [guia das experiências contextuais](docs/experiencias-contextuais.md).
 
-Meus atalhos usa uma **lista com resumo compacto e detalhes expansíveis**. O criador
+Meus atalhos reúne controles de ativação na lista e mostra ações e condições no
+painel de detalhes, junto à combinação de teclas ou descrição do gesto. Deslizamentos
+compatíveis têm uma ilustração estática. A captura global fica na barra da janela. O criador
 configura o resultado no próprio passo, separa **Gravar** de **Escolher** o
 acionamento e permite conferir antes de salvar. **Testar acionamento** verifica
 reconhecimento; não executa ações nem confirma o resultado de efeitos reais.
